@@ -50,6 +50,39 @@ namespace MinimalChess
             //the presence of a 5th character should mean promotion
             Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
         }
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Move move)
+                return this.Equals(move);
+
+            return false;
+        }
+
+        public bool Equals(Move other)
+        {
+            return (FromIndex == other.FromIndex) && (ToIndex == other.ToIndex) && (Promotion == other.Promotion);
+        }
+
+        public override int GetHashCode()
+        {
+            //int is big enough to represent move fully. maybe use that for optimization at some point
+            return FromIndex + (ToIndex << 8) + ((int)Promotion << 16);
+        }
+
+        public static bool operator ==(Move lhs, Move rhs) => lhs.Equals(rhs);
+
+        public static bool operator !=(Move lhs, Move rhs) => !lhs.Equals(rhs);
+
+        public static Move BlackCastlingShort = new Move("e8g8");
+        public static Move BlackCastlingLong = new Move("e8c8");
+        public static Move WhiteCastlingShort = new Move("e1g1");
+        public static Move WhiteCastlingLong = new Move("e1c1");
+
+        public static Move BlackCastlingShortRook = new Move("h8f8");
+        public static Move BlackCastlingLongRook = new Move("a8d8");
+        public static Move WhiteCastlingShortRook = new Move("h1f1");
+        public static Move WhiteCastlingLongRook = new Move("a1d1");
     }
 
     public static class Notation
@@ -230,6 +263,42 @@ namespace MinimalChess
             
             //...and clear the square it was previously located
             _state[move.FromIndex] = Piece.None;
+
+            //handle castling special case
+            if (IsCastling(movingPiece, move, out Move rookMove))
+                Play(rookMove);
         }
+
+        public bool IsCastling(Piece moving, Move move, out Move rookMove)
+        {
+            if (moving == Piece.BlackKing && move == Move.BlackCastlingLong)
+            {
+                rookMove = Move.BlackCastlingLongRook;
+                return true;
+            }
+            
+            if(moving == Piece.BlackKing && move == Move.BlackCastlingShort)
+            {
+                rookMove = Move.BlackCastlingShortRook;
+                return true;
+            }
+            
+            if (moving == Piece.WhiteKing && move == Move.WhiteCastlingLong)
+            {
+                rookMove = Move.WhiteCastlingLongRook;
+                return true;
+            }
+            
+            if (moving == Piece.WhiteKing && move == Move.WhiteCastlingShort)
+            {
+                rookMove = Move.WhiteCastlingShortRook;
+                return true;
+            }
+
+            //not castling
+            rookMove = default;
+            return false;
+        }
+
     }
 }
