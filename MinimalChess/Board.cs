@@ -1,6 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices.WindowsRuntime;
+using System.Security;
 
 namespace MinimalChess
 {
@@ -19,6 +23,33 @@ namespace MinimalChess
         BlackRook = 10,
         BlackQueen = 11,
         BlackKing = 12,
+    }
+
+    public struct Move
+    {
+        public byte FromIndex;
+        public byte ToIndex;
+        public Piece Promotion;
+
+        public Move(byte fromIndex, byte toIndex, Piece promotion)
+        {
+            FromIndex = fromIndex;
+            ToIndex = toIndex;
+            Promotion = promotion;
+        }
+
+        public Move(string uciMoveNotation)
+        {
+            //The expected format is the oneto specify the move is in long algebraic notation without piece names
+            https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+            //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
+            string fromSquare = uciMoveNotation.Substring(0, 2);
+            string toSquare = uciMoveNotation.Substring(2, 2);
+            FromIndex = Notation.ToSquareIndex(fromSquare);
+            ToIndex = Notation.ToSquareIndex(toSquare);
+            //the presence of a 5th character should mean promotion
+            Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
+        }
     }
 
     public static class Notation
@@ -42,7 +73,7 @@ namespace MinimalChess
                 case Piece.BlackPawn:
                     return 'p';
                 case Piece.BlackKnight:
-                    return 'k';
+                    return 'n';
                 case Piece.BlackBishop:
                     return 'b';
                 case Piece.BlackRook:
@@ -88,6 +119,24 @@ namespace MinimalChess
                     throw new ArgumentException($"Piece character {ascii} not supported.");
             }
         }
+
+        public static byte ToSquareIndex(string squareNotation)
+        {
+            //Each square has a unique identification of file letter followed by rank number.
+            https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+            //Examples: White's king starts the game on square e1; Black's knight on b8 can move to open squares a6 or c6.
+
+            //Map letters [a..h] to [0..7] with ASCII('a') == 97
+            int file = squareNotation[0] - 97;
+            //Map numbers [1..8] to [0..7] with ASCII('1') == 49
+            int rank = squareNotation[1] - 49;
+            int index = rank * 8 + file;
+
+            if(index >= 0 && index <= 63)
+                return (byte)index;
+
+            throw new ArgumentException($"The given square notation {squareNotation} does not map to a valid index between 0 and 63");
+        }
     }
 
     //    A  B  C  D  E  F  G  H
@@ -125,15 +174,6 @@ namespace MinimalChess
             set => _state[rank * 8 + file] = value;
         }
 
-        public static int Location(string notation)
-        {
-            //Convert from ASCII to rank & file
-            int file = notation[0] - 97;// [a..h] => [0..7] with ASCII('a') == 97
-            int rank = notation[1] - 49;// [1..8] => [0..7] with ASCII('1') == 49
-            int index = rank * 8 + file;
-            return index;
-        }
-
         public void SetupPosition(string fen)
         {
             //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -145,20 +185,21 @@ namespace MinimalChess
             Array.Clear(_state, 0, 64);
             // Place pieces on board.
             string[] fenPosition = fields[0].Split('/');
-            int square = 0;
-            foreach (string rank in fenPosition)
+            int rank = 7;
+            foreach (string row in fenPosition)
             {
-                foreach (char piece in rank)
+                int file = 0;
+                foreach (char piece in row)
                 {
                     if (char.IsNumber(piece))
                     {
                         int emptySquares = (int)char.GetNumericValue(piece);
-                        square += emptySquares;
+                        file += emptySquares;
                         continue;
                     }
-
-                    this[square++] = Notation.ToPiece(piece);
+                    this[rank, file++] = Notation.ToPiece(piece);
                 }
+                rank--;
             }
             // Set side to move.
             bool whiteMoves = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase);
@@ -168,15 +209,27 @@ namespace MinimalChess
             bool blackKingside = fields[2].IndexOf("k", StringComparison.CurrentCulture) > -1;
             bool blackQueenside = fields[2].IndexOf("q", StringComparison.CurrentCulture) > -1;
             // Set en passant square.
-            int enPassantSquare = fields[3] == "-" ? -1 : Location(fields[3]);
+            int enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquareIndex(fields[3]);
             if(fields.Length == 6)
             {
                 // Set half move count.
                 int halfMoveCount = int.Parse(fields[4]);
                 // Set full move number.
                 int fullMoveNumber = int.Parse(fields[5]);
-
             }
+        }
+
+        public void Play(Move move)
+        {
+            Piece movingPiece = _state[move.FromIndex];
+            if (move.Promotion != Piece.None)
+                movingPiece = move.Promotion;
+
+            //move the correct piece to the target square
+            _state[move.ToIndex] = movingPiece;
+            
+            //...and clear the square it was previously located
+            _state[move.FromIndex] = Piece.None;
         }
     }
 }
