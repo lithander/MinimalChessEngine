@@ -40,7 +40,7 @@ namespace MinimalChess
 
         public Move(string uciMoveNotation)
         {
-            //The expected format is the oneto specify the move is in long algebraic notation without piece names
+            //expected format is the long algebraic notation without piece names
             https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
             string fromSquare = uciMoveNotation.Substring(0, 2);
@@ -73,6 +73,18 @@ namespace MinimalChess
         public static bool operator ==(Move lhs, Move rhs) => lhs.Equals(rhs);
 
         public static bool operator !=(Move lhs, Move rhs) => !lhs.Equals(rhs);
+
+        public override string ToString()
+        {
+            //result represents the move in the long algebraic notation (without piece names)
+            string result = Notation.ToSquareName(FromIndex);
+            result += Notation.ToSquareName(ToIndex);
+            //the presence of a 5th character should mean promotion
+            if (Promotion != Piece.None)
+                result += Notation.ToChar(Promotion);
+
+            return result;
+        }
 
         public static Move BlackCastlingShort = new Move("e8g8");
         public static Move BlackCastlingLong = new Move("e8c8");
@@ -153,6 +165,17 @@ namespace MinimalChess
             }
         }
 
+        public static string ToSquareName(byte squareIndex)
+        {
+            //This is the reverse of the ToSquareIndex()
+            int rank = squareIndex / 8;
+            int file = squareIndex % 8;
+
+            //Map file [0..7] to letters [a..h] and rank [0..7] to [1..8]
+            string squareNotation = $"{(char)('a' + file)}{rank + 1}";
+            return squareNotation;
+        }
+
         public static byte ToSquareIndex(string squareNotation)
         {
             //Each square has a unique identification of file letter followed by rank number.
@@ -160,9 +183,9 @@ namespace MinimalChess
             //Examples: White's king starts the game on square e1; Black's knight on b8 can move to open squares a6 or c6.
 
             //Map letters [a..h] to [0..7] with ASCII('a') == 97
-            int file = squareNotation[0] - 97;
+            int file = squareNotation[0] - 'a';
             //Map numbers [1..8] to [0..7] with ASCII('1') == 49
-            int rank = squareNotation[1] - 49;
+            int rank = squareNotation[1] - '1';
             int index = rank * 8 + file;
 
             if(index >= 0 && index <= 63)
@@ -186,6 +209,11 @@ namespace MinimalChess
     public class Board
     {
         Piece[] _state = new Piece[64];
+        bool _whiteMovesNext = true;
+
+        public bool WhiteMoves => _whiteMovesNext;
+        public bool BlackMoves => !_whiteMovesNext;
+
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
         public Board(string fen)
@@ -235,7 +263,7 @@ namespace MinimalChess
                 rank--;
             }
             // Set side to move.
-            bool whiteMoves = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase);
+            _whiteMovesNext = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase);
             // Set castling rights.
             bool whiteKingside = fields[2].IndexOf("K", StringComparison.CurrentCulture) > -1;
             bool whiteQueenside = fields[2].IndexOf("Q", StringComparison.CurrentCulture) > -1;
@@ -266,10 +294,17 @@ namespace MinimalChess
 
             //handle castling special case
             if (IsCastling(movingPiece, move, out Move rookMove))
-                Play(rookMove);
+            {
+                //move the rook to the target square and clear from square
+                _state[rookMove.ToIndex] = _state[rookMove.FromIndex];
+                _state[rookMove.FromIndex] = Piece.None;
+            }
+
+            //toggle active color!
+            _whiteMovesNext = !_whiteMovesNext;
         }
 
-        public bool IsCastling(Piece moving, Move move, out Move rookMove)
+        private bool IsCastling(Piece moving, Move move, out Move rookMove)
         {
             if (moving == Piece.BlackKing && move == Move.BlackCastlingLong)
             {
@@ -300,5 +335,59 @@ namespace MinimalChess
             return false;
         }
 
+        public List<Move> GetLegalMoves()
+        {
+            List<Move> moves = new List<Move>();
+            for(int squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+	            //depending on _whiteMovesNext filter all our own pieces
+                if (_state[squareIndex] == Piece.None)
+                    continue;
+
+                //Piece is of the activeColor?
+                if ((_state[squareIndex] < Piece.BlackPawn) ^ _whiteMovesNext) //XOR
+                    continue;
+
+                AddLegalMoves(moves, squareIndex);
+            }
+            return moves;
+        }
+
+        private void AddLegalMoves(List<Move> moves, int squareIndex)
+        {
+            switch (_state[squareIndex])
+            {
+                case Piece.BlackPawn:
+                    AppendBlackPawnMoves(moves, squareIndex);
+                    break;
+                case Piece.WhitePawn:
+                    AddWhitePawnMoves(moves, squareIndex);
+                    break;
+            }
+        }
+
+        private void AddWhitePawnMoves(List<Move> moves, int fromIndex)
+        {
+            //if the square above is free it's a legal move
+            int aboveIndex = fromIndex + 8; //white moves up
+            if (aboveIndex > 63)
+                return;
+
+            //TODO: handle promotion && handle diagonal attacks && and first moves
+            if (_state[aboveIndex] == Piece.None)
+                moves.Add(new Move((byte)fromIndex, (byte)aboveIndex, Piece.None));
+        }
+
+        private void AppendBlackPawnMoves(List<Move> moves, int fromIndex)
+        {
+            //if the square above is free it's a legal move
+            int belowIndex = fromIndex - 8; //black moves down
+            if (belowIndex < 0)
+                return;
+
+            //TODO: handle promotion && handle diagonal attacks && and first moves
+            if (_state[belowIndex] == Piece.None)
+                moves.Add(new Move((byte)fromIndex, (byte)belowIndex, Piece.None));
+        }
     }
 }

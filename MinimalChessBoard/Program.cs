@@ -1,5 +1,7 @@
 ﻿using MinimalChess;
 using System;
+using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MinimalChessBoard
 {
@@ -12,45 +14,63 @@ namespace MinimalChessBoard
             Print(board);
             while (running)
             {
-                Console.Write(">> Move: ");
+                string active = board.WhiteMoves ? "White" : "Black";
+                Console.Write($"{active} >> ");
                 string input = Console.ReadLine();
-                string[] moves = input.Split();
-                foreach(string move in moves)
-                {
-                    ApplyMove(board, move);
-                    Print(board);
-                }
-            }
-        }
 
-        private static void ApplyMove(Board board, string moveNotation)
-        {           
-            Move move = new Move(moveNotation);
-            board.Play(move);
+                if (input == "?")
+                    ListMoves(board);
+                else
+                    ApplyMoves(board, input.Split());
+            }
         }
 
         private static void Print(Board board)
         {
             Console.WriteLine();
-            Console.WriteLine("  A B C D E F G H");
-            Console.WriteLine("  ---------------");
+            Console.WriteLine(" A B C D E F G H");
+            Console.WriteLine(" _______________");
             for (int rank = 7; rank >= 0; rank--)
             {
-                Console.Write($"{rank + 1}|"); //ranks aren't zero-indexed
                 for (int file = 0; file < 8; file++)
                 {
                     Piece piece = board[rank, file];
                     Print(piece);
-                    Console.Write(' ');
                 }
-                Console.WriteLine();
+                Console.WriteLine($"| {rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine();
         }
 
         private static void Print(Piece piece)
         {
+            Console.Write(' ');
             Console.Write(Notation.ToChar(piece));
+        }
+
+        private static void ListMoves(Board board)
+        {
+            List<Move> legalMoves = board.GetLegalMoves();
+            Console.Write($"({legalMoves.Count}) ");
+            foreach (var move in legalMoves)
+                Console.Write(move.ToString() + " ");
+            Console.WriteLine();
+        }
+
+        private static void ApplyMoves(Board board, string[] moves)
+        {
+            for (int i = 0; i < moves.Length; i++)
+            {
+                Move move = new Move(moves[i]);
+                Debug.Assert(move.ToString() == moves[i]);
+                if (i > 0)
+                {
+                    Console.Write($"{i + 1}. {(board.WhiteMoves ? "White" : "Black")} >> {move}");
+                    Console.WriteLine();
+                }
+                board.Play(move);
+                Print(board);
+            }
         }
     }
 }
