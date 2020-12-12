@@ -1,0 +1,104 @@
+﻿using System;
+using System.Collections.Generic;
+using System.Text;
+
+namespace MinimalChess
+{
+    public static class Notation
+    {
+        public static char ToChar(Piece piece)
+        {
+            switch (piece)
+            {
+                case Piece.WhitePawn:
+                    return 'P';
+                case Piece.WhiteKnight:
+                    return 'N';
+                case Piece.WhiteBishop:
+                    return 'B';
+                case Piece.WhiteRook:
+                    return 'R';
+                case Piece.WhiteQueen:
+                    return 'Q';
+                case Piece.WhiteKing:
+                    return 'K';
+                case Piece.BlackPawn:
+                    return 'p';
+                case Piece.BlackKnight:
+                    return 'n';
+                case Piece.BlackBishop:
+                    return 'b';
+                case Piece.BlackRook:
+                    return 'r';
+                case Piece.BlackQueen:
+                    return 'q';
+                case Piece.BlackKing:
+                    return 'k';
+                default:
+                    return ' ';
+            }
+        }
+
+        public static Piece ToPiece(char ascii)
+        {
+            switch (ascii)
+            {
+                case 'P':
+                    return Piece.WhitePawn;
+                case 'N':
+                    return Piece.WhiteKnight;
+                case 'B':
+                    return Piece.WhiteBishop;
+                case 'R':
+                    return Piece.WhiteRook;
+                case 'Q':
+                    return Piece.WhiteQueen;
+                case 'K':
+                    return Piece.WhiteKing;
+                case 'p':
+                    return Piece.BlackPawn;
+                case 'n':
+                    return Piece.BlackKnight;
+                case 'b':
+                    return Piece.BlackBishop;
+                case 'r':
+                    return Piece.BlackRook;
+                case 'q':
+                    return Piece.BlackQueen;
+                case 'k':
+                    return Piece.BlackKing;
+                default:
+                    throw new ArgumentException($"Piece character {ascii} not supported.");
+            }
+        }
+
+        public static string ToSquareName(byte squareIndex)
+        {
+            //This is the reverse of the ToSquareIndex()
+            int rank = squareIndex / 8;
+            int file = squareIndex % 8;
+
+            //Map file [0..7] to letters [a..h] and rank [0..7] to [1..8]
+            string squareNotation = $"{(char)('a' + file)}{rank + 1}";
+            return squareNotation;
+        }
+
+        public static byte ToSquareIndex(string squareNotation)
+        {
+            //Each square has a unique identification of file letter followed by rank number.
+            https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+            //Examples: White's king starts the game on square e1; Black's knight on b8 can move to open squares a6 or c6.
+
+            //Map letters [a..h] to [0..7] with ASCII('a') == 97
+            int file = squareNotation[0] - 'a';
+            //Map numbers [1..8] to [0..7] with ASCII('1') == 49
+            int rank = squareNotation[1] - '1';
+            int index = rank * 8 + file;
+
+            if (index >= 0 && index <= 63)
+                return (byte)index;
+
+            throw new ArgumentException($"The given square notation {squareNotation} does not map to a valid index between 0 and 63");
+        }
+    }
+}
