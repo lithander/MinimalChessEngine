@@ -34,6 +34,19 @@ namespace MinimalChess
             SetupPosition(fen);
         }
 
+        public Board(Board board)
+        {
+            Array.Copy(board._state, _state, 64);
+            _whiteMovesNext = board._whiteMovesNext;
+        }
+
+        public Board(Board board, Move move)
+        {
+            Array.Copy(board._state, _state, 64);
+            _whiteMovesNext = board._whiteMovesNext;
+            Play(move);
+        }
+
         public Piece this[int index] 
         {
             get => _state[index];
