@@ -17,6 +17,20 @@ namespace MinimalChess
             Promotion = promotion;
         }
 
+        public Move(int fromIndex, int toIndex)
+        {
+            FromIndex = (byte)fromIndex;
+            ToIndex = (byte)toIndex;
+            Promotion = Piece.None;
+        }
+
+        public Move(int fromIndex, int toIndex, Piece promotion)
+        {
+            FromIndex = (byte)fromIndex;
+            ToIndex = (byte)toIndex;
+            Promotion = promotion;
+        }
+
         public Move(string uciMoveNotation)
         {
             //expected format is the long algebraic notation without piece names

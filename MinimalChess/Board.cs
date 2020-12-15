@@ -8,16 +8,16 @@ using System.Security;
 
 namespace MinimalChess
 {
-    //    A  B  C  D  E  F  G  H
-    // 8  00 01 02 03 04 05 06 07  8
-    // 7  08 09 10 11 12 13 14 15  7
-    // 6  16 17 18 19 20 21 22 23  6
-    // 5  24 25 26 27 28 29 30 31  5
-    // 4  32 33 34 35 36 37 38 39  4
-    // 3  40 41 42 43 44 45 46 47  3
-    // 2  48 49 50 51 52 53 54 55  2
-    // 1  56 57 58 59 60 61 62 63  1
-    //    A  B  C  D  E  F  G  H
+    //    A  B  C  D  E  F  G  H        BLACK
+    // 8  56 57 58 59 60 61 62 63  8
+    // 7  48 49 50 51 52 53 54 55  7
+    // 6  40 41 42 43 44 45 46 47  6
+    // 5  32 33 34 35 36 37 38 39  5
+    // 4  24 25 26 27 28 29 30 31  4
+    // 3  16 17 18 19 20 21 22 23  3
+    // 2  08 09 10 11 12 13 14 15  2
+    // 1  00 01 02 03 04 05 06 07  1
+    //    A  B  C  D  E  F  G  H        WHITE
 
     public class Board
     {
@@ -59,6 +59,13 @@ namespace MinimalChess
         {
             get => _state[rank * 8 + file];
             set => _state[rank * 8 + file] = value;
+        }
+
+        public void Setup(Board board, Move move)
+        {
+            Array.Copy(board._state, _state, 64);
+            _whiteMovesNext = board._whiteMovesNext;
+            Play(move);
         }
 
         public void SetupPosition(string fen)
@@ -184,36 +191,108 @@ namespace MinimalChess
             switch (_state[squareIndex])
             {
                 case Piece.BlackPawn:
-                    AppendBlackPawnMoves(moves, squareIndex);
+                    AddBlackPawnMoves(moves, squareIndex);
+                    AddBlackPawnAttacks(moves, squareIndex);
                     break;
                 case Piece.WhitePawn:
                     AddWhitePawnMoves(moves, squareIndex);
+                    AddWhitePawnAttacks(moves, squareIndex);
                     break;
             }
         }
 
-        private void AddWhitePawnMoves(List<Move> moves, int fromIndex)
+        private void AddWhitePawnMoves(List<Move> moves, int index)
         {
-            //if the square above is free it's a legal move
-            int aboveIndex = fromIndex + 8; //white moves up
-            if (aboveIndex > 63)
+            //if the square above isn't free there are no legal moves
+            if (_state[Up(index)] != Piece.None)
                 return;
 
-            //TODO: handle promotion && handle diagonal attacks && and first moves
-            if (_state[aboveIndex] == Piece.None)
-                moves.Add(new Move((byte)fromIndex, (byte)aboveIndex, Piece.None));
+            AddWhitePawnMove(moves, new Move(index, Up(index)));
+
+            //START POS? => consider double move
+            if (IsRank(2, index) && _state[Up(index, 2)] == Piece.None)
+                moves.Add(new Move(index, Up(index, 2)));
         }
 
-        private void AppendBlackPawnMoves(List<Move> moves, int fromIndex)
+        private void AddBlackPawnMoves(List<Move> moves, int index)
         {
-            //if the square above is free it's a legal move
-            int belowIndex = fromIndex - 8; //black moves down
-            if (belowIndex < 0)
+            //if the square below isn't free there are no legal moves
+            if (_state[index - 8] != Piece.None)
                 return;
 
-            //TODO: handle promotion && handle diagonal attacks && and first moves
-            if (_state[belowIndex] == Piece.None)
-                moves.Add(new Move((byte)fromIndex, (byte)belowIndex, Piece.None));
+            AddBlackPawnMove(moves, new Move(index, Down(index)));
+            //START POS? => consider double move
+            if (IsRank(7, index) && _state[Down(index, 2)] == Piece.None)
+                moves.Add(new Move(index, Down(index, 2)));
         }
+
+        private void AddWhitePawnAttacks(List<Move> moves, int index)
+        {
+            if(TryTransform(index, -1, 1, out int upLeft) && IsBlackPiece(upLeft))
+                AddWhitePawnMove(moves, new Move(index, upLeft));
+
+            if (TryTransform(index, 1, 1, out int upRight) && IsBlackPiece(upRight))
+                AddWhitePawnMove(moves, new Move(index, upRight));
+        }
+
+        private void AddBlackPawnAttacks(List<Move> moves, int index)
+        {
+            if (TryTransform(index, -1, -1, out int downLeft) && IsWhitePiece(downLeft))
+                AddBlackPawnMove(moves, new Move(index, downLeft));
+
+            if (TryTransform(index, 1, -1, out int downRight) && IsWhitePiece(downRight))
+                AddBlackPawnMove(moves, new Move(index, downRight));
+        }
+
+        private void AddBlackPawnMove(List<Move> moves, Move move)
+        {
+            if(IsRank(1, move.ToIndex))
+            {
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.BlackQueen));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.BlackRook));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.BlackBishop));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.BlackKnight));
+            }
+            else
+                moves.Add(move);
+        }
+
+        private void AddWhitePawnMove(List<Move> moves, Move move)
+        {
+            if (IsRank(8, move.ToIndex))
+            {
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.WhiteQueen));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.WhiteRook));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.WhiteBishop));
+                moves.Add(new Move(move.FromIndex, move.ToIndex, Piece.WhiteKnight));
+            }
+            else
+                moves.Add(move);
+        }
+
+        //Helper
+
+        private bool IsBlackPiece(in int index) => _state[index] >= Piece.BlackPawn;
+
+        private bool IsWhitePiece(in int index) => _state[index] != Piece.None && _state[index] < Piece.BlackPawn;
+
+        //Index Helper
+
+        private int Up(in int index) => index + 8;
+        private int Up(in int index, int steps) => index + steps * 8;
+        private int Down(in int index) => index - 8;
+        private int Down(in int index, int steps) => index - steps * 8;
+
+        private bool TryTransform(in int index, int files, int ranks, out int result)
+        {
+            int rank = index / 8 + ranks;
+            int file = index % 8 + files;
+            result = rank * 8 + file;
+            return IsValid(rank, file);
+        }
+
+        private bool IsValid(in int rank, in int file) => (rank >= 0 && rank <= 7) && (file >= 0 && file <= 7);
+
+        private bool IsRank(in int rank, in int index) => (index / 8) + 1 == rank;
     }
 }

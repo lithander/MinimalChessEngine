@@ -89,7 +89,7 @@ namespace MinimalChessBoard
             for (int i = 0; i < moves.Length; i++)
             {
                 Move move = new Move(moves[i]);
-                if (move.ToString() == moves[i])
+                if (move.ToString() != moves[i])
                     throw new ArgumentException($"Move notation {moves[i]} not understood!");
 
                 Debug.Assert(move.ToString() == moves[i]);
@@ -112,14 +112,14 @@ namespace MinimalChessBoard
                 return moves.Count;
 
             int sum = 0;
+            Board next = new Board(board);
             foreach (var move in moves)
             {
-                Board next = new Board(board, move);
+                next.Setup(board, move);
                 sum += Perft(next, depth - 1);
             }
             return sum;
         }
-
 
         private static void RunPerft(Board board, int depth)
         {
