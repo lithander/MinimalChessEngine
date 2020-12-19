@@ -198,8 +198,31 @@ namespace MinimalChess
                     AddWhitePawnMoves(moves, squareIndex);
                     AddWhitePawnAttacks(moves, squareIndex);
                     break;
+                case Piece.BlackKing:
+                case Piece.WhiteKing:
+                    AddKingMoves(moves, squareIndex);
+                    break;
             }
         }
+
+        //*****************
+        //** KING MOVES ***
+        //*****************
+
+        int[] KING_MOVES_X = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
+        int[] KING_MOVES_Y = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
+
+        private void AddKingMoves(List<Move> moves, int index)
+        {
+            Piece self = _state[index];
+            for(int i = 0; i < 8; i++)
+                if (TryTransform(index, KING_MOVES_X[i], KING_MOVES_Y[i], out int target) && IsValidTarget(self, target))
+                        moves.Add(new Move(index, target));
+        }
+
+        //*****************
+        //** PAWN MOVES ***
+        //*****************
 
         private void AddWhitePawnMoves(List<Move> moves, int index)
         {
@@ -275,6 +298,19 @@ namespace MinimalChess
         private bool IsBlackPiece(in int index) => _state[index] >= Piece.BlackPawn;
 
         private bool IsWhitePiece(in int index) => _state[index] != Piece.None && _state[index] < Piece.BlackPawn;
+
+        private bool IsValidTarget(Piece self, int index)
+        {
+            //white * white > 0 && <  5 * 6
+            //black * black >
+            Piece target = _state[index];
+            if (target == Piece.None)
+                return true;
+            if (target < Piece.BlackPawn)//occupied by white!
+                return self >= Piece.BlackPawn; //self must be black or it can't land there
+            else //occupied by black
+                return self < Piece.BlackPawn;
+        }
 
         //Index Helper
 
