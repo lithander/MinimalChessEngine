@@ -16,10 +16,23 @@ namespace MinimalChessBoard
             Board board = new Board(Board.STARTING_POS_FEN);
             while (running)
             {
-                Print(board);
-                string active = board.WhiteMoves ? "White" : "Black";
-                Console.Write($"{active} >> ");
+                try
+                {
+                    Print(board);
+                    if (board.IsChecked(Color.Black))
+                        Console.WriteLine(" <!> Black is in check");
+                    if (board.IsChecked(Color.White))
+                        Console.WriteLine(" <!> White is in check");
+                }
+                catch (Exception error)
+                {
+                    Console.WriteLine("ERROR: " + error.Message);
+                }
+
+                Console.WriteLine();
+                Console.Write($"{board.NextMove} >> ");
                 string input = Console.ReadLine();
+
                 try
                 {
                     if (input.StartsWith("reset"))
@@ -55,24 +68,21 @@ namespace MinimalChessBoard
         private static void Print(Board board)
         {
             Console.WriteLine();
-            Console.WriteLine(" A B C D E F G H");
-            Console.WriteLine(" _______________");
+            Console.WriteLine(" A B C D E F G H  .");
+            Console.WriteLine("+---------------+");
             for (int rank = 7; rank >= 0; rank--)
             {
+                Console.Write($"|"); //ranks aren't zero-indexed
                 for (int file = 0; file < 8; file++)
                 {
+                    if(file > 0)
+                        Console.Write(' ');
                     Piece piece = board[rank, file];
-                    Print(piece);
+                    Console.Write(Notation.ToChar(piece));
                 }
                 Console.WriteLine($"| {rank + 1}"); //ranks aren't zero-indexed
             }
-            Console.WriteLine();
-        }
-
-        private static void Print(Piece piece)
-        {
-            Console.Write(' ');
-            Console.Write(Notation.ToChar(piece));
+            Console.WriteLine("+---------------+");
         }
 
         private static void ListMoves(Board board)
@@ -95,7 +105,7 @@ namespace MinimalChessBoard
                 Debug.Assert(move.ToString() == moves[i]);
                 if (i > 0)
                 {
-                    Console.Write($"{i + 1}. {(board.WhiteMoves ? "White" : "Black")} >> {move}");
+                    Console.Write($"{i + 1}. {board.NextMove} >> {move}");
                     Console.WriteLine();
                 }
                 board.Play(move);
