@@ -35,7 +35,7 @@ namespace MinimalChess
                 case Piece.BlackKing:
                     return 'k';
                 default:
-                    return '.';
+                    return ' ';
             }
         }
 

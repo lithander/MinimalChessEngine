@@ -30,7 +30,7 @@ namespace MinimalChessBoard
                 }
 
                 Console.WriteLine();
-                Console.Write($"{board.NextMove} >> ");
+                Console.Write($"{board.ActiveColor} >> ");
                 string input = Console.ReadLine();
 
                 try
@@ -68,21 +68,36 @@ namespace MinimalChessBoard
         private static void Print(Board board)
         {
             Console.WriteLine();
-            Console.WriteLine(" A B C D E F G H  .");
-            Console.WriteLine("+---------------+");
+            Console.WriteLine("   A B C D E F G H");
+            Console.WriteLine(" +----------------+");
             for (int rank = 7; rank >= 0; rank--)
             {
-                Console.Write($"|"); //ranks aren't zero-indexed
+                Console.Write($"{rank + 1}|"); //ranks aren't zero-indexed
                 for (int file = 0; file < 8; file++)
                 {
-                    if(file > 0)
-                        Console.Write(' ');
                     Piece piece = board[rank, file];
+                    SetColor(piece, rank, file);
                     Console.Write(Notation.ToChar(piece));
+                    Console.Write(' ');
                 }
-                Console.WriteLine($"| {rank + 1}"); //ranks aren't zero-indexed
+                Console.ResetColor();
+                Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
-            Console.WriteLine("+---------------+");
+            Console.WriteLine(" +----------------+");
+            Console.WriteLine("  A B C D E F G H");
+        }
+
+        private static void SetColor(Piece piece, int rank, int file)
+        {
+            if ((rank + file) % 2 == 1)
+                Console.BackgroundColor = ConsoleColor.DarkGray;
+            else
+                Console.BackgroundColor = ConsoleColor.Black;
+
+            if (piece != Piece.None && Pieces.GetColor(piece) == Color.White)
+                Console.ForegroundColor = ConsoleColor.White;
+            else
+                Console.ForegroundColor = ConsoleColor.Gray;
         }
 
         private static void ListMoves(Board board)
@@ -105,7 +120,7 @@ namespace MinimalChessBoard
                 Debug.Assert(move.ToString() == moves[i]);
                 if (i > 0)
                 {
-                    Console.Write($"{i + 1}. {board.NextMove} >> {move}");
+                    Console.Write($"{i + 1}. {board.ActiveColor} >> {move}");
                     Console.WriteLine();
                 }
                 board.Play(move);
