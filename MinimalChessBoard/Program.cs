@@ -49,6 +49,11 @@ namespace MinimalChessBoard
                         int depth = int.Parse(input.Substring(6));
                         RunPerft(board, depth);
                     }
+                    else if (input.StartsWith("divide "))
+                    {
+                        int depth = int.Parse(input.Substring(6));
+                        RunDivide(board, depth);
+                    }
                     else if (input == "?")
                     {
                         ListMoves(board);
@@ -155,6 +160,22 @@ namespace MinimalChessBoard
             Console.WriteLine($"  Moves:    {result:N0}");
             Console.WriteLine($"  Seconds:  {dt:0.####}");
             Console.WriteLine($"  Moves/s:  {(result / dt):N0}");
+        }
+
+        private static void RunDivide(Board board, int depth)
+        {
+            var moves = board.GetLegalMoves();
+            int sum = 0;
+            Board next = new Board(board);
+            foreach (var move in moves)
+            {
+                next.Setup(board, move);
+                int nodes = Perft(next, depth - 1);
+                sum += nodes;
+                Console.WriteLine($"  {move}:    {nodes:N0}");
+            }
+            Console.WriteLine();
+            Console.WriteLine($"  Total:   {sum:N0}");
         }
 
     }
