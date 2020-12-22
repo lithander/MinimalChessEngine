@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices.WindowsRuntime;
 using System.Security;
@@ -171,24 +172,24 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        int[] DIAGONALS_X = new int[4] { -1, 1, 1, -1 };
-        int[] DIAGONALS_Y = new int[4] { -1, -1, 1, 1 };
+        int[] DIAGONALS_FILE = new int[4] { -1, 1, 1, -1 };
+        int[] DIAGONALS_RANK = new int[4] { -1, -1, 1, 1 };
 
-        int[] STRAIGHTS_X = new int[4] { -1, 0, 1, 0 };
-        int[] STRAIGHTS_Y = new int[4] { -0, -1, 0, 1 };
+        int[] STRAIGHTS_FILE = new int[4] { -1, 0, 1, 0 };
+        int[] STRAIGHTS_RANK = new int[4] { -0, -1, 0, 1 };
 
-        int[] KING_MOVES_X = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
-        int[] KING_MOVES_Y = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
+        int[] KING_FILE = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
+        int[] KING_RANK = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
 
-        int[] KNIGHT_MOVES_X = new int[8] { -1, -2, 1, 2, -1, -2, 1, 2 };
-        int[] KNIGHT_MOVES_Y = new int[8] { -2, -1, -2, -1, 2, 1, 2, 1 };
+        int[] KNIGHT_FILE = new int[8] { -1, -2, 1, 2, -1, -2, 1, 2 };
+        int[] KNIGHT_RANK = new int[8] { -2, -1, -2, -1, 2, 1, 2, 1 };
 
         public List<Move> GetLegalMoves()
         {
             List<Move> moves = new List<Move>();
 
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (Pieces.HasColor(_state[squareIndex], _activeColor))
+                if (Pieces.IsColor(_state[squareIndex], _activeColor))
                     AddLegalMoves(moves, squareIndex);
 
             return moves;
@@ -244,6 +245,7 @@ namespace MinimalChess
 
         public bool IsChecked(Color color)
         {
+            //TODO: searching for the king takes time, maybe the bord state could store it
             Piece king = Pieces.GetPiece(PieceType.King, color);
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
                 if (_state[squareIndex] == king)
@@ -257,110 +259,97 @@ namespace MinimalChess
             Piece king = _state[index];
             Debug.Assert(king == Piece.BlackKing || king == Piece.WhiteKing);
             Color otherColor = Pieces.Flip(Pieces.GetColor(king));
+            ToSquare(index, out int rank, out int file);
+
             //King could be threatened by...
 
             //1. Pawns
             if (king == Piece.BlackKing)
             {
                 //white pawns move up so king is threatened from below, only
-                if (TryTransform(index, -1, -1, out int downLeft) && _state[downLeft] == Piece.WhitePawn)
+                if (IsPiece(rank - 1, file - 1, Piece.WhitePawn))
                     return true;
 
-                if (TryTransform(index, 1, -1, out int downRight) && _state[downRight] == Piece.WhitePawn)
+                if (IsPiece(rank - 1, file + 1, Piece.WhitePawn))
                     return true;
             }
             else if (king == Piece.WhiteKing)
             {
                 //black pawns move down so white king is threatened from above, only
-                if (TryTransform(index, -1, 1, out int upLeft) && _state[upLeft] == Piece.BlackPawn)
+                if (IsPiece(rank + 1, file - 1, Piece.BlackPawn))
                     return true;
 
-                if (TryTransform(index, 1, 1, out int upRight) && _state[upRight] == Piece.BlackPawn)
+                if (IsPiece(rank + 1, file + 1, Piece.BlackPawn))
                     return true;
             }
             else
                 return false; //Because it's not a King's square, duh
 
-            //2. Look for King on surrounding squares
+            Piece otherKnight = Pieces.GetPiece(PieceType.Knight, otherColor);
             Piece otherKing = Pieces.Flip(king);
             for (int i = 0; i < 8; i++)
-                if (TryTransform(index, KING_MOVES_X[i], KING_MOVES_Y[i], out int target) && _state[target] == otherKing)
+            {
+                //2. Knight
+                if (IsPiece(rank + KNIGHT_RANK[i], file + KNIGHT_FILE[i], otherKnight))
                     return true;
 
-            //3. Look for Queen or Bishops on diagonals lines
+                //3. King
+                if (IsPiece(rank + KING_RANK[i], file + KING_FILE[i], otherKing))
+                    return true;
+            }
+
             Piece otherQueen = Pieces.GetPiece(PieceType.Queen, otherColor);
             Piece otherBishop = Pieces.GetPiece(PieceType.Bishop, otherColor);
+            Piece otherRook = Pieces.GetPiece(PieceType.Rook, otherColor);
             for (int dir = 0; dir < 4; dir++)
             {
-                int current = index;
-                while (TryTransform(ref current, DIAGONALS_X[dir], DIAGONALS_Y[dir]))
+                //4. Queen or Bishops on diagonals lines
+                for (int i = 1; IsValidSquare(rank + i * DIAGONALS_RANK[dir], file + i * DIAGONALS_FILE[dir], out Piece piece); i++)
                 {
-                    Piece piece = _state[current];
                     if (piece == otherBishop || piece == otherQueen)
                         return true;
                     if (piece != Piece.None)
                         break;
                 }
-            }
-
-            //4. Look for Queen or Rooks on straight lines
-            Piece otherRook = Pieces.GetPiece(PieceType.Rook, otherColor);
-            for (int dir = 0; dir < 4; dir++)
-            {
-                int current = index;
-                while (TryTransform(ref current, STRAIGHTS_X[dir], STRAIGHTS_Y[dir]))
+                //5. Queen or Rook on diagonals lines
+                for (int i = 1; IsValidSquare(rank + i * STRAIGHTS_RANK[dir], file + i * STRAIGHTS_FILE[dir], out Piece piece); i++)
                 {
-                    Piece piece = _state[current];
                     if (piece == otherRook || piece == otherQueen)
                         return true;
                     if (piece != Piece.None)
                         break;
                 }
             }
-
-            //5. Knight on the Knight-Squares
-            Piece otherKnight = Pieces.GetPiece(PieceType.Knight, otherColor);
-            for (int i = 0; i < 8; i++)
-                if (TryTransform(index, KNIGHT_MOVES_X[i], KNIGHT_MOVES_Y[i], out int target) && _state[target] == otherKnight)
-                    return true;
-
+            
             //...else
             return false;
         }
 
-        //*****************
-        //** KING MOVES ***
-        //*****************
+        //***************************
+        //** KING && KNIGHT MOVES ***
+        //***************************
 
         private void AddKingMoves(List<Move> moves, int index)
         {
-            for(int i = 0; i < 8; i++)
-                if (TryTransform(index, KING_MOVES_X[i], KING_MOVES_Y[i], out int current))
-                {
-                    Piece target = _state[current];
-                    if (target == Piece.None || Pieces.GetColor(target) != _activeColor)
-                        Add(moves, new Move(index, current));
-                }
-        }
+            ToSquare(index, out int rank, out int file);
 
-        //*******************
-        //** KNIGHT MOVES ***
-        //*******************
+            for (int i = 0; i < 8; i++)
+                if (IsValidSquare(rank + KING_RANK[i], file + KING_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
+                    Add(moves, new Move(index, target));
+        }
 
         private void AddKnightMoves(List<Move> moves, int index)
         {
+            ToSquare(index, out int rank, out int file);
+
             for (int i = 0; i < 8; i++)
-                if (TryTransform(index, KNIGHT_MOVES_X[i], KNIGHT_MOVES_Y[i], out int current))
-                {
-                    Piece target = _state[current];
-                    if (target == Piece.None || Pieces.GetColor(target) != _activeColor)
-                        Add(moves, new Move(index, current));
-                }
+                if (IsValidSquare(rank + KNIGHT_RANK[i], file + KNIGHT_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
+                    Add(moves, new Move(index, target));
         }
 
-        //******************
-        //** QUEEN MOVES ***
-        //******************
+        //********************************
+        //** QUEEN, ROOK, BISHOP MOVES ***
+        //********************************
 
         private void AddQueenMoves(List<Move> moves, int index)
         {
@@ -369,48 +358,29 @@ namespace MinimalChess
             AddRookMoves(moves, index);
         }
 
-        //*******************
-        //** BISHOP MOVES ***
-        //*******************
-
         private void AddBishopMoves(List<Move> moves, int index)
         {
-            //3. Look for Queen or Bishops on diagonals lines
-            for (int dir = 0; dir < 4; dir++)
-            {
-                int current = index;
-                while (TryTransform(ref current, DIAGONALS_X[dir], DIAGONALS_Y[dir]))
-                {
-                    Piece target = _state[current];
-
-                    if (target == Piece.None || Pieces.GetColor(target) != _activeColor)
-                        Add(moves, new Move(index, current));
-
-                    if(target != Piece.None)
-                        break;
-                }
-            }
+            for(int dir = 0; dir < 4; dir++)
+                AddDirectionalMoves(moves, index, DIAGONALS_RANK[dir], DIAGONALS_FILE[dir]);
         }
-
-        //*****************
-        //** ROOK MOVES ***
-        //*****************
 
         private void AddRookMoves(List<Move> moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
+                AddDirectionalMoves(moves, index, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);
+        }
+
+        private void AddDirectionalMoves(List<Move> moves, int index, int dRank, int dFile)
+        {
+            ToSquare(index, out int rank, out int file);
+
+            for (int i = 1; IsValidSquare(rank + i * dRank, file + i * dFile, out int target, out Piece piece); i++)
             {
-                int current = index;
-                while (TryTransform(ref current, STRAIGHTS_X[dir], STRAIGHTS_Y[dir]))
-                {
-                    Piece target = _state[current];
+                if (!Pieces.IsColor(piece, _activeColor))
+                    Add(moves, new Move(index, target));
 
-                    if (target == Piece.None || Pieces.GetColor(target) != _activeColor)
-                        Add(moves, new Move(index, current));
-
-                    if (target != Piece.None)
-                        break;
-                }
+                if (piece != Piece.None)
+                    break;
             }
         }
 
@@ -443,21 +413,26 @@ namespace MinimalChess
                 Add(moves, new Move(index, Down(index, 2)));
         }
 
+
         private void AddWhitePawnAttacks(List<Move> moves, int index)
         {
-            if(TryTransform(index, -1, 1, out int upLeft) && IsBlackPiece(upLeft))
+            ToSquare(index, out int rank, out int file);
+
+            if (IsValidSquare(rank + 1, file - 1, out int upLeft, out Piece pieceLeft) && Pieces.IsBlack(pieceLeft))
                 AddWhitePawnMove(moves, new Move(index, upLeft));
 
-            if (TryTransform(index, 1, 1, out int upRight) && IsBlackPiece(upRight))
+            if (IsValidSquare(rank + 1, file + 1, out int upRight, out Piece pieceRight) && Pieces.IsBlack(pieceRight))
                 AddWhitePawnMove(moves, new Move(index, upRight));
         }
 
         private void AddBlackPawnAttacks(List<Move> moves, int index)
         {
-            if (TryTransform(index, -1, -1, out int downLeft) && IsWhitePiece(downLeft))
+            ToSquare(index, out int rank, out int file);
+
+            if (IsValidSquare(rank - 1, file - 1, out int downLeft, out Piece pieceLeft) && Pieces.IsWhite(pieceLeft))
                 AddBlackPawnMove(moves, new Move(index, downLeft));
 
-            if (TryTransform(index, 1, -1, out int downRight) && IsWhitePiece(downRight))
+            if (IsValidSquare(rank - 1, file + 1, out int downRight, out Piece pieceRight) && Pieces.IsWhite(pieceRight))
                 AddBlackPawnMove(moves, new Move(index, downRight));
         }
 
@@ -495,29 +470,45 @@ namespace MinimalChess
         private int Up(in int index, int steps) => index + steps * 8;
         private int Down(in int index) => index - 8;
         private int Down(in int index, int steps) => index - steps * 8;
-
-        private bool TryTransform(in int index, int files, int ranks, out int result)
-        {
-            int rank = index / 8 + ranks;
-            int file = index % 8 + files;
-            result = rank * 8 + file;
-            return IsValidSquare(rank, file);
-        }
-
-        private bool TryTransform(ref int index, int files, int ranks)
-        {
-            int rank = index / 8 + ranks;
-            int file = index % 8 + files;
-            index = rank * 8 + file;
-            return IsValidSquare(rank, file);
-        }
-
-        private bool IsValidSquare(in int rank, in int file) => (rank >= 0 && rank <= 7) && (file >= 0 && file <= 7);
-
         private bool IsRank(in int rank, in int index) => (index / 8) + 1 == rank;
+        private void ToSquare(in int index, out int rank, out int file)
+        {
+            rank = index / 8;
+            file = index % 8;
+        }
 
-        private bool IsBlackPiece(in int index) => _state[index] >= Piece.BlackPawn;
+        private bool IsValidSquare(in int rank, in int file, out Piece piece)
+        {
+            if (rank < 0 || rank > 7 || file < 0 || file > 7)
+            {
+                piece = Piece.None;
+                return false;
+            }
 
-        private bool IsWhitePiece(in int index) => _state[index] != Piece.None && _state[index] < Piece.BlackPawn;
+            piece = _state[rank * 8 + file];
+            return true;
+        }
+
+        private bool IsValidSquare(in int rank, in int file, out int index, out Piece piece)
+        {
+            if (rank < 0 || rank > 7 || file < 0 || file > 7)
+            {
+                index = -1;
+                piece = Piece.None;
+                return false;
+            }
+
+            index = rank * 8 + file;
+            piece = _state[index];
+            return true;
+        }
+
+        private bool IsPiece(in int rank, in int file, Piece piece)
+        {
+            if (rank < 0 || rank > 7 || file < 0 || file > 7)
+                return false;
+
+            return _state[rank * 8 + file] == piece;
+        }
     }
 }

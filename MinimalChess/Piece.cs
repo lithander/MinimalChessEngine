@@ -74,17 +74,26 @@ namespace MinimalChess
             return GetPiece(GetType(piece), Flip(GetColor(piece)));
         }
 
-        internal static bool HasColor(Piece piece, Color nextMove)
+        internal static bool IsColor(Piece piece, Color color)
         {
-            if (piece == Piece.None)
-                return false;
-
+            //if (piece == Piece.None)
+            //    return false;
             //if (piece >= Piece.BlackPawn)
             //    return nextMove == Color.Black;
             //else
             //    return nextMove == Color.White;
 
-            return (piece >= Piece.BlackPawn) ^ (nextMove == Color.White);
+            return (piece > Piece.None) && ((piece >= Piece.BlackPawn) ^ (color == Color.White));
+        }
+
+        internal static bool IsWhite(Piece piece)
+        {
+            return piece >= Piece.WhitePawn && piece < Piece.BlackPawn;
+        }
+
+        internal static bool IsBlack(Piece piece)
+        {
+            return piece >= Piece.BlackPawn;
         }
     }
 }
