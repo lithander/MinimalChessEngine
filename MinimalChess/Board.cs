@@ -479,36 +479,36 @@ namespace MinimalChess
 
         private bool IsValidSquare(in int rank, in int file, out Piece piece)
         {
-            if (rank < 0 || rank > 7 || file < 0 || file > 7)
+            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
             {
-                piece = Piece.None;
-                return false;
+                piece = _state[rank * 8 + file];
+                return true;
             }
 
-            piece = _state[rank * 8 + file];
-            return true;
+            piece = Piece.None;
+            return false;
         }
 
         private bool IsValidSquare(in int rank, in int file, out int index, out Piece piece)
         {
-            if (rank < 0 || rank > 7 || file < 0 || file > 7)
+            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
             {
-                index = -1;
-                piece = Piece.None;
-                return false;
+                index = rank * 8 + file;
+                piece = _state[index];
+                return true;
             }
 
-            index = rank * 8 + file;
-            piece = _state[index];
-            return true;
+            index = -1;
+            piece = Piece.None;
+            return false;
         }
 
         private bool IsPiece(in int rank, in int file, Piece piece)
         {
-            if (rank < 0 || rank > 7 || file < 0 || file > 7)
-                return false;
+            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
+                return _state[rank * 8 + file] == piece;
 
-            return _state[rank * 8 + file] == piece;
+            return false;
         }
     }
 }
