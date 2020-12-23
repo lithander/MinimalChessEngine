@@ -132,7 +132,7 @@ namespace MinimalChessBoard
             }
         }
 
-        private static int Perft(Board board, int depth)
+        private static long Perft(Board board, int depth)
         {
             if (depth <= 0)
                 return 1;
@@ -141,11 +141,12 @@ namespace MinimalChessBoard
             if (depth == 1) //no need to apply the moves before counting them
                 return moves.Count;
 
-            int sum = 0;
+            long sum = 0;
             Board next = new Board(board);
             foreach (var move in moves)
             {
-                next.Setup(board, move);
+                next.Copy(board);
+                next.Play(move);
                 sum += Perft(next, depth - 1);
             }
             return sum;
@@ -154,7 +155,7 @@ namespace MinimalChessBoard
         private static void RunPerft(Board board, int depth)
         {
             long t0 = Stopwatch.GetTimestamp();
-            int result = Perft(board, depth);
+            long result = Perft(board, depth);
             long t1 = Stopwatch.GetTimestamp();
             double dt = (t1 - t0) / (double)Stopwatch.Frequency;
             Console.WriteLine($"  Moves:    {result:N0}");
@@ -165,12 +166,13 @@ namespace MinimalChessBoard
         private static void RunDivide(Board board, int depth)
         {
             var moves = board.GetLegalMoves();
-            int sum = 0;
+            long sum = 0;
             Board next = new Board(board);
             foreach (var move in moves)
             {
-                next.Setup(board, move);
-                int nodes = Perft(next, depth - 1);
+                next.Copy(board);
+                next.Play(move);
+                long nodes = Perft(next, depth - 1);
                 sum += nodes;
                 Console.WriteLine($"  {move}:    {nodes:N0}");
             }
