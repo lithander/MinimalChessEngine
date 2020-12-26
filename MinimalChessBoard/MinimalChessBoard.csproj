@@ -9,4 +9,10 @@
     <ProjectReference Include="..\MinimalChess\MinimalChess.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <None Update="testsuite.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

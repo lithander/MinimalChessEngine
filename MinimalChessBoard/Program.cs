@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 
 namespace MinimalChessBoard
 {
@@ -32,35 +33,40 @@ namespace MinimalChessBoard
                 Console.WriteLine();
                 Console.Write($"{board.ActiveColor} >> ");
                 string input = Console.ReadLine();
+                string[] tokens = input.Split();
+                string command = tokens[0];
 
                 try
                 {
-                    if (input.StartsWith("reset"))
+                    if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
                     }
-                    else if (input.StartsWith("fen "))
+                    else if (command == "fen")
                     {
                         string fen = input.Substring(4);
                         board.SetupPosition(fen);
                     }
-                    else if (input.StartsWith("perft "))
+                    else if (command == "perft")
                     {
-                        int depth = int.Parse(input.Substring(6));
-                        RunPerft(board, depth);
+                        int depth = int.Parse(tokens[1]);
+                        if(tokens.Length > 2)
+                            ComparePerft(depth, tokens[2]);
+                        else
+                            RunPerft(board, depth);
                     }
-                    else if (input.StartsWith("divide "))
+                    else if (command == "divide")
                     {
-                        int depth = int.Parse(input.Substring(6));
+                        int depth = int.Parse(tokens[1]);
                         RunDivide(board, depth);
                     }
-                    else if (input == "?")
+                    else if (command == "?")
                     {
                         ListMoves(board);
                     }
                     else
                     {
-                        ApplyMoves(board, input.Split());
+                        ApplyMoves(board, tokens);
                     }
                 }
                 catch(Exception error)
@@ -180,5 +186,38 @@ namespace MinimalChessBoard
             Console.WriteLine($"  Total:   {sum:N0}");
         }
 
+        private static void ComparePerft(int depth, string filePath)
+        {
+            var file = File.OpenText(filePath);
+            int error = 0;
+            int line = 1;
+            while (!file.EndOfStream)
+            {
+                //The parser expects a fen-string followed by a list of perft results for each depth (D1, D2...) starting with depth D1.
+                //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1; D1 15; D2 66; D3 1197; D4 7059; D5 133987; D6 764643
+
+                string entry = file.ReadLine();
+                string[] data = entry.Split(';');
+                string fen = data[0];
+                if(data.Length <= depth)
+                {
+                    Console.WriteLine($"{line++} SKIPPED! No reference available for perft({depth}) FEN: {fen}");
+                    continue;
+                }
+                long refResult = long.Parse(data[depth].Substring(3));
+
+                Board board = new Board(data[0]);
+                long result = Perft(board, depth);
+                if (result != refResult)
+                {
+                    error++;
+                    Console.WriteLine($"{line++} ERROR! perft({depth})={result}, expected {refResult} ({result - refResult:+#;-#}) FEN: {fen}");
+                }
+                else
+                    Console.WriteLine($"{line++} OK! perft({depth})={result} FEN: {fen}");
+            }
+            Console.WriteLine();
+            Console.WriteLine($"Test finished with {error} wrong results!");
+        }
     }
 }
