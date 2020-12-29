@@ -244,17 +244,17 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        int[] DIAGONALS_FILE = new int[4] { -1, 1, 1, -1 };
-        int[] DIAGONALS_RANK = new int[4] { -1, -1, 1, 1 };
+        readonly int[] DIAGONALS_FILE = new int[4] { -1, 1, 1, -1 };
+        readonly int[] DIAGONALS_RANK = new int[4] { -1, -1, 1, 1 };
 
-        int[] STRAIGHTS_FILE = new int[4] { -1, 0, 1, 0 };
-        int[] STRAIGHTS_RANK = new int[4] { -0, -1, 0, 1 };
+        readonly int[] STRAIGHTS_FILE = new int[4] { -1, 0, 1, 0 };
+        readonly int[] STRAIGHTS_RANK = new int[4] { -0, -1, 0, 1 };
 
-        int[] KING_FILE = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
-        int[] KING_RANK = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
+        readonly int[] KING_FILE = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
+        readonly int[] KING_RANK = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
 
-        int[] KNIGHT_FILE = new int[8] { -1, -2, 1, 2, -1, -2, 1, 2 };
-        int[] KNIGHT_RANK = new int[8] { -2, -1, -2, -1, 2, 1, 2, 1 };
+        readonly int[] KNIGHT_FILE = new int[8] { -1, -2, 1, 2, -1, -2, 1, 2 };
+        readonly int[] KNIGHT_RANK = new int[8] { -2, -1, -2, -1, 2, 1, 2, 1 };
 
         public List<Move> GetLegalMoves()
         {
@@ -341,7 +341,8 @@ namespace MinimalChess
 
         private bool IsSquareAttacked(int index, Color enemyColor)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
             //Square could be threatened by...
 
             //1. Pawns
@@ -409,7 +410,8 @@ namespace MinimalChess
 
         private void AddKingMoves(List<Move> moves, int index)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
 
             for (int i = 0; i < 8; i++)
                 if (IsValidSquare(rank + KING_RANK[i], file + KING_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
@@ -465,7 +467,8 @@ namespace MinimalChess
 
         private void AddKnightMoves(List<Move> moves, int index)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
 
             for (int i = 0; i < 8; i++)
                 if (IsValidSquare(rank + KNIGHT_RANK[i], file + KNIGHT_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
@@ -497,7 +500,8 @@ namespace MinimalChess
 
         private void AddDirectionalMoves(List<Move> moves, int index, int dRank, int dFile)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
 
             for (int i = 1; IsValidSquare(rank + i * dRank, file + i * dFile, out int target, out Piece piece); i++)
             {
@@ -522,26 +526,27 @@ namespace MinimalChess
             AddWhitePawnMove(moves, new Move(index, Up(index)));
 
             //START POS? => consider double move
-            if (IsRank(2, index) && _state[Up(index, 2)] == Piece.None)
+            if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
                 Add(moves, new Move(index, Up(index, 2)));
         }
 
         private void AddBlackPawnMoves(List<Move> moves, int index)
         {
             //if the square below isn't free there are no legal moves
-            if (_state[index - 8] != Piece.None)
+            if (_state[Down(index)] != Piece.None)
                 return;
 
             AddBlackPawnMove(moves, new Move(index, Down(index)));
             //START POS? => consider double move
-            if (IsRank(7, index) && _state[Down(index, 2)] == Piece.None)
+            if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
                 Add(moves, new Move(index, Down(index, 2)));
         }
 
 
         private void AddWhitePawnAttacks(List<Move> moves, int index)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
 
             if (IsValidSquare(rank + 1, file - 1, out int upLeft, out Piece pieceLeft))
                 if(Pieces.IsBlack(pieceLeft) || CanEnPassant(upLeft))
@@ -554,7 +559,8 @@ namespace MinimalChess
 
         private void AddBlackPawnAttacks(List<Move> moves, int index)
         {
-            ToSquare(index, out int rank, out int file);
+            int rank = Rank(index);
+            int file = File(index);
 
             if (IsValidSquare(rank - 1, file - 1, out int downLeft, out Piece pieceLeft))
                 if(Pieces.IsWhite(pieceLeft) || CanEnPassant(downLeft))
@@ -577,7 +583,7 @@ namespace MinimalChess
                 return true; //capture this pawn!
 
             //if index is the square that in the previous move got 'jumped' by a black pawn moving two squares
-            if (_state[to] == Piece.BlackPawn && Up(to, 2) == from && Up(to) == index)
+            if (piece == Piece.BlackPawn && Up(to, 2) == from && Up(to) == index)
                 return true; //capture this pawn!
 
             //else it's not en passant
@@ -586,7 +592,7 @@ namespace MinimalChess
 
         private void AddBlackPawnMove(List<Move> moves, Move move)
         {
-            if(IsRank(1, move.ToIndex)) ///Promotion?
+            if(Rank(move.ToIndex) == 0) ///Promotion?
             {
                 Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackQueen));
                 Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackRook));
@@ -599,7 +605,7 @@ namespace MinimalChess
 
         private void AddWhitePawnMove(List<Move> moves, Move move)
         {
-            if (IsRank(8, move.ToIndex)) //Promotion?
+            if (Rank(move.ToIndex) == 7) //Promotion?
             {
                 Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteQueen));
                 Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteRook));
@@ -613,18 +619,12 @@ namespace MinimalChess
         //**************
         //** Utility ***
         //**************
-        private int Up(in int index) => index + 8;
-        private int Up(in int index, int steps) => index + steps * 8;
-        private int Down(in int index) => index - 8;
-        private int Down(in int index, int steps) => index - steps * 8;
-        private bool IsRank(in int rank, in int index) => (index / 8) + 1 == rank;
-        private void ToSquare(in int index, out int rank, out int file)
-        {
-            rank = index / 8;
-            file = index % 8;
-        }
+        private int Rank(int index) => index / 8;
+        private int File(int index) => index % 8;
+        private int Up(int index, int steps = 1) => index + steps * 8;
+        private int Down(int index, int steps = 1) => index - steps * 8;
 
-        private bool IsValidSquare(in int rank, in int file, out Piece piece)
+        private bool IsValidSquare(int rank, int file, out Piece piece)
         {
             if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
             {
@@ -636,7 +636,7 @@ namespace MinimalChess
             return false;
         }
 
-        private bool IsValidSquare(in int rank, in int file, out int index, out Piece piece)
+        private bool IsValidSquare(int rank, int file, out int index, out Piece piece)
         {
             if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
             {
@@ -650,7 +650,7 @@ namespace MinimalChess
             return false;
         }
 
-        private bool IsPiece(in int rank, in int file, Piece piece)
+        private bool IsPiece(int rank, int file, Piece piece)
         {
             if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
                 return _state[rank * 8 + file] == piece;

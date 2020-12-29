@@ -191,6 +191,7 @@ namespace MinimalChessBoard
             var file = File.OpenText(filePath);
             int error = 0;
             int line = 1;
+            long t0 = Stopwatch.GetTimestamp();
             while (!file.EndOfStream)
             {
                 //The parser expects a fen-string followed by a list of perft results for each depth (D1, D2...) starting with depth D1.
@@ -216,8 +217,10 @@ namespace MinimalChessBoard
                 else
                     Console.WriteLine($"{line++} OK! perft({depth})={result} FEN: {fen}");
             }
+            long t1 = Stopwatch.GetTimestamp();
+            double dt = (t1 - t0) / (double)Stopwatch.Frequency;
             Console.WriteLine();
-            Console.WriteLine($"Test finished with {error} wrong results!");
+            Console.WriteLine($"Test finished with {error} wrong results after {dt:0.###} seconds!");
         }
     }
 }
