@@ -37,7 +37,7 @@ namespace MinimalChess
         Piece[] _state = new Piece[64];
         CastlingRights _castlingRights = CastlingRights.All;
         Color _activeColor = Color.White;
-        Move _lastMove = default(Move); //TODO: consider to only store the enPassantSquareIndex when a move qualifies for en passant
+        int _enPassantSquare = -1;
         /*** STATE DATA ***/
 
         public Color ActiveColor => _activeColor;
@@ -64,7 +64,7 @@ namespace MinimalChess
         {
             Array.Copy(board._state, _state, 64);
             _activeColor = board._activeColor;
-            _lastMove = board._lastMove;
+            _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
         }
 
@@ -119,9 +119,11 @@ namespace MinimalChess
             SetCastlingRights(CastlingRights.BlackKingside,  fields[2].IndexOf("k") > -1);
             SetCastlingRights(CastlingRights.BlackQueenside, fields[2].IndexOf("q") > -1);
             //TODO: Validate that pieces are at the places indicated by Castlling rights!
-            
+
             // Set en passant square.
-            int enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquareIndex(fields[3]);
+            _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquareIndex(fields[3]);
+
+            //Move counts
             if(fields.Length == 6)
             {
                 // Set half move count.
@@ -156,8 +158,8 @@ namespace MinimalChess
                 _state[rookMove.FromIndex] = Piece.None;
             }
 
-            //remember last move for en passant
-            _lastMove = move;
+            //remember if move enables en passant
+            UpdateEnPassent(move);
 
             //update castling rights
             UpdateCastlingRights(move.FromIndex);
@@ -189,26 +191,39 @@ namespace MinimalChess
                 SetCastlingRights(CastlingRights.BlackKingside, false);
         }
 
-        private bool IsEnPassant(Piece movingPiece, Move move, out int captureIndex)
+        private void UpdateEnPassent(Move move)
         {
-            int to = captureIndex = _lastMove.ToIndex;
-            int from = _lastMove.FromIndex;
-            Piece lastPiece = _state[to];
+            int to = move.ToIndex;
+            int from = move.FromIndex;
+            Piece movingPiece = _state[to];
 
             //movingPiece needs to be either a BlackPawn...
-            if (movingPiece == Piece.BlackPawn)
-                //if move.ToIndex is the square that in the previous move got 'jumped' by a white pawn moving two squares
-                if (lastPiece == Piece.WhitePawn && Down(to, 2) == from && Down(to) == move.ToIndex)
-                    return true; //capture this pawn!
+            if (movingPiece == Piece.BlackPawn && Rank(to) == Rank(from) - 2)
+                _enPassantSquare = Down(from);
+            else if (movingPiece == Piece.WhitePawn && Rank(to) == Rank(from) + 2)
+                _enPassantSquare = Up(from);
+            else
+                _enPassantSquare = -1;
+        }
 
-            //...or a whitePawn
-            if (movingPiece == Piece.WhitePawn)
-                //if move.ToIndex is the square that in the previous move got 'jumped' by a black pawn moving two squares
-                if (lastPiece == Piece.BlackPawn && Up(to, 2) == from && Up(to) == move.ToIndex)
-                    return true; //capture this pawn!
 
-            //else it's not en passant
-            return false;
+        private bool IsEnPassant(Piece movingPiece, Move move, out int captureIndex)
+        {
+            if (movingPiece == Piece.BlackPawn && move.ToIndex == _enPassantSquare)
+            {
+                captureIndex = Up(_enPassantSquare);
+                return true;
+            }
+            else if(movingPiece == Piece.WhitePawn && move.ToIndex == _enPassantSquare)
+            {
+                captureIndex = Down(_enPassantSquare);
+                return true;
+            }
+            else //not en passant
+            {
+                captureIndex = -1;
+                return false;
+            }
         }
 
         private bool IsCastling(Piece moving, Move move, out Move rookMove)
@@ -549,11 +564,11 @@ namespace MinimalChess
             int file = File(index);
 
             if (IsValidSquare(rank + 1, file - 1, out int upLeft, out Piece pieceLeft))
-                if(Pieces.IsBlack(pieceLeft) || CanEnPassant(upLeft))
+                if(Pieces.IsBlack(pieceLeft) || upLeft == _enPassantSquare)
                     AddWhitePawnMove(moves, new Move(index, upLeft));
 
             if (IsValidSquare(rank + 1, file + 1, out int upRight, out Piece pieceRight))
-                if(Pieces.IsBlack(pieceRight) || CanEnPassant(upRight))
+                if(Pieces.IsBlack(pieceRight) || upRight == _enPassantSquare)
                     AddWhitePawnMove(moves, new Move(index, upRight));
         }
 
@@ -563,31 +578,12 @@ namespace MinimalChess
             int file = File(index);
 
             if (IsValidSquare(rank - 1, file - 1, out int downLeft, out Piece pieceLeft))
-                if(Pieces.IsWhite(pieceLeft) || CanEnPassant(downLeft))
+                if(Pieces.IsWhite(pieceLeft) || downLeft == _enPassantSquare)
                     AddBlackPawnMove(moves, new Move(index, downLeft));
 
             if (IsValidSquare(rank - 1, file + 1, out int downRight, out Piece pieceRight))
-                if(Pieces.IsWhite(pieceRight) || CanEnPassant(downRight))
+                if(Pieces.IsWhite(pieceRight) || downRight == _enPassantSquare)
                     AddBlackPawnMove(moves, new Move(index, downRight));
-        }
-
-
-        private bool CanEnPassant(int index)
-        {
-            int to = _lastMove.ToIndex;
-            int from = _lastMove.FromIndex;
-            Piece piece = _state[to];
-
-            //if index is the square that in the previous move got 'jumped' by a white pawn moving two squares
-            if (piece == Piece.WhitePawn && Down(to, 2) == from && Down(to) == index)
-                return true; //capture this pawn!
-
-            //if index is the square that in the previous move got 'jumped' by a black pawn moving two squares
-            if (piece == Piece.BlackPawn && Up(to, 2) == from && Up(to) == index)
-                return true; //capture this pawn!
-
-            //else it's not en passant
-            return false;
         }
 
         private void AddBlackPawnMove(List<Move> moves, Move move)
