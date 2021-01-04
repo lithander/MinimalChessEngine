@@ -113,7 +113,7 @@ namespace MinimalChessBoard
 
         private static void ListMoves(Board board)
         {
-            List<Move> legalMoves = board.GetLegalMoves();
+            var legalMoves = new LegalMoves(board);
             Console.Write($"({legalMoves.Count}) ");
             foreach (var move in legalMoves)
                 Console.Write(move.ToString() + " ");
@@ -143,7 +143,7 @@ namespace MinimalChessBoard
             if (depth <= 0)
                 return 1;
 
-            var moves = board.GetLegalMoves();
+            var moves = new LegalMoves(board);
             if (depth == 1) //no need to apply the moves before counting them
                 return moves.Count;
 
@@ -171,7 +171,7 @@ namespace MinimalChessBoard
 
         private static void RunDivide(Board board, int depth)
         {
-            var moves = board.GetLegalMoves();
+            var moves = new LegalMoves(board);
             long sum = 0;
             Board next = new Board(board);
             foreach (var move in moves)

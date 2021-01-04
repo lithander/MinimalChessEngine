@@ -57,7 +57,7 @@ namespace MinimalChessEngine
             else if(tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
                 _board = new Board($"{tokens[2]} {tokens[3]} {tokens[4]} {tokens[5]} {tokens[6]} {tokens[7]}");
 
-            int firstMove = Array.IndexOf<string>(tokens, "moves") + 1;
+            int firstMove = Array.IndexOf(tokens, "moves") + 1;
             if (firstMove == 0)
                 return;
 
@@ -72,7 +72,7 @@ namespace MinimalChessEngine
         {
             //start calculating on the current position set up with the "position" command.
             //(ignoring the parameters)
-            return _board.GetLegalMoves().GetRandom().ToString();
+            return new LegalMoves(_board).GetRandom().ToString();
         }
 
         private static Move GetRandom(this List<Move> moves)

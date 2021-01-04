@@ -44,6 +44,8 @@ namespace MinimalChess
 
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+        public Board() { }
+
         public Board(string fen)
         {
             SetupPosition(fen);
@@ -62,7 +64,8 @@ namespace MinimalChess
 
         public void Copy(Board board)
         {
-            Array.Copy(board._state, _state, 64);
+            //Array.Copy(board._state, _state, 64);
+            board._state.AsSpan().CopyTo(_state.AsSpan());            
             _activeColor = board._activeColor;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
@@ -206,7 +209,6 @@ namespace MinimalChess
                 _enPassantSquare = -1;
         }
 
-
         private bool IsEnPassant(Piece movingPiece, Move move, out int captureIndex)
         {
             if (movingPiece == Piece.BlackPawn && move.ToIndex == _enPassantSquare)
@@ -259,30 +261,15 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        readonly int[] DIAGONALS_FILE = new int[4] { -1, 1, 1, -1 };
-        readonly int[] DIAGONALS_RANK = new int[4] { -1, -1, 1, 1 };
 
-        readonly int[] STRAIGHTS_FILE = new int[4] { -1, 0, 1, 0 };
-        readonly int[] STRAIGHTS_RANK = new int[4] { -0, -1, 0, 1 };
-
-        readonly int[] KING_FILE = new int[8] { -1, 0, 1, 1, 1, 0, -1, -1 };
-        readonly int[] KING_RANK = new int[8] { -1, -1, -1, 0, 1, 1, 1, 0 };
-
-        readonly int[] KNIGHT_FILE = new int[8] { -1, -2, 1, 2, -1, -2, 1, 2 };
-        readonly int[] KNIGHT_RANK = new int[8] { -2, -1, -2, -1, 2, 1, 2, 1 };
-
-        public List<Move> GetLegalMoves()
+        public void CollectMoves(IMovesVisitor visitor)
         {
-            List<Move> moves = new List<Move>();
-
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (Pieces.IsColor(_state[squareIndex], _activeColor))
-                    AddLegalMoves(moves, squareIndex);
-
-            return moves;
+                if (IsActivePiece(_state[squareIndex]))
+                    AddMoves(visitor, squareIndex);
         }
 
-        private void AddLegalMoves(List<Move> moves, int squareIndex)
+        private void AddMoves(IMovesVisitor moves, int squareIndex)
         {
             switch (_state[squareIndex])
             {
@@ -321,21 +308,6 @@ namespace MinimalChess
             }
         }
 
-        private static Board _tempBoard = new Board(STARTING_POS_FEN);
-        private void Add(List<Move> moves, Move move, bool testChecked = true)
-        {
-            if (testChecked)
-            {
-                //only add if the move doesn't result in a check for active color
-                _tempBoard.Copy(this);
-                _tempBoard.Play(move);
-                if (_tempBoard.IsChecked(_activeColor))
-                    return;
-            }
-
-            moves.Add(move);
-        }
-
         //*****************
         //** CHECK TEST ***
         //*****************
@@ -364,33 +336,31 @@ namespace MinimalChess
             if (enemyColor == Color.White)
             {
                 //white pawns move up so king is threatened from below, only
-                if (IsPiece(rank - 1, file - 1, Piece.WhitePawn))
-                    return true;
-                if (IsPiece(rank - 1, file + 1, Piece.WhitePawn))
-                    return true;
+                foreach (int target in Attacks.BlackPawn[index])
+                    if (_state[target] == Piece.WhitePawn)
+                        return true;
             }
             else if (enemyColor == Color.Black)
             {
                 //black pawns move down so white king is threatened from above, only
-                if (IsPiece(rank + 1, file - 1, Piece.BlackPawn))
-                    return true;
-                if (IsPiece(rank + 1, file + 1, Piece.BlackPawn))
-                    return true;
+                foreach (int target in Attacks.WhitePawn[index])
+                    if (_state[target] == Piece.BlackPawn)
+                        return true;
             }
             else
                 return false; //Because it's not a King's square, duh
 
+            //2. Knight
             Piece knight = Pieces.GetPiece(PieceType.Knight, enemyColor);
+            foreach (int target in Attacks.Knight[index])
+                if (_state[target] == knight)
+                    return true;
+
+            //3. King
             Piece king = Pieces.GetPiece(PieceType.King, enemyColor);
-            for (int i = 0; i < 8; i++)
-            {
-                //2. Knight
-                if (IsPiece(rank + KNIGHT_RANK[i], file + KNIGHT_FILE[i], knight))
+            foreach (int target in Attacks.King[index])
+                if (_state[target] == king)
                     return true;
-                //3. King
-                if (IsPiece(rank + KING_RANK[i], file + KING_FILE[i], king))
-                    return true;
-            }
 
             Piece queen = Pieces.GetPiece(PieceType.Queen, enemyColor);
             Piece bishop = Pieces.GetPiece(PieceType.Bishop, enemyColor);
@@ -398,16 +368,19 @@ namespace MinimalChess
             for (int dir = 0; dir < 4; dir++)
             {
                 //4. Queen or Bishops on diagonals lines
-                for (int i = 1; IsValidSquare(rank + i * DIAGONALS_RANK[dir], file + i * DIAGONALS_FILE[dir], out Piece piece); i++)
+                foreach (int target in Attacks.Diagonal[index, dir])
                 {
+                    Piece piece = _state[target];
                     if (piece == bishop || piece == queen)
                         return true;
                     if (piece != Piece.None)
                         break;
                 }
+
                 //5. Queen or Rook on diagonals lines
-                for (int i = 1; IsValidSquare(rank + i * STRAIGHTS_RANK[dir], file + i * STRAIGHTS_FILE[dir], out Piece piece); i++)
+                foreach (int target in Attacks.Straight[index, dir])
                 {
+                    Piece piece = _state[target];
                     if (piece == rook || piece == queen)
                         return true;
                     if (piece != Piece.None)
@@ -423,35 +396,31 @@ namespace MinimalChess
         //** KING OVES ***
         //****************
 
-        private void AddKingMoves(List<Move> moves, int index)
+        private void AddKingMoves(IMovesVisitor moves, int index)
         {
-            int rank = Rank(index);
-            int file = File(index);
-
-            for (int i = 0; i < 8; i++)
-                if (IsValidSquare(rank + KING_RANK[i], file + KING_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
-                    Add(moves, new Move(index, target));
+            foreach (int target in Attacks.King[index])
+                if(IsValidTarget(_state[target]))
+                    moves.Consider(index, target);
         }
 
-
-        private void AddWhiteCastlingMoves(List<Move> moves)
+        private void AddWhiteCastlingMoves(IMovesVisitor moves)
         {
             //Castling is only possible if it's associated CastlingRight flag is set? it get's cleared when either the king or the matching rook move and provide a cheap early out
             if (HasCastlingRight(CastlingRights.WhiteQueenside) && CanCastle(WhiteKingSquare, WhiteQueensideRookSquare, Color.White))
-                Add(moves, Move.WhiteCastlingLong, false);                    
+                moves.AddUnchecked(Move.WhiteCastlingLong);                    
 
             if (HasCastlingRight(CastlingRights.WhiteKingside) && CanCastle(WhiteKingSquare, WhiteKingsideRookSquare, Color.White))
-                Add(moves, Move.WhiteCastlingShort, false);
+                moves.AddUnchecked(Move.WhiteCastlingShort);
         }
 
 
-        private void AddBlackCastlingMoves(List<Move> moves)
+        private void AddBlackCastlingMoves(IMovesVisitor moves)
         {
             if (HasCastlingRight(CastlingRights.BlackQueenside) && CanCastle(BlackKingSquare, BlackQueensideRookSquare, Color.Black))
-                Add(moves, Move.BlackCastlingLong, false);
+                moves.AddUnchecked(Move.BlackCastlingLong);
 
             if (HasCastlingRight(CastlingRights.BlackKingside) && CanCastle(BlackKingSquare, BlackKingsideRookSquare, Color.Black))
-                Add(moves, Move.BlackCastlingShort, false);
+                moves.AddUnchecked(Move.BlackCastlingShort);
         }
 
         private bool CanCastle(int kingSquare, int rookSquare, Color color)
@@ -480,136 +449,120 @@ namespace MinimalChess
         //** KNIGHT MOVES ***
         //*******************
 
-        private void AddKnightMoves(List<Move> moves, int index)
+        private void AddKnightMoves(IMovesVisitor moves, int index)
         {
-            int rank = Rank(index);
-            int file = File(index);
-
-            for (int i = 0; i < 8; i++)
-                if (IsValidSquare(rank + KNIGHT_RANK[i], file + KNIGHT_FILE[i], out int target, out Piece piece) && !Pieces.IsColor(piece, _activeColor))
-                    Add(moves, new Move(index, target));
+            foreach (int target in Attacks.Knight[index])
+                if (IsValidTarget(_state[target]))
+                    moves.Consider(index, target);
         }
 
         //********************************
         //** QUEEN, ROOK, BISHOP MOVES ***
         //********************************
 
-        private void AddQueenMoves(List<Move> moves, int index)
+        private void AddQueenMoves(IMovesVisitor moves, int index)
         {
             //Queen moves are the union of bishop & rook
             AddBishopMoves(moves, index);
             AddRookMoves(moves, index);
         }
 
-        private void AddBishopMoves(List<Move> moves, int index)
+        private void AddBishopMoves(IMovesVisitor moves, int index)
         {
             for(int dir = 0; dir < 4; dir++)
-                AddDirectionalMoves(moves, index, DIAGONALS_RANK[dir], DIAGONALS_FILE[dir]);
+                foreach (int target in Attacks.Diagonal[index, dir])
+                {
+                    Piece piece = _state[target];
+                    if (IsValidTarget(piece))
+                        moves.Consider(index, target);
+
+                    if (piece != Piece.None)
+                        break;
+                }
         }
 
-        private void AddRookMoves(List<Move> moves, int index)
+        private void AddRookMoves(IMovesVisitor moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
-                AddDirectionalMoves(moves, index, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);
-        }
+                foreach (int target in Attacks.Straight[index, dir])
+                {
+                    Piece piece = _state[target];
+                    if (IsValidTarget(piece))
+                        moves.Consider(index, target);
 
-        private void AddDirectionalMoves(List<Move> moves, int index, int dRank, int dFile)
-        {
-            int rank = Rank(index);
-            int file = File(index);
-
-            for (int i = 1; IsValidSquare(rank + i * dRank, file + i * dFile, out int target, out Piece piece); i++)
-            {
-                if (!Pieces.IsColor(piece, _activeColor))
-                    Add(moves, new Move(index, target));
-
-                if (piece != Piece.None)
-                    break;
-            }
+                    if (piece != Piece.None)
+                        break;
+                }
         }
 
         //*****************
         //** PAWN MOVES ***
         //*****************
 
-        private void AddWhitePawnMoves(List<Move> moves, int index)
+        private void AddWhitePawnMoves(IMovesVisitor moves, int index)
         {
             //if the square above isn't free there are no legal moves
             if (_state[Up(index)] != Piece.None)
                 return;
 
-            AddWhitePawnMove(moves, new Move(index, Up(index)));
+            AddWhitePawnMove(moves, index, Up(index));
 
             //START POS? => consider double move
             if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
-                Add(moves, new Move(index, Up(index, 2)));
+                moves.Consider(index, Up(index, 2));
         }
 
-        private void AddBlackPawnMoves(List<Move> moves, int index)
+        private void AddBlackPawnMoves(IMovesVisitor moves, int index)
         {
             //if the square below isn't free there are no legal moves
             if (_state[Down(index)] != Piece.None)
                 return;
 
-            AddBlackPawnMove(moves, new Move(index, Down(index)));
+            AddBlackPawnMove(moves, index, Down(index));
             //START POS? => consider double move
             if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
-                Add(moves, new Move(index, Down(index, 2)));
+                moves.Consider(index, Down(index, 2));
         }
 
 
-        private void AddWhitePawnAttacks(List<Move> moves, int index)
+        private void AddWhitePawnAttacks(IMovesVisitor moves, int index)
         {
-            int rank = Rank(index);
-            int file = File(index);
-
-            if (IsValidSquare(rank + 1, file - 1, out int upLeft, out Piece pieceLeft))
-                if(Pieces.IsBlack(pieceLeft) || upLeft == _enPassantSquare)
-                    AddWhitePawnMove(moves, new Move(index, upLeft));
-
-            if (IsValidSquare(rank + 1, file + 1, out int upRight, out Piece pieceRight))
-                if(Pieces.IsBlack(pieceRight) || upRight == _enPassantSquare)
-                    AddWhitePawnMove(moves, new Move(index, upRight));
+            foreach (int target in Attacks.WhitePawn[index])
+                if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
+                    AddWhitePawnMove(moves, index, target);
         }
 
-        private void AddBlackPawnAttacks(List<Move> moves, int index)
+        private void AddBlackPawnAttacks(IMovesVisitor moves, int index)
         {
-            int rank = Rank(index);
-            int file = File(index);
-
-            if (IsValidSquare(rank - 1, file - 1, out int downLeft, out Piece pieceLeft))
-                if(Pieces.IsWhite(pieceLeft) || downLeft == _enPassantSquare)
-                    AddBlackPawnMove(moves, new Move(index, downLeft));
-
-            if (IsValidSquare(rank - 1, file + 1, out int downRight, out Piece pieceRight))
-                if(Pieces.IsWhite(pieceRight) || downRight == _enPassantSquare)
-                    AddBlackPawnMove(moves, new Move(index, downRight));
+            foreach (int target in Attacks.BlackPawn[index])
+                if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
+                    AddBlackPawnMove(moves, index, target);
         }
 
-        private void AddBlackPawnMove(List<Move> moves, Move move)
+        private void AddBlackPawnMove(IMovesVisitor moves, int from, int to)
         {
-            if(Rank(move.ToIndex) == 0) ///Promotion?
+            if(Rank(to) == 0) ///Promotion?
             {
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackQueen));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackRook));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackBishop));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.BlackKnight));
+                moves.Consider(from, to, Piece.BlackQueen);
+                moves.Consider(from, to, Piece.BlackRook);
+                moves.Consider(from, to, Piece.BlackBishop);
+                moves.Consider(from, to, Piece.BlackKnight);
             }
             else
-                Add(moves, move);
+                moves.Consider(from, to);
         }
 
-        private void AddWhitePawnMove(List<Move> moves, Move move)
+        private void AddWhitePawnMove(IMovesVisitor moves, int from, int to)
         {
-            if (Rank(move.ToIndex) == 7) //Promotion?
+            if (Rank(to) == 7) //Promotion?
             {
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteQueen));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteRook));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteBishop));
-                Add(moves, new Move(move.FromIndex, move.ToIndex, Piece.WhiteKnight));
+                moves.Consider(from, to, Piece.WhiteQueen);
+                moves.Consider(from, to, Piece.WhiteRook);
+                moves.Consider(from, to, Piece.WhiteBishop);
+                moves.Consider(from, to, Piece.WhiteKnight);
             }
             else
-                Add(moves, move);
+                moves.Consider(from, to);
         }
 
         //**************
@@ -620,39 +573,9 @@ namespace MinimalChess
         private int Up(int index, int steps = 1) => index + steps * 8;
         private int Down(int index, int steps = 1) => index - steps * 8;
 
-        private bool IsValidSquare(int rank, int file, out Piece piece)
-        {
-            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
-            {
-                piece = _state[rank * 8 + file];
-                return true;
-            }
+        private bool IsValidTarget(Piece piece) => piece == Piece.None || ((piece >= Piece.BlackPawn) ^ (_activeColor == Color.Black));
 
-            piece = Piece.None;
-            return false;
-        }
-
-        private bool IsValidSquare(int rank, int file, out int index, out Piece piece)
-        {
-            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
-            {
-                index = rank * 8 + file;
-                piece = _state[index];
-                return true;
-            }
-
-            index = -1;
-            piece = Piece.None;
-            return false;
-        }
-
-        private bool IsPiece(int rank, int file, Piece piece)
-        {
-            if (rank >= 0 && rank <= 7 && file >= 0 && file <= 7)
-                return _state[rank * 8 + file] == piece;
-
-            return false;
-        }
+        private bool IsActivePiece(Piece piece) => piece > Piece.None && ((piece >= Piece.BlackPawn) ^ (_activeColor == Color.White));
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {

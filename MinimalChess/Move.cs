@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
@@ -88,5 +89,52 @@ namespace MinimalChess
         public static Move BlackCastlingLongRook = new Move("a8d8");
         public static Move WhiteCastlingShortRook = new Move("h1f1");
         public static Move WhiteCastlingLongRook = new Move("a1d1");
+    }
+
+    public interface IMovesVisitor
+    {
+        public void Consider(Move move);
+        public void Consider(int from, int to);
+        public void Consider(int from, int to, Piece promotion);
+        void AddUnchecked(Move move);
+    }
+
+    public class LegalMoves : List<Move>, IMovesVisitor
+    {
+        private static Board _tempBoard = new Board();
+        private Board _reference;
+
+        public LegalMoves(Board reference) : base(40)
+        {
+            _reference = reference;
+            _reference.CollectMoves(this);
+            _reference = null;
+        }
+
+        public void Consider(Move move)
+        {
+            //only add if the move doesn't result in a check for active color
+            _tempBoard.Copy(_reference);
+            _tempBoard.Play(move);
+            if (_tempBoard.IsChecked(_reference.ActiveColor))
+                return;
+
+            Add(move);
+        }
+
+        public void Consider(int from, int to, Piece promotion)
+        {
+            Consider(new Move(from, to, promotion));
+        }
+
+        public void Consider(int from, int to)
+        {
+            Consider(new Move(from, to));
+        }
+
+        public void AddUnchecked(Move move)
+        {
+            Add(move);
+        }
     }
 }
