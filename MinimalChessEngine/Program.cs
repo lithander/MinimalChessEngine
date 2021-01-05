@@ -72,14 +72,8 @@ namespace MinimalChessEngine
         {
             //start calculating on the current position set up with the "position" command.
             //(ignoring the parameters)
-            return new LegalMoves(_board).GetRandom().ToString();
-        }
-
-        private static Move GetRandom(this List<Move> moves)
-        {
-            var rnd = new Random();
-            int index = rnd.Next(moves.Count);
-            return moves[index];
+            return Search.GetBestMove(_board).ToString();
+            //return new LegalMoves(_board).GetRandom().ToString();
         }
     }
 }

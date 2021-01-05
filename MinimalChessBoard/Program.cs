@@ -60,6 +60,12 @@ namespace MinimalChessBoard
                         int depth = int.Parse(tokens[1]);
                         RunDivide(board, depth);
                     }
+                    else if (command == "!")
+                    {
+                        Move best = Search.GetBestMove(board);
+                        Console.Write($"{board.ActiveColor} >> {best}");
+                        board.Play(best);
+                    }
                     else if (command == "?")
                     {
                         ListMoves(board);
@@ -80,7 +86,7 @@ namespace MinimalChessBoard
         {
             Console.WriteLine();
             Console.WriteLine("   A B C D E F G H");
-            Console.WriteLine(" +----------------+");
+            Console.WriteLine(" .----------------.");
             for (int rank = 7; rank >= 0; rank--)
             {
                 Console.Write($"{rank + 1}|"); //ranks aren't zero-indexed
@@ -94,8 +100,8 @@ namespace MinimalChessBoard
                 Console.ResetColor();
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
-            Console.WriteLine(" +----------------+");
-            Console.WriteLine("  A B C D E F G H");
+            Console.WriteLine(" '----------------'");
+            Console.WriteLine($"  A B C D E F G H {Evaluation.Evaluate(board):+0.00;-0.00}");
         }
 
         private static void SetColor(Piece piece, int rank, int file)
