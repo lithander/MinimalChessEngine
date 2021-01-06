@@ -6,25 +6,15 @@ namespace MinimalChess
 {
     public static class Search
     {
-        const int NEGATIVE_INFINITY = short.MinValue;
-        const int DRAW = 0;
-
-        public static Move GetBestMove(Board board)
+        public static Move GetBestMove(Board board, int depth)
         {
-            if (board.ActiveColor == Color.Black)
-                return GetBestMove(board, -1);
-            else
-                return GetBestMove(board, +1);
-        }
-
-        private static Move GetBestMove(Board board, int color)
-        {
+            int color = (int)board.ActiveColor;
             var moves = new LegalMoves(board);
             List<Move> best = new List<Move>();
-            int bestScore = NEGATIVE_INFINITY;
+            int bestScore = Evaluation.MinValue;
             foreach (var move in moves)
             {
-                int score = color * EvaluatePosition(new Board(board, move), -color);
+                int score = color * EvaluatePosition(new Board(board, move), depth - 1);
                                 
                 if (score > bestScore)
                 {
@@ -43,20 +33,25 @@ namespace MinimalChess
             return best.GetRandom();
         }
 
-        private static int EvaluatePosition(Board board, int color)
+        public static int EvaluatePosition(Board board, int depth)
         {
+            if(depth == 0)
+                return Evaluation.Evaluate(board);
+
+            int color = (board.ActiveColor == Color.Black) ? -1 : 1;
             var moves = new LegalMoves(board);
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
-                return board.IsChecked(board.ActiveColor) ? (color * NEGATIVE_INFINITY) : DRAW;
+                return board.IsChecked(board.ActiveColor) ? (color * Evaluation.MinValue) : Evaluation.DrawValue;
 
-            int bestScore = NEGATIVE_INFINITY;
+            int bestScore = Evaluation.MinValue;
             foreach (var move in moves)
             {
-                int score = color * Evaluation.Evaluate(new Board(board, move));
+                //multiply score with color (-1 for black, 1 for white) so we can always maximize the score here, otherwise we'd have to minimize for black
+                int score = color * EvaluatePosition(new Board(board, move), depth - 1);
                 bestScore = Math.Max(score, bestScore);
             }
-            //we've been using the sign to always maximize but now we need to return the signed result
+            //we've been multiplying with color (-1 for black, 1 for white) but now we need to return the real, signed result
             return color * bestScore;
         }
 

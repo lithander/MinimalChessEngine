@@ -6,8 +6,8 @@ namespace MinimalChess
 {
     public enum Color
     {
-        Black = 0,
-        White = 1
+        Black = -1,
+        White = +1
     }
 
     public enum Piece
@@ -61,29 +61,13 @@ namespace MinimalChess
 
         public static Piece GetPiece(PieceType type, Color color)
         {
-            return (Piece)(type + ((color == Color.Black) ? 7 : 1));
+            //if black offset type by 7 (-1 & 7 == 7) otherwise by 1 (1 & 7 == 1)
+            return (Piece)(type + ((int)color & 7));
         }
 
         public static Color Flip(Color color)
         {
-            return (color ^ Color.White);
-        }
-
-        public static Piece Flip(Piece piece)
-        {
-            return GetPiece(GetType(piece), Flip(GetColor(piece)));
-        }
-
-        internal static bool IsColor(Piece piece, Color color)
-        {
-            //if (piece == Piece.None)
-            //    return false;
-            //if (piece >= Piece.BlackPawn)
-            //    return nextMove == Color.Black;
-            //else
-            //    return nextMove == Color.White;
-
-            return (piece > Piece.None) && ((piece >= Piece.BlackPawn) ^ (color == Color.White));
+            return (Color)(-(int)color);
         }
 
         internal static bool IsWhite(Piece piece)

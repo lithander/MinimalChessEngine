@@ -62,13 +62,15 @@ namespace MinimalChessBoard
                     }
                     else if (command == "!")
                     {
-                        Move best = Search.GetBestMove(board);
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 2;
+                        Move best = Search.GetBestMove(board, depth);
                         Console.Write($"{board.ActiveColor} >> {best}");
                         board.Play(best);
                     }
                     else if (command == "?")
                     {
-                        ListMoves(board);
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 2;
+                        ListMoves(board, depth);
                     }
                     else
                     {
@@ -117,12 +119,16 @@ namespace MinimalChessBoard
                 Console.ForegroundColor = ConsoleColor.Gray;
         }
 
-        private static void ListMoves(Board board)
+        private static void ListMoves(Board board, int depth)
         {
             var legalMoves = new LegalMoves(board);
-            Console.Write($"({legalMoves.Count}) ");
+            int i = 1;
             foreach (var move in legalMoves)
-                Console.Write(move.ToString() + " ");
+            {
+                int score = Search.EvaluatePosition(new Board(board, move), depth - 1);
+                Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00}");
+            }           
+
             Console.WriteLine();
         }
 

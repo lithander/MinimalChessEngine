@@ -72,7 +72,7 @@ namespace MinimalChessEngine
         {
             //start calculating on the current position set up with the "position" command.
             //(ignoring the parameters)
-            return Search.GetBestMove(_board).ToString();
+            return Search.GetBestMove(_board, 4).ToString();
             //return new LegalMoves(_board).GetRandom().ToString();
         }
     }
