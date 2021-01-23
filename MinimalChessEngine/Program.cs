@@ -9,10 +9,11 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
+        static Board _board = null;
+
         static void Main(string[] args)
         {
-            bool running = true;
-            while (running)
+            while (true)
             {
                 string input = Console.ReadLine();
                 string[] tokens = input.Split();
@@ -37,24 +38,26 @@ namespace MinimalChessEngine
                     case "stop":
                         break;
                     case "quit":
-                        running = false;
-                        break;
+                        return;
                     default:
                         Console.WriteLine("UNKNOWN INPUT " + input);
-                        running = false;
-                        break;
+                        return;
                 }
             }
         }
 
-        static Board _board = null;
+        private static string UciBestMove(string[] tokens)
+        {
+            Move bestMove = Search.GetBestMove(_board, 4);
+            return bestMove.ToString();
+        }
 
         private static void UciPosition(string[] tokens)
         {
             //position [fen <fenstring> | startpos ]  moves <move1> .... <movei>
             if (tokens[1] == "startpos")
                 _board = new Board(Board.STARTING_POS_FEN);
-            else if(tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
+            else if (tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
                 _board = new Board($"{tokens[2]} {tokens[3]} {tokens[4]} {tokens[5]} {tokens[6]} {tokens[7]}");
 
             int firstMove = Array.IndexOf(tokens, "moves") + 1;
@@ -66,14 +69,6 @@ namespace MinimalChessEngine
                 Move move = new Move(tokens[i]);
                 _board.Play(move);
             }
-        }
-
-        private static string UciBestMove(string[] tokens)
-        {
-            //start calculating on the current position set up with the "position" command.
-            //(ignoring the parameters)
-            return Search.GetBestMove(_board, 4).ToString();
-            //return new LegalMoves(_board).GetRandom().ToString();
         }
     }
 }

@@ -59,10 +59,10 @@ namespace MinimalChess
             throw new ArgumentException(piece + " has no type!");
         }
 
-        public static Piece GetPiece(PieceType type, Color color)
+        public static Piece OfColor(this Piece piece, Color color)
         {
             //if black offset type by 7 (-1 & 7 == 7) otherwise by 1 (1 & 7 == 1)
-            return (Piece)(type + ((int)color & 7));
+            return (Piece)(GetType(piece) + ((int)color & 7));
         }
 
         public static Color Flip(Color color)
@@ -79,5 +79,12 @@ namespace MinimalChess
         {
             return piece >= Piece.BlackPawn;
         }
+
+        internal static Piece Pawn(Color color) => (Piece)(PieceType.Pawn + ((int)color & 7));
+        internal static Piece King(Color color) => (Piece)(PieceType.King + ((int)color & 7));
+        internal static Piece Queen(Color color) => (Piece)(PieceType.Queen + ((int)color & 7));
+        internal static Piece Rook(Color color) => (Piece)(PieceType.Rook + ((int)color & 7));
+        internal static Piece Knight(Color color) => (Piece)(PieceType.Knight + ((int)color & 7));
+        internal static Piece Bishop(Color color) => (Piece)(PieceType.Bishop + ((int)color & 7));
     }
 }

@@ -15,11 +15,13 @@ namespace MinimalChessBoard
 
             bool running = true;
             Board board = new Board(Board.STARTING_POS_FEN);
+            Move move = default;
             while (running)
             {
                 try
                 {
-                    Print(board);
+                    Console.WriteLine();
+                    Print(board, move);
                     if (board.IsChecked(Color.Black))
                         Console.WriteLine(" <!> Black is in check");
                     if (board.IsChecked(Color.White))
@@ -62,15 +64,19 @@ namespace MinimalChessBoard
                     }
                     else if (command == "!")
                     {
-                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 2;
-                        Move best = Search.GetBestMove(board, depth);
-                        Console.Write($"{board.ActiveColor} >> {best}");
-                        board.Play(best);
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 4;
+                        move = Search.GetBestMove(board, depth);
+                        Console.WriteLine($"{board.ActiveColor} >> {move}");
+                        board.Play(move);
                     }
                     else if (command == "?")
                     {
-                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 2;
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
                         ListMoves(board, depth);
+                    }
+                    else if (command == "??")
+                    {
+                        PrintMoves(board);
                     }
                     else
                     {
@@ -84,9 +90,8 @@ namespace MinimalChessBoard
             }
         }
 
-        private static void Print(Board board)
+        private static void Print(Board board, Move move = default)
         {
-            Console.WriteLine();
             Console.WriteLine("   A B C D E F G H");
             Console.WriteLine(" .----------------.");
             for (int rank = 7; rank >= 0; rank--)
@@ -95,7 +100,7 @@ namespace MinimalChessBoard
                 for (int file = 0; file < 8; file++)
                 {
                     Piece piece = board[rank, file];
-                    SetColor(piece, rank, file);
+                    SetColor(piece, rank, file, move);
                     Console.Write(Notation.ToChar(piece));
                     Console.Write(' ');
                 }
@@ -106,12 +111,20 @@ namespace MinimalChessBoard
             Console.WriteLine($"  A B C D E F G H {Evaluation.Evaluate(board):+0.00;-0.00}");
         }
 
-        private static void SetColor(Piece piece, int rank, int file)
+        private static void SetColor(Piece piece, int rank, int file, Move move)
         {
             if ((rank + file) % 2 == 1)
                 Console.BackgroundColor = ConsoleColor.DarkGray;
             else
                 Console.BackgroundColor = ConsoleColor.Black;
+
+            if (move != default)
+            {
+                int index = rank * 8 + file;
+                //highlight squares if they belong to the move
+                if (move.FromIndex == index || move.ToIndex == index)
+                    Console.BackgroundColor = ConsoleColor.DarkCyan;
+            }
 
             if (piece != Piece.None && Pieces.GetColor(piece) == Color.White)
                 Console.ForegroundColor = ConsoleColor.White;
@@ -119,17 +132,31 @@ namespace MinimalChessBoard
                 Console.ForegroundColor = ConsoleColor.Gray;
         }
 
+        private static void PrintMoves(Board board)
+        {
+            int i = 1;
+            foreach (var move in new LegalMoves(board))
+            {
+                Console.WriteLine($"{i++}. {board.ActiveColor} >> {move}");
+                var copy = new Board(board, move);
+                Print(copy, move);
+                Console.WriteLine();
+            }
+        }
+
         private static void ListMoves(Board board, int depth)
         {
-            var legalMoves = new LegalMoves(board);
             int i = 1;
-            foreach (var move in legalMoves)
+            foreach (var move in new LegalMoves(board))
             {
-                int score = Search.EvaluatePosition(new Board(board, move), depth - 1);
-                Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00}");
-            }           
-
-            Console.WriteLine();
+                if(depth >= 1)
+                {
+                    int score = Search.Evaluate(new Board(board, move), depth - 1);
+                    Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00}");
+                }
+                else
+                    Console.WriteLine($"{i++,4}. {move}");
+            }
         }
 
         private static void ApplyMoves(Board board, string[] moves)

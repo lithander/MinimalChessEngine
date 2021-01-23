@@ -8,68 +8,42 @@ namespace MinimalChess
     {
         public static char ToChar(Piece piece)
         {
-            switch (piece)
+            return piece switch
             {
-                case Piece.WhitePawn:
-                    return 'P';
-                case Piece.WhiteKnight:
-                    return 'N';
-                case Piece.WhiteBishop:
-                    return 'B';
-                case Piece.WhiteRook:
-                    return 'R';
-                case Piece.WhiteQueen:
-                    return 'Q';
-                case Piece.WhiteKing:
-                    return 'K';
-                case Piece.BlackPawn:
-                    return 'p';
-                case Piece.BlackKnight:
-                    return 'n';
-                case Piece.BlackBishop:
-                    return 'b';
-                case Piece.BlackRook:
-                    return 'r';
-                case Piece.BlackQueen:
-                    return 'q';
-                case Piece.BlackKing:
-                    return 'k';
-                default:
-                    return ' ';
-            }
+                Piece.WhitePawn => 'P',
+                Piece.WhiteKnight => 'N',
+                Piece.WhiteBishop => 'B',
+                Piece.WhiteRook => 'R',
+                Piece.WhiteQueen => 'Q',
+                Piece.WhiteKing => 'K',
+                Piece.BlackPawn => 'p',
+                Piece.BlackKnight => 'n',
+                Piece.BlackBishop => 'b',
+                Piece.BlackRook => 'r',
+                Piece.BlackQueen => 'q',
+                Piece.BlackKing => 'k',
+                _ => ' ',
+            };
         }
 
         public static Piece ToPiece(char ascii)
         {
-            switch (ascii)
+            return ascii switch
             {
-                case 'P':
-                    return Piece.WhitePawn;
-                case 'N':
-                    return Piece.WhiteKnight;
-                case 'B':
-                    return Piece.WhiteBishop;
-                case 'R':
-                    return Piece.WhiteRook;
-                case 'Q':
-                    return Piece.WhiteQueen;
-                case 'K':
-                    return Piece.WhiteKing;
-                case 'p':
-                    return Piece.BlackPawn;
-                case 'n':
-                    return Piece.BlackKnight;
-                case 'b':
-                    return Piece.BlackBishop;
-                case 'r':
-                    return Piece.BlackRook;
-                case 'q':
-                    return Piece.BlackQueen;
-                case 'k':
-                    return Piece.BlackKing;
-                default:
-                    throw new ArgumentException($"Piece character {ascii} not supported.");
-            }
+                'P' => Piece.WhitePawn,
+                'N' => Piece.WhiteKnight,
+                'B' => Piece.WhiteBishop,
+                'R' => Piece.WhiteRook,
+                'Q' => Piece.WhiteQueen,
+                'K' => Piece.WhiteKing,
+                'p' => Piece.BlackPawn,
+                'n' => Piece.BlackKnight,
+                'b' => Piece.BlackBishop,
+                'r' => Piece.BlackRook,
+                'q' => Piece.BlackQueen,
+                'k' => Piece.BlackKing,
+                _ => throw new ArgumentException($"Piece character {ascii} not supported."),
+            };
         }
 
         public static string ToSquareName(byte squareIndex)
