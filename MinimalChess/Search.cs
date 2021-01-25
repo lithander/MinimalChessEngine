@@ -46,7 +46,7 @@ namespace MinimalChess
             foreach (var move in moves)
             {
                 Board next = new Board(board, move);
-                //we multiply with color so we can always maximize (aka Negamax)
+                //we multiply with color so we can always maximize
                 int score = color * Evaluate(next, depth - 1);
                 if (score > bestScore)
                     bestScore = score;

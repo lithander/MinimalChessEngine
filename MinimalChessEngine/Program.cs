@@ -20,7 +20,8 @@ namespace MinimalChessEngine
                 switch (tokens[0])
                 {
                     case "uci":
-                        Console.WriteLine("id name MinimalChessEngine");
+                        Console.WriteLine("id name MinimalChess");
+                        Console.WriteLine("id author Thomas Jahn");
                         Console.WriteLine("uciok");
                         break;
                     case "isready":
@@ -48,7 +49,7 @@ namespace MinimalChessEngine
 
         private static string UciBestMove(string[] tokens)
         {
-            Move bestMove = Search.GetBestMove(_board, 4);
+            Move bestMove = Search.GetBestMove(_board, 5);
             return bestMove.ToString();
         }
 

@@ -43,11 +43,13 @@ namespace MinimalChessBoard
                     if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
+                        move = default;
                     }
                     else if (command == "fen")
                     {
                         string fen = input.Substring(4);
                         board.SetupPosition(fen);
+                        move = default;
                     }
                     else if (command == "perft")
                     {
