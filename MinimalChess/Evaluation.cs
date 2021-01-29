@@ -6,7 +6,8 @@ namespace MinimalChess
 {
     public static class Evaluation
     {
-        public static int MinValue => short.MinValue;
+        public static int MinValue => -333;
+        public static int MaxValue => 333;
 
         public static int[] PieceValues = new int[13]
 {

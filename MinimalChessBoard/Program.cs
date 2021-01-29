@@ -4,6 +4,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.IO.Enumeration;
+using System.Linq;
 
 namespace MinimalChessBoard
 {
@@ -38,6 +40,7 @@ namespace MinimalChessBoard
                 string[] tokens = input.Split();
                 string command = tokens[0];
 
+                long t0 = Stopwatch.GetTimestamp();
                 try
                 {
                     if (command == "reset")
@@ -67,7 +70,7 @@ namespace MinimalChessBoard
                     else if (command == "!")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 4;
-                        move = Search.GetBestMove(board, depth);
+                        move = Search.GetBestMoveMinMax(board, depth);
                         Console.WriteLine($"{board.ActiveColor} >> {move}");
                         board.Play(move);
                     }
@@ -78,14 +81,37 @@ namespace MinimalChessBoard
                     }
                     else if (command == "??")
                     {
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
+                        ListMovesAlphaBeta(board, depth);
+                    }
+                    else if (command == "#")
+                    {
                         PrintMoves(board);
+                    }
+                    else if (command == "bench")
+                    {
+                        string file = tokens.Length > 1 ? tokens[1] : "bratkoKopecMinMaxD5.txt";
+                        RunBenchmark(file);
+                    }
+                    else if (command == "make_bench")
+                    {
+                        //make_bench 4 benchmark.epd benchMinMaxD4.txt
+                        int depth = int.Parse(tokens[1]);
+                        string positionSrc = tokens[2];
+                        string benchOutput = tokens[3];
+                        MakeBenchmark(positionSrc, depth, benchOutput);
                     }
                     else
                     {
                         ApplyMoves(board, tokens);
                     }
+
+                    long t1 = Stopwatch.GetTimestamp();
+                    double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                    if(dt > 0.01)
+                        Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch(Exception error)
+                catch (Exception error)
                 {
                     Console.WriteLine("ERROR: " + error.Message);
                 }
@@ -153,12 +179,38 @@ namespace MinimalChessBoard
             {
                 if(depth >= 1)
                 {
+                    Search.EvalCount = 0;
                     int score = Search.Evaluate(new Board(board, move), depth - 1);
-                    Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00}");
+                    Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00} {Search.EvalCount}");
                 }
                 else
                     Console.WriteLine($"{i++,4}. {move}");
             }
+        }
+
+        private static void ListMovesAlphaBeta(Board board, int depth)
+        {
+            int i = 1;
+            Move best = default;
+            int bestScore = int.MinValue;
+            foreach (var move in new LegalMoves(board))
+            {
+                if (depth >= 1)
+                {
+                    Search.EvalCount = 0;
+                    int score = Search.Evaluate(new Board(board, move), depth - 1, SearchWindow.Infinite);
+                    if (score * (int)board.ActiveColor > bestScore)
+                    {
+                        best = move;
+                        bestScore = score * (int)board.ActiveColor;
+                    }
+
+                    Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00} {Search.EvalCount}");
+                }
+                else
+                    Console.WriteLine($"{i++,4}. {move}");
+            }
+            Console.WriteLine($"Best Move: {best}");
         }
 
         private static void ApplyMoves(Board board, string[] moves)
@@ -262,6 +314,136 @@ namespace MinimalChessBoard
             double dt = (t1 - t0) / (double)Stopwatch.Frequency;
             Console.WriteLine();
             Console.WriteLine($"Test finished with {error} wrong results after {dt:0.###} seconds!");
+        }
+
+
+        private static void RunBenchmark(string filePath)
+        {
+            var file = File.OpenText(filePath);
+            int error = 0;
+            int success = 0;
+            int line = 1;
+            double timeRatioSum = 0;
+            double nodeRatioSum = 0;
+            long tStart = Stopwatch.GetTimestamp();
+            long totalNodes = 0;
+            while (!file.EndOfStream)
+            {
+                //The parser expects a fen-string followed by
+                //ce = evaluation of best moves
+                //bm = best moves
+                //acd = search depth
+                //acn = nodes evaluated
+                //acs = search duration in seconds
+                //Example: 1R6/1brk2p1/4p2p/p1P1Pp2/P7/6P1/1P4P1/2R3K1 w - - 0 1;ce 300;bm b8g8;acd 4;acn 144581;acs 0.072
+
+                string entry = file.ReadLine();
+                string[] data = entry.Split(';');
+                string fen = data[0];
+                Dictionary<string, string> props = new Dictionary<string, string>();
+                foreach(string prop in data[1..^0])
+                {
+                    int split = prop.IndexOf(' ');
+                    string key = prop.Substring(0, split);
+                    string value = prop.Substring(split);
+                    props[key] = value;
+                }
+                if (props.Count != 5)
+                {
+                    Console.WriteLine($"{line++} SKIPPED! Properties missing. Line: {entry}");
+                    continue;
+                }
+
+                int depth = int.Parse(props["acd"]);
+                int refScore = int.Parse(props["ce"]);
+                long refNodes = long.Parse(props["acn"]);
+                float refTime = float.Parse(props["acs"], CultureInfo.InvariantCulture);
+                List<Move> refMoves = props["bm"].Split()[1..^0].Select(s => new Move(s)).ToList();
+
+                Search.EvalCount = 0;
+                long t0 = Stopwatch.GetTimestamp();
+                Board board = new Board(fen);
+                var moves = Search.GetBestMovesAlphaBeta(board, depth, out int eval);
+                long t1 = Stopwatch.GetTimestamp();
+                double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                totalNodes += Search.EvalCount;
+
+                int score = 100 * eval;
+                if (score != refScore)
+                {
+                    error++;
+                    Console.WriteLine($"{line++} ERROR! ce={score}, expected {refScore}.");
+                }
+                else if(moves.Count != refMoves.Count || !moves.All(refMoves.Contains))
+                {
+                    error++;
+                    Console.WriteLine($"{line++} ERROR! acn={string.Join(' ', moves)}, expected {string.Join(' ', refMoves)}.");
+                }
+                else //GOOD! but how good?
+                {
+                    success++;
+                    double timeRatio = dt / refTime;
+                    double nodeRatio = Search.EvalCount / (double)refNodes;
+                    timeRatioSum += timeRatio;
+                    nodeRatioSum += nodeRatio;
+                    Console.WriteLine($"{line++} OK! acn {Search.EvalCount} / {refNodes} = {nodeRatio:0.###}, acs {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
+                }
+            }
+            Console.WriteLine();
+            double elapsed = (Stopwatch.GetTimestamp() - tStart) / (double)Stopwatch.Frequency;
+            int knps = (int)(totalNodes / elapsed / 1000);
+            Console.WriteLine($"Test finished with {error} wrong results! Avg time ratio: {timeRatioSum/success:0.###}, Avg node ratio: {nodeRatioSum/success:0.###}, Performance: {knps}kN/sec");
+        }
+
+        private static void MakeBenchmark(string filePath, int depth, string outputFilePath)
+        {
+            var source = File.OpenText(filePath);
+            var target = new StreamWriter(outputFilePath);
+            int line = 1;
+
+            while (!source.EndOfStream)
+            {
+                //The parser expects a fen-string
+                //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1
+                string entry = source.ReadLine();
+                string fen = string.Join(' ', entry.Split()[0..4]);
+                Console.WriteLine($"{line++}. {fen}");
+                Board board = new Board(fen);
+                int color = (int)board.ActiveColor;
+                var moves = new LegalMoves(board);
+                int bestScore = Evaluation.MinValue;
+                List<Move> bestMoves = new List<Move>();
+                var window = SearchWindow.Infinite;
+                Search.EvalCount = 0;
+                long t0 = Stopwatch.GetTimestamp();
+                foreach (var move in moves)
+                {
+                    Console.Write(".");
+                    Board next = new Board(board, move);
+                    int eval = Search.Evaluate(next, depth - 1, window);
+                    int score = color * eval;
+                    if (score > bestScore)
+                    {
+                        bestMoves.Clear();
+                        bestMoves.Add(move);
+                        bestScore = score;
+                        window.Cut(eval, -1, board.ActiveColor);
+                    }
+                    else if (score == bestScore)
+                        bestMoves.Add(move);
+                }
+                long t1 = Stopwatch.GetTimestamp();
+                double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                //with a simple heuristic there are probably many best moves - pick one randomly
+                string bmString = string.Join(' ', bestMoves);
+                string result = $"ce {100 * bestScore};bm {bmString};acd {depth};acn {Search.EvalCount};acs {dt:0.###}";
+                target.WriteLine($"{fen};{result}");
+                target.Flush();
+
+                Console.WriteLine();
+                Console.WriteLine(result);
+                Console.WriteLine();               
+            }
         }
     }
 }

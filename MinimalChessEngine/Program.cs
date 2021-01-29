@@ -49,7 +49,7 @@ namespace MinimalChessEngine
 
         private static string UciBestMove(string[] tokens)
         {
-            Move bestMove = Search.GetBestMove(_board, 5);
+            Move bestMove = Search.GetBestMoveAlphaBeta(_board, 5);
             return bestMove.ToString();
         }
 

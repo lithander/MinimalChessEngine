@@ -56,7 +56,7 @@ namespace MinimalChess
 
             long t1 = Stopwatch.GetTimestamp();
             double dt = 1000.0 * (t1 - t0) / Stopwatch.Frequency;
-            Console.WriteLine($"Attack index buffers computed in {dt:0.####}ms");
+            //Console.WriteLine($"Attack index buffers computed in {dt:0.####}ms");
         }
 
         private static byte[] PawnAttacks(int rank, int file, int dRank)
