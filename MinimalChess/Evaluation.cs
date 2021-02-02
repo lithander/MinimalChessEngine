@@ -26,7 +26,7 @@ namespace MinimalChess
             -200  //BlackKing = 12,
 };
 
-        public static int Evaluate(Board board)
+        public static int SumPieceValues(Board board)
         {
             int score = 0;
             for (int i = 0; i < 64; i++)
@@ -35,6 +35,22 @@ namespace MinimalChess
                 score += PieceValues[piece];
             }
             return score;
+        }
+
+        public static int Evaluate(Board board)
+        {
+            var moves = new AnyLegalMoves(board);
+            
+            //if the game is not yet over just look who leads in material
+            if (moves.CanMove)
+                return SumPieceValues(board);
+
+            //active color has lost the game?
+            if (board.IsChecked(board.ActiveColor))
+                return (int)board.ActiveColor * MinValue; 
+
+            //No moves but king isn't checked -> it's a draw
+            return 0;
         }
     }
 }

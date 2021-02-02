@@ -186,7 +186,6 @@ namespace MinimalChess
         private void UpdateCastlingRights(int squareIndex)
         {
             //any move from or to king or rook squares will effect castling right
-
             if (squareIndex == WhiteKingSquare || squareIndex == WhiteQueensideRookSquare)
                 SetCastlingRights(CastlingRights.WhiteQueenside, false);
             if (squareIndex == WhiteKingSquare || squareIndex == WhiteKingsideRookSquare)
@@ -266,7 +265,7 @@ namespace MinimalChess
         public void CollectMoves(IMovesVisitor visitor)
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (IsActivePiece(_state[squareIndex]))
+                if (!visitor.Done && IsActivePiece(_state[squareIndex]))
                     AddMoves(visitor, squareIndex);
         }
 

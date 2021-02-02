@@ -34,6 +34,11 @@ namespace MinimalChess
 
         public Move(string uciMoveNotation)
         {
+            if (uciMoveNotation.Length < 4)
+                throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too short!");
+            if (uciMoveNotation.Length > 5)
+                throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too long!");
+
             //expected format is the long algebraic notation without piece names
             https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
@@ -93,6 +98,7 @@ namespace MinimalChess
 
     public interface IMovesVisitor
     {
+        public bool Done { get; }
         public void Consider(Move move);
         public void Consider(int from, int to);
         public void Consider(int from, int to, Piece promotion);
@@ -110,6 +116,8 @@ namespace MinimalChess
             _reference.CollectMoves(this);
             _reference = null;
         }
+
+        public bool Done => false;
 
         public void Consider(Move move)
         {
@@ -135,6 +143,52 @@ namespace MinimalChess
         public void AddUnchecked(Move move)
         {
             Add(move);
+        }
+    }
+
+    public class AnyLegalMoves : IMovesVisitor
+    {
+        private static Board _tempBoard = new Board();
+        private Board _reference;
+
+        public bool CanMove { get; private set; }
+
+        public AnyLegalMoves(Board reference)
+        {
+            _reference = reference;
+            _reference.CollectMoves(this);
+            _reference = null;
+        }
+
+        public bool Done => CanMove;
+
+        public void Consider(Move move)
+        {
+            if (CanMove)//no need to look at any more moves if we got our answer already!
+                return;
+
+            //only add if the move doesn't result in a check for active color
+            _tempBoard.Copy(_reference);
+            _tempBoard.Play(move);
+            if (_tempBoard.IsChecked(_reference.ActiveColor))
+                return;
+
+            CanMove = true;
+        }
+
+        public void Consider(int from, int to, Piece promotion)
+        {
+            Consider(new Move(from, to, promotion));
+        }
+
+        public void Consider(int from, int to)
+        {
+            Consider(new Move(from, to));
+        }
+
+        public void AddUnchecked(Move move)
+        {
+            CanMove = true;
         }
     }
 }
