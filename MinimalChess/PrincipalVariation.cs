@@ -7,30 +7,23 @@ namespace MinimalChess
 {
     class PrincipalVariation
     {
-        Move[] _moves;
-        int _length;
-        int _depth;
+        readonly Move[] _moves;
 
-        public PrincipalVariation(int searchDepth)
+        public PrincipalVariation(int maxDepth)
         {
-            _depth = searchDepth;
-            _length = TotalMoves(_depth);
-            _moves = new Move[_length];
-
-            Debug.Assert(Index(searchDepth) == 0);
-            Debug.Assert(Index(searchDepth - 1) == searchDepth);
-            Debug.Assert(Index(0) == _length); //out of bounds! min/max on this depth should return eval(state)
+            int length = Index(maxDepth + 1);
+            _moves = new Move[length];
         }
 
-        private int TotalMoves(int depth)
+        private int Index(int depth)
         {
             //return depth + (depth - 1) + (depth - 2) + ... + 1;
             return (depth * depth + depth) / 2;
         }
 
-        private int Index(int depth)
+        public void Clear()
         {
-            return _length - TotalMoves(depth);
+            Array.Clear(_moves, 0, _moves.Length);
         }
 
         public void Clear(int depth)
@@ -40,50 +33,32 @@ namespace MinimalChess
                 _moves[iDepth + i] = default;
         }
 
-        public void Promote(int depth, Move move)
+        public Move[] GetLine(int depth)
         {
-            int iDepth = Index(depth);
-            _moves[iDepth] = move;
-            for (int i = 0; i < depth - 1; i++)
-                _moves[iDepth + i + 1] = _moves[iDepth + depth + i];
-        }
+            int start = Index(depth);
+            int nullMove = Array.IndexOf(_moves, default, start, depth);
+            int count = (nullMove == -1) ? depth : nullMove - start;
 
-        public Move[] Line
-        {
-            get
-            {
-                int start = Index(_depth);
-                int nullMove = Array.IndexOf(_moves, default, start, _depth);
-                int count = (nullMove == -1) ? _depth : nullMove - start;
-
-                Move[] line = new Move[count];
-                Array.Copy(_moves, Index(_depth), line, 0, count);
-                return line;
-            }
-        }
-
-        public void Prepare(int depth)
-        {
-            for (int i = depth; i > 1; i--)
-                _moves[Index(i)] = _moves[Index(i - 1)];
+            Move[] line = new Move[count];
+            Array.Copy(_moves, Index(depth), line, 0, count);
+            return line;
         }
 
         public Move this[int depth]
         {
-            get { return _moves[Index(depth)]; }
-            set { _moves[Index(depth)] = value; }
-        }
+            get 
+            { 
+                return _moves[Index(depth)]; 
+            }
+            set
+            {
+                int a = Index(depth);
+                _moves[a] = value;
 
-        public Move this[int depth, int offset]
-        {
-            get { return _moves[Index(depth) + offset]; }
-            set { _moves[Index(depth) + offset] = value; }
-        }
-
-        public void Clear()
-        {
-            for (int i = 0; i < _moves.Length; i++)
-                _moves[i] = default;
+                int b = a - depth;
+                for (int i = 0; i < depth - 1; i++)
+                    _moves[a + i + 1] = _moves[b + i];
+            }
         }
     }
 }

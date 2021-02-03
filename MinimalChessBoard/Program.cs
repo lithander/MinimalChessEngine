@@ -377,7 +377,7 @@ namespace MinimalChessBoard
                         BenchIterative(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
                         break;
                     case BenchMode.Debug:
-                        BenchIterative(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
+                        BenchDebug(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
                         break;
                     default:
                         return; //Unsupported mode!
@@ -420,7 +420,7 @@ namespace MinimalChessBoard
             }
             double elapsed = (Stopwatch.GetTimestamp() - tStart) / (double)Stopwatch.Frequency;
             int knps = (int)(totalNodes / elapsed / 1000);
-            Console.WriteLine($"Test finished with {error} wrong results! Avg time ratio: {timeRatioSum/success:0.###}, Avg node ratio: {nodeRatioSum/success:0.###}, Performance: {knps}kN/sec");
+            Console.WriteLine($"Test finished with {error} wrong results! {totalNodes} Nodes evaluated. Avg time ratio: {timeRatioSum/success:0.###}, Avg node ratio: {nodeRatioSum/success:0.###}, Performance: {knps}kN/sec");
         }
 
         private static void BenchMinMax(Board board, int depth, out Move[] moves, out int score, out long nodes)
@@ -449,6 +449,17 @@ namespace MinimalChessBoard
             nodes = search.EvalCount;
             pvError = ValidatePV(board, score, search.Lines);
         }
+
+        private static void BenchDebug(Board board, int depth, out Move[] moves, out int score, out long nodes, out int pvError)
+        {
+            IterativeSearch search = new IterativeSearch(board);
+            search.Search(depth);
+            moves = search.Moves;
+            score = search.Score;
+            nodes = search.EvalCount;
+            pvError = ValidatePV(board, score, search.Lines);
+        }
+
 
         private static int ValidatePV(Board board, int score, Move[][] lines)
         {

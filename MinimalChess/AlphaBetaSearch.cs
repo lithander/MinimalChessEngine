@@ -47,9 +47,9 @@ namespace MinimalChess
                     window.Limit(eval, _root.ActiveColor);
                 }
 
-                //add the move's pv
-                _pv.Promote(depth, move);
-                _bestMoves.Add(_pv.Line);
+                //the move's pv is among the best
+                _pv[depth] = move;
+                _bestMoves.Add(_pv.GetLine(depth));
             }
             Score = color * bestScore;
         }
@@ -79,7 +79,7 @@ namespace MinimalChess
                     continue;
 
                 //this is a new best score!
-                _pv.Promote(depth, move);
+                _pv[depth] = move;
                 if (window.Cut(score, color))
                     return window.GetScore(color);
             }
