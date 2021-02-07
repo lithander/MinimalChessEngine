@@ -80,6 +80,11 @@ namespace MinimalChessBoard
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
                         ListMoves(board, depth);
                     }
+                    else if (command == "??")
+                    {
+                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
+                        ListMoves2(board, depth);
+                    }
                     else if (command == "#")
                     {
                         PrintMoves(board);
@@ -199,6 +204,25 @@ namespace MinimalChessBoard
                 {
                     string pv = string.Join(' ', line);
                     Console.WriteLine($"{i++,4}. {pv} = {search.Score:+0.00;-0.00}");
+                }
+                else
+                    Console.WriteLine($"{i++,4}. {move}");
+            }
+        }
+
+        private static void ListMoves2(Board board, int depth)
+        {
+            IterativeSearch2 search = new IterativeSearch2(board);
+            search.Search(depth);
+            Move[] line = search.PrincipalVariation;
+
+            int i = 1;
+            foreach (var move in new LegalMoves(board))
+            {
+                if (line != null && line[0] == move)
+                {
+                    string pvString = string.Join(' ', line);
+                    Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
                 }
                 else
                     Console.WriteLine($"{i++,4}. {move}");
@@ -386,8 +410,7 @@ namespace MinimalChessBoard
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
 
                 totalNodes += nodes;
-                score *= 100;
-
+   
                 if(pvErrors > 0)
                 {
                     error += pvErrors;
@@ -402,7 +425,7 @@ namespace MinimalChessBoard
                     else
                         Console.WriteLine($"moves={string.Join(' ', moves)}. FEN: {fen}");
                 }
-                else if(moves.Length != refMoves.Count || !moves.All(refMoves.Contains))
+                else if(mode != BenchMode.Debug && (moves.Length != refMoves.Count || !moves.All(refMoves.Contains)))
                 {
                     error++;
                     Console.WriteLine($"{line++} ERROR! moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
@@ -452,12 +475,12 @@ namespace MinimalChessBoard
 
         private static void BenchDebug(Board board, int depth, out Move[] moves, out int score, out long nodes, out int pvError)
         {
-            IterativeSearch search = new IterativeSearch(board);
+            IterativeSearch2 search = new IterativeSearch2(board);
             search.Search(depth);
-            moves = search.Moves;
+            moves = search.PrincipalVariation;
             score = search.Score;
             nodes = search.EvalCount;
-            pvError = ValidatePV(board, score, search.Lines);
+            pvError = ValidatePV(board, score, new Move[][] { search.PrincipalVariation });
         }
 
 
@@ -526,7 +549,7 @@ namespace MinimalChessBoard
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
                 //with a simple heuristic there are probably many best moves - pick one randomly
                 string bmString = string.Join(' ', bestMoves);
-                string result = $"ce {100 * pvEval};bm {bmString};acd {depth};acn {Search.EvalCount};acs {dt:0.###}";
+                string result = $"ce {pvEval};bm {bmString};acd {depth};acn {Search.EvalCount};acs {dt:0.###}";
                 target.WriteLine($"{fen};{result}");
                 target.Flush();
 

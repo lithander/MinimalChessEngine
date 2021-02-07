@@ -18,12 +18,8 @@ namespace MinimalChess
         private int Index(int depth)
         {
             //return depth + (depth - 1) + (depth - 2) + ... + 1;
-            return (depth * depth + depth) / 2;
-        }
-
-        public void Clear()
-        {
-            Array.Clear(_moves, 0, _moves.Length);
+            int d = depth - 1;
+            return (d * d + d) / 2;
         }
 
         public void Clear(int depth)
@@ -31,6 +27,29 @@ namespace MinimalChess
             int iDepth = Index(depth);
             for (int i = 0; i < depth; i++)
                 _moves[iDepth + i] = default;
+        }
+
+        public void Grow(int depth)
+        {
+            Clear(depth);
+            if (depth <= 1)
+                return;
+
+            //copy previous line
+            int start = Index(depth-1);
+            int nullMove = Array.IndexOf(_moves, default, start, depth);
+            int count = nullMove - start;
+
+            Clear(depth);
+            int target = Index(depth);
+            for (int i = 0; i < count; i++)
+                _moves[target + i] = _moves[start + i];
+            
+            //copy to sub-pv's
+            for(int i = 1; i < depth; i++)
+            {
+                this[i] = _moves[target + depth - i];
+            }
         }
 
         public Move[] GetLine(int depth)
@@ -55,7 +74,7 @@ namespace MinimalChess
                 int a = Index(depth);
                 _moves[a] = value;
 
-                int b = a - depth;
+                int b = Index(depth -1);
                 for (int i = 0; i < depth - 1; i++)
                     _moves[a + i + 1] = _moves[b + i];
             }

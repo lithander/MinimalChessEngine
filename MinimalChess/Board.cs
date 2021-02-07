@@ -147,8 +147,9 @@ namespace MinimalChess
         //** PLAY MOVES ***
         //*****************
 
-        public void Play(Move move)
+        public Piece Play(Move move)
         {
+            Piece capturedPiece = _state[move.ToIndex];
             Piece movingPiece = _state[move.FromIndex];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_activeColor);
@@ -161,6 +162,7 @@ namespace MinimalChess
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
+                capturedPiece = _state[captureIndex];
                 _state[captureIndex] = Piece.None;
             }
 
@@ -181,6 +183,7 @@ namespace MinimalChess
 
             //toggle active color!
             _activeColor = Pieces.Flip(_activeColor);
+            return capturedPiece;
         }
 
         private void UpdateCastlingRights(int squareIndex)
@@ -556,5 +559,50 @@ namespace MinimalChess
         }
 
         private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
+
+        public override bool Equals(object obj)
+        {
+            if (obj is Board board)
+                return this.Equals(board);
+
+            return false;
+        }
+
+        public bool Equals(Board other)
+        {
+            //Used for detecting repetition
+            //From: https://en.wikipedia.org/wiki/Threefold_repetition
+            //Two positions are by definition "the same" if... 
+            //1.) the same player has the move 
+            if (other._activeColor != _activeColor)
+                return false;
+            //2.) the remaining castling rights are the same and 
+            if (other._castlingRights != _castlingRights)
+                return false;
+            //3.) the possibility to capture en passant is the same. 
+            if (other._enPassantSquare != _enPassantSquare)
+                return false;
+            //4.) the same types of pieces occupy the same squares
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                if (other._state[squareIndex] != _state[squareIndex])
+                    return false;
+
+            return true;
+        }
+
+        public override int GetHashCode()
+        {
+            //Boards that are equal should return the same hashcode!
+            uint hash = 0;
+            for (int squareIndex = 0; squareIndex < 32; squareIndex++)
+            {
+                if (_state[squareIndex] != Piece.None || _state[squareIndex + 32] != Piece.None)
+                {
+                    uint bit = (uint)(1 << squareIndex);
+                    hash |= bit;
+                }
+            }
+            return (int)hash;
+        }
     }
 }

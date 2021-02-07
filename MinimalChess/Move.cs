@@ -144,6 +144,19 @@ namespace MinimalChess
         {
             Add(move);
         }
+
+        public void Randomize()
+        {
+            Random rnd = new Random();
+            for(int i = 0; i < Count; i++)
+            {
+                int j = rnd.Next(0, Count);
+                //swap i with j
+                Move temp = this[i];
+                this[i] = this[j];
+                this[j] = temp;
+            }
+        }
     }
 
     public class AnyLegalMoves : IMovesVisitor

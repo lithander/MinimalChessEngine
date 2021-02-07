@@ -1,4 +1,4 @@
-# MinimalChessEngine
+# MinimalChess
 
 This repository tracks the journey of writing my first chess engine. It's written in C# and contains 3 projects:
 1. a command-line based GUI (*MinimalChessBoard*) 
