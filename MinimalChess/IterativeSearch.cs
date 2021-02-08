@@ -123,6 +123,28 @@ namespace MinimalChess
         }
     }
 
+    public struct KillSwitch
+    {
+        Func<bool> _killSwitch;
+        bool _aborted;
+
+        public KillSwitch(Func<bool> killSwitch = null)
+        {
+            _killSwitch = killSwitch;
+            _aborted = _killSwitch == null ? false : _killSwitch();
+        }
+
+        public bool Triggered
+        {
+            get
+            {
+                if (!_aborted && _killSwitch != null)
+                    _aborted = _killSwitch();
+                return _aborted;
+            }
+        }
+    }
+
     public class IterativeSearch2
     {
         public int Depth { get; private set; }
@@ -130,10 +152,12 @@ namespace MinimalChess
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
+        public bool Aborted => _killSwitch.Triggered;
 
         Board _root = null;
         LegalMoves _rootMoves = null;
         PrincipalVariation _pv;
+        KillSwitch _killSwitch;
 
         public IterativeSearch2(Board board)
         {
@@ -154,9 +178,10 @@ namespace MinimalChess
                 SearchDeeper();
         }
 
-        public void SearchDeeper()
+        public void SearchDeeper(Func<bool> killSwitch = null)
         {
             _pv.Grow(++Depth);
+            _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = Evaluate(_root, Depth, window);
         }
@@ -168,6 +193,8 @@ namespace MinimalChess
                 EvalCount++;
                 return Evaluation.Evaluate(board);
             }
+
+            if (_killSwitch.Triggered) return 0;
 
             Color color = board.ActiveColor;
             var moves = (board == _root) ? _rootMoves : new LegalMoves(board);
