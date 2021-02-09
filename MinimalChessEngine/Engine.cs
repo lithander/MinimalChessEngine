@@ -10,6 +10,7 @@ namespace MinimalChessEngine
     class Engine
     {
         const int MOVE_TIME_MARGIN = 10;
+        const int MIN_BRANCHING_FACTOR = 5;
 
         IterativeSearch2 _search = null;
         Thread _searching = null;
@@ -17,8 +18,6 @@ namespace MinimalChessEngine
         long _t0 = -1;
         long _tN = -1;
         int _timeBudget = 0;
-        bool _useEstimates = false;
-        Dictionary<int, int> _searchTimes = new Dictionary<int, int>();
         Board _board = new Board(Board.STARTING_POS_FEN);
         List<Board> _history = new List<Board>();
 
@@ -73,7 +72,6 @@ namespace MinimalChessEngine
             //aborted?
             if (_search.Aborted)
             {
-                _searchTimes[_search.Depth] = (int)(1.10 * MilliSeconds(Now - _tN));
                 Uci.Log($"WASTED {MilliSeconds(Now - _tN)}ms on an aborted a search!");
                 Uci.BestMove(_best);
                 _search = null;
@@ -82,13 +80,12 @@ namespace MinimalChessEngine
 
             //collect PV
             Collect();
-            _searchTimes[_search.Depth] = MilliSeconds(Now - _tN);
-            Uci.Log($"Searching depth {_search.Depth} took {MilliSeconds(Now - _tN)}ms!");
 
             //return now to save time?
-            if (RemainingTimeBudget < EstimateRequiredTime(_search.Depth + 1))
+            int estimate = MIN_BRANCHING_FACTOR * MilliSeconds(Now - _tN);
+            if (RemainingTimeBudget < estimate)
             {
-                Uci.Log($"Estimate of {EstimateRequiredTime(_search.Depth + 1)}ms EXCEEDS budget of {RemainingTimeBudget}ms. Quit!");
+                Uci.Log($"Estimate of {estimate}ms EXCEEDS budget of {RemainingTimeBudget}ms. Quit!");
                 Uci.BestMove(_best);
                 _search = null;
                 return;
@@ -96,7 +93,6 @@ namespace MinimalChessEngine
 
             //Search deeper...
             LaunchSearchThread();
-            Uci.Log($"Estimate of {EstimateRequiredTime(_search.Depth + 1)}ms BELOW budget of {RemainingTimeBudget}ms. Go on...");
         }
 
         private void Collect()
@@ -109,14 +105,12 @@ namespace MinimalChessEngine
         internal void Go()
         {
             _timeBudget = int.MaxValue;
-            _useEstimates = false;
             StartSearch();
         }
 
         internal void Go(int timePerMove)
         {
             _timeBudget = timePerMove - MOVE_TIME_MARGIN;
-            _useEstimates = false;
             StartSearch();
         }
 
@@ -127,7 +121,6 @@ namespace MinimalChessEngine
             int totalTime = myTime + myIncrement * (movesToGo - 1) - MOVE_TIME_MARGIN;
             _timeBudget = totalTime / movesToGo;
             Uci.Log($"Search budget set to {_timeBudget}ms!");
-            _useEstimates = true;
             StartSearch();
         }
 
@@ -161,17 +154,6 @@ namespace MinimalChessEngine
             _tN = Now;
             _searching = new Thread(() => _search.SearchDeeper(() => RemainingTimeBudget < 0));
             _searching.Start();
-        }
-                
-        private int EstimateRequiredTime(int depth)
-        {
-            if (!_useEstimates)
-                return 0;
-
-            if (_searchTimes.TryGetValue(depth, out int result))
-                return result;
-
-            return 10; //don't bother searching with less then 10ms on the clock
         }
 
         private long Now => Stopwatch.GetTimestamp();
