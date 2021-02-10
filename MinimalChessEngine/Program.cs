@@ -1,7 +1,9 @@
 ﻿using MinimalChess;
 using System;
 using System.Collections.Concurrent;
+using System.IO;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
@@ -26,39 +28,17 @@ namespace MinimalChessEngine
 
     public static class Program
     {
-        static ConcurrentQueue<string> _inputQueue = new ConcurrentQueue<string>();
         static Engine _engine = new Engine();
 
-        static void Main(string[] args)
+        static async Task Main(string[] args)
         {
             Console.WriteLine("MinimalChess 0.2");
-
-            var consoleReader = new Thread(() => ReadConsole(_inputQueue));
-            consoleReader.Start();
-
             _engine.Start();
             while (_engine.Running)
             {
-                while (HasInput)
-                    ParseInput();
-
-                _engine.Update();
+                string input = await Task.Run(Console.ReadLine);
+                ParseUciCommand(input);
             }
-
-            consoleReader.Abort();
-        }
-
-        private static bool HasInput => _inputQueue.Count > 0;
-        private static void ParseInput()
-        {
-            if (_inputQueue.TryDequeue(out string cmd))
-                ParseUciCommand(cmd);
-        }
-
-        private static Action ReadConsole(ConcurrentQueue<string> input)
-        {
-            while(true)
-                input.Enqueue(Console.ReadLine());
         }
 
         private static void ParseUciCommand(string input)

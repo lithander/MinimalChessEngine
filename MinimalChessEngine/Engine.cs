@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Threading;
+using System.Threading.Tasks;
 using MinimalChess;
 
 
@@ -13,7 +14,7 @@ namespace MinimalChessEngine
         const int MIN_BRANCHING_FACTOR = 5;
 
         IterativeSearch2 _search = null;
-        Thread _searching = null;
+        Task _searching = null;
         Move _best = default;
         long _t0 = -1;
         long _tN = -1;
@@ -29,11 +30,13 @@ namespace MinimalChessEngine
 
         public void Start()
         {
+            Stop();
             Running = true;
         }
 
         internal void Quit()
         {
+            Stop();
             Running = false;
         }
 
@@ -43,6 +46,7 @@ namespace MinimalChessEngine
 
         internal void SetupPosition(Board board)
         {
+            Stop();
             _board = new Board(board);//make a copy
             _history.Clear();
             _history.Add(new Board(_board));
@@ -50,6 +54,7 @@ namespace MinimalChessEngine
 
         internal void Play(Move move)
         {
+            Stop();
             Piece captured = _board.Play(move);
             if (captured != Piece.None)
                 _history.Clear();//after capture the previous positions can't be replicated anyway so we don't need to remember them
@@ -61,13 +66,49 @@ namespace MinimalChessEngine
         //*** Search ***
         //**************
 
-        internal void Update()
+        internal void Go()
         {
-            if (_search == null || _searching == null || _searching.IsAlive)
+            Stop();
+            _timeBudget = int.MaxValue;
+            StartSearch();
+        }
+
+        internal void Go(int timePerMove)
+        {
+            Stop();
+            _timeBudget = timePerMove - MOVE_TIME_MARGIN;
+            StartSearch();
+        }
+
+        internal void Go(int blackTime, int whiteTime, int blackIncrement, int whiteIncrement, int movesToGo)
+        {
+            Stop();
+            int myTime = _board.ActiveColor == Color.Black ? blackTime : whiteTime;
+            int myIncrement = _board.ActiveColor == Color.Black ? blackIncrement : whiteIncrement;
+            int totalTime = myTime + myIncrement * (movesToGo - 1) - MOVE_TIME_MARGIN;
+            _timeBudget = totalTime / movesToGo;
+            Uci.Log($"Search budget set to {_timeBudget}ms!");
+            StartSearch();
+        }
+
+        public void Stop()
+        {
+            if (_searching != null)
             {
-                //Thread.Sleep(1);//sleeps "at least" 1ms, measured to be ~16ms in practice which is way too long
-                return;
+                _timeBudget = 0; //this will cause the thread to terminate
+                _searching.Wait();
+                _searching = null;
             }
+        }
+
+        //*****************
+        //*** INTERNALS ***
+        //*****************
+
+        private void Search()
+        {
+            _tN = Now;
+            _search.SearchDeeper(() => RemainingTimeBudget < 0);
 
             //aborted?
             if (_search.Aborted)
@@ -82,7 +123,7 @@ namespace MinimalChessEngine
             Collect();
 
             //return now to save time?
-            int estimate = MIN_BRANCHING_FACTOR * MilliSeconds(Now - _tN);
+            int estimate = BRANCHING_FACTOR_ESTIMATE * MilliSeconds(Now - _tN);
             if (RemainingTimeBudget < estimate)
             {
                 Uci.Log($"Estimate of {estimate}ms EXCEEDS budget of {RemainingTimeBudget}ms. Quit!");
@@ -92,7 +133,7 @@ namespace MinimalChessEngine
             }
 
             //Search deeper...
-            LaunchSearchThread();
+            Search();
         }
 
         private void Collect()
@@ -102,58 +143,13 @@ namespace MinimalChessEngine
             _best = _search.PrincipalVariation[0];
         }
 
-        internal void Go()
-        {
-            _timeBudget = int.MaxValue;
-            StartSearch();
-        }
-
-        internal void Go(int timePerMove)
-        {
-            _timeBudget = timePerMove - MOVE_TIME_MARGIN;
-            StartSearch();
-        }
-
-        internal void Go(int blackTime, int whiteTime, int blackIncrement, int whiteIncrement, int movesToGo)
-        {
-            int myTime = _board.ActiveColor == Color.Black ? blackTime : whiteTime;
-            int myIncrement = _board.ActiveColor == Color.Black ? blackIncrement : whiteIncrement;
-            int totalTime = myTime + myIncrement * (movesToGo - 1) - MOVE_TIME_MARGIN;
-            _timeBudget = totalTime / movesToGo;
-            Uci.Log($"Search budget set to {_timeBudget}ms!");
-            StartSearch();
-        }
-
-        public void Stop()
-        {
-            if (_search == null)
-                return;
-
-            if (_searching != null)
-            {
-                _timeBudget = 0; //this will cause the thread to terminate
-                _searching.Join(); //this will wait for the thread to terminate
-                _searching = null;
-            }
-
-            _search = null;
-            Uci.BestMove(_best);
-        }
-
         private void StartSearch()
         {
             _t0 = Now;
             _search = new IterativeSearch2(_board, moves => AvoidRepetitionAndRandomize(_board, moves, _history));
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
-            LaunchSearchThread();
-        }
-
-        private void LaunchSearchThread()
-        {
-            _tN = Now;
-            _searching = new Thread(() => _search.SearchDeeper(() => RemainingTimeBudget < 0));
-            _searching.Start();
+            _searching = Task.Run(Search);
         }
 
         private long Now => Stopwatch.GetTimestamp();
