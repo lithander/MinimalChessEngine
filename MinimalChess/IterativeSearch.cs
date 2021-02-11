@@ -153,6 +153,7 @@ namespace MinimalChess
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
         public bool Aborted => _killSwitch.Triggered;
+        public bool GameOver => Score == Evaluation.MinValue || Score == Evaluation.MaxValue;
 
         Board _root = null;
         LegalMoves _rootMoves = null;
@@ -171,45 +172,53 @@ namespace MinimalChess
             rootMovesModifier(_rootMoves);
         }
 
-
         public void Search(int maxDepth)
         {
-            while (Depth < maxDepth)
+            while (maxDepth > Depth)
                 SearchDeeper();
         }
 
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
             _pv.Grow(++Depth);
+            if (GameOver)
+                return;
+
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
-            Score = Evaluate(_root, Depth, window);
+            Score = EvalPosition(_root, Depth, window);
         }
 
-        public int Evaluate(Board board, int depth, SearchWindow window)
+        private int EvalMove(Board position, Move move, int depth, SearchWindow window)
+        {
+            Board resultingPosition = new Board(position, move);
+            return EvalPosition(resultingPosition, depth - 1, window);
+        }
+
+        private int EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth == 0)
             {
                 EvalCount++;
-                return Evaluation.Evaluate(board);
+                return Evaluation.Evaluate(position);
             }
 
             if (_killSwitch.Triggered) return 0;
 
-            Color color = board.ActiveColor;
-            var moves = (board == _root) ? _rootMoves : new LegalMoves(board);
+            Color color = position.ActiveColor;
+            var moves = (depth == Depth) ? _rootMoves : new LegalMoves(position);
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
             {
                 _pv.Clear(depth);
-                return board.IsChecked(board.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
             }
 
             var killer = _pv[depth];
             if (moves.Contains(killer))
             {
-                int score = Evaluate(new Board(board, killer), depth - 1, window);
+                int score = EvalMove(position, killer, depth, window);
                 if (window.Inside(score, color))
                 {
                     //this is a new best score!
@@ -224,7 +233,7 @@ namespace MinimalChess
                 if (move == killer)
                     continue;
 
-                int score = Evaluate(new Board(board, move), depth - 1, window);
+                int score = EvalMove(position, move, depth, window);
                 if (window.Inside(score, color))
                 {
                     //this is a new best score!

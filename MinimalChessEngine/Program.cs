@@ -16,7 +16,8 @@ namespace MinimalChessEngine
 
         static internal void Info(int depth, int score, long nodes, int timeMs, Move[] pv)
         {
-            int nps = (int)(nodes / (timeMs / 1000.0));
+            double tS = Math.Max(1,timeMs) / 1000.0;
+            int nps = (int)(nodes / tS);
             Console.WriteLine($"info depth {depth} score cp {score} nodes {nodes} nps {nps} time {timeMs} pv {string.Join(' ', pv)}");
         }
 
@@ -44,7 +45,7 @@ namespace MinimalChessEngine
         private static void ParseUciCommand(string input)
         {
             //remove leading & trailing whitecases, convert to lower case characters and split using ' ' as delimiter
-            string[] tokens = input.Trim().ToLower().Split();
+            string[] tokens = input.Trim().Split();
             switch (tokens[0])
             {
                 case "uci":
@@ -101,10 +102,11 @@ namespace MinimalChessEngine
 
         private static void UciGo(string[] tokens)
         {
-            if(TryParse(tokens, "movetime", out int timePerMove))
+            if (TryParse(tokens, "movetime", out int timePerMove))
             {
                 //Fixed move time e.g. 5 Minutes per Move = go movetime 300000
-                _engine.Go(timePerMove);
+                TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
+                _engine.Go(timePerMove, searchDepth);
             }
             else if(TryParse(tokens, "btime", out int blackTime) && TryParse(tokens, "wtime", out int whiteTime))
             {
@@ -114,8 +116,13 @@ namespace MinimalChessEngine
                 //5 Minutes total, no increment (sudden death) = go wtime 300000 btime 300000
                 TryParse(tokens, "binc", out int blackIncrement);
                 TryParse(tokens, "winc", out int whiteIncrement);
-                TryParse(tokens, "movestogo", out int movesToGo);
-                _engine.Go(blackTime, whiteTime, blackIncrement, whiteIncrement, movesToGo);
+                TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move
+                TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
+                _engine.Go(blackTime, whiteTime, blackIncrement, whiteIncrement, movesToGo, searchDepth);
+            }
+            else if(TryParse(tokens, "depth", out int searchDepth))
+            {
+                _engine.Go(searchDepth);
             }
             else if(IsDefined(tokens, "infinite"))
             {
@@ -134,9 +141,9 @@ namespace MinimalChessEngine
             return Array.IndexOf(tokens, name) >= 0;
         }
 
-        private static bool TryParse(string[] tokens, string name, out int value)
+        private static bool TryParse(string[] tokens, string name, out int value, int defaultValue = 0)
         {
-            value = 0;
+            value = defaultValue;
             int iParam = Array.IndexOf(tokens, name);
             if (iParam < 0)
                 return false;

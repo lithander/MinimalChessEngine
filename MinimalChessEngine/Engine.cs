@@ -11,14 +11,15 @@ namespace MinimalChessEngine
     class Engine
     {
         const int MOVE_TIME_MARGIN = 10;
-        const int MIN_BRANCHING_FACTOR = 5;
+        const int BRANCHING_FACTOR_ESTIMATE = 5;
 
         IterativeSearch2 _search = null;
-        Task _searching = null;
+        Thread _searching = null;
         Move _best = default;
         long _t0 = -1;
         long _tN = -1;
         int _timeBudget = 0;
+        int _searchDepth = 0;
         Board _board = new Board(Board.STARTING_POS_FEN);
         List<Board> _history = new List<Board>();
 
@@ -69,20 +70,31 @@ namespace MinimalChessEngine
         internal void Go()
         {
             Stop();
+            _searchDepth = int.MaxValue;
             _timeBudget = int.MaxValue;
             StartSearch();
         }
 
-        internal void Go(int timePerMove)
+        internal void Go(int maxSearchDepth)
         {
             Stop();
+            _searchDepth = maxSearchDepth;
+            _timeBudget = int.MaxValue;
+            StartSearch();
+        }
+
+        internal void Go(int timePerMove, int maxSearchDepth)
+        {
+            Stop();
+            _searchDepth = maxSearchDepth;
             _timeBudget = timePerMove - MOVE_TIME_MARGIN;
             StartSearch();
         }
 
-        internal void Go(int blackTime, int whiteTime, int blackIncrement, int whiteIncrement, int movesToGo)
+        internal void Go(int blackTime, int whiteTime, int blackIncrement, int whiteIncrement, int movesToGo, int maxSearchDepth)
         {
             Stop();
+            _searchDepth = maxSearchDepth;
             int myTime = _board.ActiveColor == Color.Black ? blackTime : whiteTime;
             int myIncrement = _board.ActiveColor == Color.Black ? blackIncrement : whiteIncrement;
             int totalTime = myTime + myIncrement * (movesToGo - 1) - MOVE_TIME_MARGIN;
@@ -96,7 +108,7 @@ namespace MinimalChessEngine
             if (_searching != null)
             {
                 _timeBudget = 0; //this will cause the thread to terminate
-                _searching.Wait();
+                _searching.Join();
                 _searching = null;
             }
         }
@@ -132,6 +144,14 @@ namespace MinimalChessEngine
                 return;
             }
 
+            //max depth reached or game over?
+            if (_search.Depth >= _searchDepth || _search.GameOver)
+            {
+                Uci.BestMove(_best);
+                _search = null;
+                return;
+            }
+
             //Search deeper...
             Search();
         }
@@ -149,7 +169,9 @@ namespace MinimalChessEngine
             _search = new IterativeSearch2(_board, moves => AvoidRepetitionAndRandomize(_board, moves, _history));
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
-            _searching = Task.Run(Search);
+            _searching = new Thread(Search);
+            _searching.Priority = ThreadPriority.Highest;
+            _searching.Start();
         }
 
         private long Now => Stopwatch.GetTimestamp();
