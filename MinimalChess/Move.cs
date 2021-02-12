@@ -1,7 +1,5 @@
 ﻿using System;
-using System.Collections;
 using System.Collections.Generic;
-using System.Text;
 
 namespace MinimalChess
 {
@@ -10,13 +8,6 @@ namespace MinimalChess
         public byte FromIndex;
         public byte ToIndex;
         public Piece Promotion;
-
-        public Move(byte fromIndex, byte toIndex, Piece promotion)
-        {
-            FromIndex = fromIndex;
-            ToIndex = toIndex;
-            Promotion = promotion;
-        }
 
         public Move(int fromIndex, int toIndex)
         {
@@ -34,6 +25,11 @@ namespace MinimalChess
 
         public Move(string uciMoveNotation)
         {
+            if (uciMoveNotation.Length < 4)
+                throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too short!");
+            if (uciMoveNotation.Length > 5)
+                throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too long!");
+
             //expected format is the long algebraic notation without piece names
             https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
@@ -93,6 +89,7 @@ namespace MinimalChess
 
     public interface IMovesVisitor
     {
+        public bool Done { get; }
         public void Consider(Move move);
         public void Consider(int from, int to);
         public void Consider(int from, int to, Piece promotion);
@@ -110,6 +107,8 @@ namespace MinimalChess
             _reference.CollectMoves(this);
             _reference = null;
         }
+
+        public bool Done => false;
 
         public void Consider(Move move)
         {
@@ -135,6 +134,19 @@ namespace MinimalChess
         public void AddUnchecked(Move move)
         {
             Add(move);
+        }
+
+        public void Randomize()
+        {
+            Random rnd = new Random();
+            for (int i = 0; i < Count; i++)
+            {
+                int j = rnd.Next(0, Count);
+                //swap i with j
+                Move temp = this[i];
+                this[i] = this[j];
+                this[j] = temp;
+            }
         }
     }
 }

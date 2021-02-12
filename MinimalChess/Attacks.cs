@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Diagnostics;
-using System.Text;
 
 namespace MinimalChess
 {
@@ -43,7 +41,7 @@ namespace MinimalChess
 
                 //Add 4 straight lines
                 for (int dir = 0; dir < 4; dir++)
-                    Straight[index, dir] = WalkTheLine(rank, file, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);                              
+                    Straight[index, dir] = WalkTheLine(rank, file, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);
 
                 //Add Knight&King attack patterns
                 King[index] = ApplyPattern(rank, file, KING_RANK, KING_FILE);
@@ -56,7 +54,7 @@ namespace MinimalChess
 
             long t1 = Stopwatch.GetTimestamp();
             double dt = 1000.0 * (t1 - t0) / Stopwatch.Frequency;
-            Console.WriteLine($"Attack index buffers computed in {dt:0.####}ms");
+            //Console.WriteLine($"Attack index buffers computed in {dt:0.####}ms");
         }
 
         private static byte[] PawnAttacks(int rank, int file, int dRank)
@@ -79,14 +77,14 @@ namespace MinimalChess
         {
             IndexBuffer.Clear();
             //inc i as long as the resulting index is still on the board
-            for (int i = 1; TryAddIndex(rank + i * dRank, file + i * dFile); i++);
+            for (int i = 1; TryAddIndex(rank + i * dRank, file + i * dFile); i++) ;
             return IndexBuffer.ToArray();
         }
 
         private static bool TryAddIndex(int rank, int file)
         {
             bool squareExists = rank >= 0 && rank <= 7 && file >= 0 && file <= 7;
-            if(squareExists)
+            if (squareExists)
                 IndexBuffer.Add((byte)(rank * 8 + file));
             return squareExists;
         }

@@ -1,6 +1,5 @@
 ﻿using MinimalChess;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -54,7 +53,7 @@ namespace MinimalChessBoard
                     else if (command == "perft")
                     {
                         int depth = int.Parse(tokens[1]);
-                        if(tokens.Length > 2)
+                        if (tokens.Length > 2)
                             ComparePerft(depth, tokens[2]);
                         else
                             RunPerft(board, depth);
@@ -67,7 +66,9 @@ namespace MinimalChessBoard
                     else if (command == "!")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 4;
-                        move = Search.GetBestMove(board, depth);
+                        IterativeSearch search = new IterativeSearch(board);
+                        search.Search(depth);
+                        move = search.PrincipalVariation[0];
                         Console.WriteLine($"{board.ActiveColor} >> {move}");
                         board.Play(move);
                     }
@@ -85,7 +86,7 @@ namespace MinimalChessBoard
                         ApplyMoves(board, tokens);
                     }
                 }
-                catch(Exception error)
+                catch (Exception error)
                 {
                     Console.WriteLine("ERROR: " + error.Message);
                 }
@@ -148,13 +149,17 @@ namespace MinimalChessBoard
 
         private static void ListMoves(Board board, int depth)
         {
+            IterativeSearch search = new IterativeSearch(board);
+            search.Search(depth);
+            Move[] line = search.PrincipalVariation;
+
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
-                if(depth >= 1)
+                if (line != null && line[0] == move)
                 {
-                    int score = Search.Evaluate(new Board(board, move), depth - 1);
-                    Console.WriteLine($"{i++,4}. {move} {score:+0.00;-0.00}");
+                    string pvString = string.Join(' ', line);
+                    Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
                 }
                 else
                     Console.WriteLine($"{i++,4}. {move}");
@@ -241,7 +246,7 @@ namespace MinimalChessBoard
                 string entry = file.ReadLine();
                 string[] data = entry.Split(';');
                 string fen = data[0];
-                if(data.Length <= depth)
+                if (data.Length <= depth)
                 {
                     Console.WriteLine($"{line++} SKIPPED! No reference available for perft({depth}) FEN: {fen}");
                     continue;
