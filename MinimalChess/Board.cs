@@ -332,7 +332,12 @@ namespace MinimalChess
                 if (_state[target] == Pieces.Knight(color))
                     return true;
 
-            //3. Queen or Bishops on diagonals lines
+            //3. King
+            foreach (int target in Attacks.King[index])
+                if (_state[target] == Pieces.King(color))
+                    return true;
+
+            //4. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
@@ -342,7 +347,7 @@ namespace MinimalChess
                         break;
                 }
 
-            //4. Queen or Rook on straight lines
+            //5. Queen or Rook on straight lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                 {
@@ -351,11 +356,6 @@ namespace MinimalChess
                     if (_state[target] != Piece.None)
                         break;
                 }
-
-            //5. King
-            foreach (int target in Attacks.King[index])
-                if (_state[target] == Pieces.King(color))
-                    return true;
 
             return false; //not threatened by anyone!
         }
