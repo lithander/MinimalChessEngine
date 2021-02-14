@@ -10,7 +10,7 @@ namespace MinimalChess
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
         public bool Aborted => _killSwitch.Triggered;
-        public bool GameOver => Score == Evaluation.MinValue || Score == Evaluation.MaxValue;
+        public bool GameOver => _pv.IsGameOver(Depth);
 
         Board _root = null;
         LegalMoves _rootMoves = null;
@@ -37,10 +37,10 @@ namespace MinimalChess
 
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
-            _pv.Grow(++Depth);
             if (GameOver)
                 return;
 
+            _pv.Grow(++Depth);
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);

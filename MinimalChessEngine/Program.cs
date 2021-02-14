@@ -10,7 +10,7 @@ namespace MinimalChessEngine
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine("MinimalChess 0.2");
+            Console.WriteLine("MinimalChess 0.2.1");
             _engine.Start();
             while (_engine.Running)
             {
