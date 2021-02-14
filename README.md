@@ -7,10 +7,9 @@ This repository tracks the journey of writing my first chess engine. It's writte
 
 ## Motivation
 
-My focus was on creating a *minimal* engine with just enough features and optimizations to become a reasonably strong player. 
-I try to keep the codebase small but more importantly simple and human readable.
+My focus is on creating a *minimal* chess engine with just enough features and optimizations to become a reasonably strong player. 
 
-I learned a lot about how a chess engine operates and how critical components like move generation or tree search can be implemented correctly. 
+__Version 0.2__ of MinimalChess uses iterative deepenging search with alpha-beta pruning and a simple killer-move heuristic and evaluates a position by counting material. That's all. This lack of sophistication causes it to play rather weak at only a little over 1000 ELO. Nothing to brag about but it makes it a good sparring partner for weak human players like myself and chess programmers who are just starting out. (Again - like myself) The engine is open source and I tried to write code that is as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than it currently is. ;)
 
 ## Making Of Videos (Chess programming tutorial)
 
@@ -21,30 +20,30 @@ I have documented each milestone of the development in an accomanying [Youtube](
 1. [Making of MinimalChessEngine - Episode 3: Move Generation](https://www.youtube.com/watch?v=j6bNdkQnL0Q&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 1. [Making of MinimalChessEngine - Episode 4: Search & Eval](https://www.youtube.com/watch?v=b3DMIhmPSvE&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 
-## Download the Engine
+## Play the Engine
 
-I've uploaded a Windows build here: https://github.com/lithander/MinimalChessEngine/releases/tag/MakingOfPart4
+You can find prebuild binaries of different versions of MinimalChess for Mac, Linux and Windows here on github.
 
 ### MinimalChessEngine
 
-Add MinimalChessEngine.exe as an engine to an UCI compatible Chess GUI such as CuteChess. I expect it to play at roughly 1000 ELO in a very non-human style.
-It doesn't provide any options to configure and is hardcoded to make a move in less then one second so it should be compatible with all but the fastest time controls. There are no hash table settings or opening books to disable "advanced" techniques like this aren't implemented.
+To play I recommend you add MinimalChessEngine as an engine to an UCI compatible Chess GUI such as [CuteChess](https://cutechess.com/). 
 
 ### MinimalChessBoard
 
-Run MinimalChessBoard.exe directly to get a console based Chess GUI with a few commands that help debugging the code!
+You can also run MinimalChessBoard to get a console based Chess GUI that allows you to play chess against the engine. I don't recommend it though. This part of the project is mainly used during development for analysis and debugging purposes!
 
 Command           | Description
 ----------------- | -------------
 [move]			      | You can play the game by typing in the move you want to make in the long algebraic notation e.g. "e2e4" to move white's King's Pawn.
 reset 			      | Reset the board to the start position.
 fen [fenstring]		| Setup the board to represent the given position.
-perft [integer]		| Compute perft values of the given depth
-divide [integer]	| Compute perft values of all available moves
-! [integer]		    | Play the best move, search it with the given depth
-? [integer]		    | List all available moves
+perft [depth]	  	| Compute perft values of the given depth
+divide [depth]  	| Compute perft values of all available moves
+! [depth]		      | Play the best move, search it with the given depth
+? [depth]		      | List all available moves
 ??			          | Print the resulting board for each available move
 
 ## Help & Support
 
-If you encounter any problems of have questions or comments don't hesitate to contact me or open an issue or engage in the discussions section of this repositor. 
+Please let me know of any bugs or stability issues and must-have features you feel even the most barebones engine should support but MinimalChess is lacking.
+Don't hesitate to contact via email or open an issue or engage in the discussions section of this repository. 
