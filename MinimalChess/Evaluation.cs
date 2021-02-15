@@ -55,5 +55,21 @@ namespace MinimalChess
             return 0;
             */
         }
+
+        public static int EvaluateWithMate(Board board)
+        {
+            var moves = new AnyLegalMoves(board);
+            
+            //if the game is not yet over just look who leads in material
+            if (moves.CanMove)
+                return SumPieceValues(board);
+
+            //active color has lost the game?
+            if (board.IsChecked(board.ActiveColor))
+                return (int)board.ActiveColor * MinValue; 
+
+            //No moves but king isn't checked -> it's a draw
+            return 0;
+        }
     }
 }

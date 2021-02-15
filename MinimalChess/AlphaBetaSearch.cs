@@ -8,6 +8,10 @@ namespace MinimalChess
 {
     public class AlphaBetaSearch
     {
+        public long PositionsEvaluated { get; private set; }
+        public long MovesGenerated { get; private set; }
+        public long MovesPlayed { get; private set; }
+
         public int Depth { get; private set; }
         public long EvalCount { get; private set; }
         public int Score { get; private set; }
@@ -58,12 +62,13 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                EvalCount++;
+                PositionsEvaluated++;
                 return Evaluation.Evaluate(board);
             }
 
             Color color = board.ActiveColor;
             var moves = new LegalMoves(board);
+            MovesGenerated += moves.Count;
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
@@ -74,6 +79,7 @@ namespace MinimalChess
 
             foreach (var move in moves)
             {
+                MovesPlayed++;
                 int score = Evaluate(new Board(board, move), depth - 1, window);
                 if (window.Outside(score, color))
                     continue;

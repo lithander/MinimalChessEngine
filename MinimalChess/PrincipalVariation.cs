@@ -31,6 +31,8 @@ namespace MinimalChess
 
         public void Grow(int depth)
         {
+            //TODO: if depth > maxdepth return or else we get a crash. but that's fine for now as it will probably a bug has caused an "endless" search and we want to find those!
+
             Clear(depth);
             if (depth <= 1)
                 return;
@@ -61,6 +63,13 @@ namespace MinimalChess
             Move[] line = new Move[count];
             Array.Copy(_moves, Index(depth), line, 0, count);
             return line;
+        }
+
+        public bool IsGameOver(int depth)
+        {
+            int start = Index(depth);
+            int nullMove = Array.IndexOf(_moves, default, start, depth);
+            return nullMove != -1;
         }
 
         public Move this[int depth]

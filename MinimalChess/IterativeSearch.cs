@@ -8,8 +8,11 @@ namespace MinimalChess
 {
     public class IterativeSearch
     {
+        public long PositionsEvaluated { get; private set; }
+        public long MovesGenerated { get; private set; }
+        public long MovesPlayed { get; private set; }
+
         public int Depth { get; private set; }
-        public long EvalCount { get; private set; }
         public int Score { get; private set; }
         public Move[][] Lines => _bestMoves.ToArray();
         public Move[] Moves => _bestMoves.Select(line => line.First()).ToArray();
@@ -77,12 +80,13 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                EvalCount++;
+                PositionsEvaluated++;
                 return Evaluation.Evaluate(board);
             }
 
             Color color = board.ActiveColor;
             var moves = new LegalMoves(board);
+            MovesGenerated += moves.Count;
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
@@ -94,6 +98,7 @@ namespace MinimalChess
             var killer = _pv[depth];
             if (moves.Contains(killer))
             {
+                MovesPlayed++;
                 int score = Evaluate(new Board(board, killer), depth - 1, window);
                 if (window.Inside(score, color))
                 {
@@ -109,6 +114,7 @@ namespace MinimalChess
                 if (move == killer)
                     continue;
 
+                MovesPlayed++;
                 int score = Evaluate(new Board(board, move), depth - 1, window);
                 if (window.Inside(score, color))
                 {
@@ -147,13 +153,16 @@ namespace MinimalChess
 
     public class IterativeSearch2
     {
+        public long PositionsEvaluated { get; private set; }
+        public long MovesGenerated { get; private set; }
+        public long MovesPlayed { get; private set; }
+
         public int Depth { get; private set; }
-        public long EvalCount { get; private set; }
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
         public bool Aborted => _killSwitch.Triggered;
-        public bool GameOver => Score == Evaluation.MinValue || Score == Evaluation.MaxValue;
+        public bool GameOver => _pv.IsGameOver(Depth);
 
         Board _root = null;
         LegalMoves _rootMoves = null;
@@ -180,10 +189,10 @@ namespace MinimalChess
 
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
-            _pv.Grow(++Depth);
             if (GameOver)
                 return;
 
+            _pv.Grow(++Depth);
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
@@ -191,6 +200,7 @@ namespace MinimalChess
 
         private int EvalMove(Board position, Move move, int depth, SearchWindow window)
         {
+            MovesPlayed++;
             Board resultingPosition = new Board(position, move);
             return EvalPosition(resultingPosition, depth - 1, window);
         }
@@ -199,7 +209,7 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                EvalCount++;
+                PositionsEvaluated++;
                 return Evaluation.Evaluate(position);
             }
 
@@ -207,6 +217,7 @@ namespace MinimalChess
 
             Color color = position.ActiveColor;
             var moves = (depth == Depth) ? _rootMoves : new LegalMoves(position);
+            MovesGenerated += moves.Count;
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)

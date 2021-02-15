@@ -8,7 +8,16 @@ namespace MinimalChess
 {   
     public static class Search
     {
-        public static long EvalCount = 0;
+        public static long PositionsEvaluated = 0;
+        public static long MovesGenerated = 0;
+        public static long MovesPlayed = 0;
+
+        public static void ClearStats()
+        {
+            PositionsEvaluated = 0;
+            MovesGenerated = 0;
+            MovesPlayed = 0;
+        }
 
         public static Move GetBestMoveMinMax(Board board, int depth)
         {
@@ -47,12 +56,13 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                EvalCount++;
+                PositionsEvaluated++;
                 return Evaluation.Evaluate(board);
             }
 
             int color = (int)board.ActiveColor;
             var moves = new LegalMoves(board);
+            MovesGenerated += moves.Count;
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
                 return board.IsChecked(board.ActiveColor) ? color * Evaluation.MinValue : 0;
@@ -60,6 +70,7 @@ namespace MinimalChess
             int bestScore = Evaluation.MinValue;
             foreach (var move in moves)
             {
+                MovesPlayed++;
                 Board next = new Board(board, move);
                 //we multiply with color so we can always maximize
                 int score = color * Evaluate(next, depth - 1);
@@ -113,12 +124,13 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                EvalCount++;
+                PositionsEvaluated++;
                 return Evaluation.Evaluate(board);
             }
 
             Color color = board.ActiveColor;
             var moves = new LegalMoves(board);
+            MovesGenerated += moves.Count;
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
@@ -126,6 +138,7 @@ namespace MinimalChess
 
             foreach (var move in moves)
             {
+                MovesPlayed++;
                 int score = Evaluate(new Board(board, move), depth - 1, window);
                 if (window.Cut(score, color))
                     break;

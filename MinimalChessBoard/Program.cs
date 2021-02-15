@@ -42,8 +42,8 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
-                {
+                //try
+                //{
                     if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
@@ -129,11 +129,11 @@ namespace MinimalChessBoard
                     double dt = (t1 - t0) / (double)Stopwatch.Frequency;
                     if(dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
-                }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //}
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -347,9 +347,11 @@ namespace MinimalChessBoard
             int success = 0;
             int line = 1;
             double timeRatioSum = 0;
-            double nodeRatioSum = 0;
+            double evalRatioSum = 0;
+            double moveRatioSum = 0;
+            double posRatioSum = 0;
             long tStart = Stopwatch.GetTimestamp();
-            long totalNodes = 0;
+            long totalEvals = 0;
             while (!file.EndOfStream)
             {
                 //The parser expects a fen-string followed by
@@ -371,7 +373,7 @@ namespace MinimalChessBoard
                     string value = prop.Substring(split);
                     props[key] = value;
                 }
-                if (props.Count != 5)
+                if (props.Count != 7)
                 {
                     Console.WriteLine($"{line++} SKIPPED! Properties missing. Line: {entry}");
                     continue;
@@ -379,29 +381,33 @@ namespace MinimalChessBoard
 
                 int depth = int.Parse(props["acd"]);
                 int refScore = int.Parse(props["ce"]);
-                long refNodes = long.Parse(props["acn"]);
+                long refEvalCount = long.Parse(props["evals"]);
+                long refMoveCount = long.Parse(props["moves"]);
+                long refPosCount = long.Parse(props["positions"]);
                 float refTime = float.Parse(props["acs"], CultureInfo.InvariantCulture);
                 List<Move> refMoves = props["bm"].Split()[1..^0].Select(s => new Move(s)).ToList();
 
                 Move[] moves = null;
                 int score = 0;
-                long nodes = 0;
+                long evals = 0;
+                long movegens = 0;
+                long positions = 0;
                 int pvErrors = 0;
 
                 long t0 = Stopwatch.GetTimestamp();
                 switch(mode)
                 {
                     case BenchMode.MinMax:
-                        BenchMinMax(new Board(fen), depth, out moves, out score, out nodes);
+                        BenchMinMax(new Board(fen), depth, out moves, out score, out evals);
                         break;
                     case BenchMode.AlphaBeta:
-                        BenchAlphaBeta(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
+                        BenchAlphaBeta(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
                         break;
                     case BenchMode.Iterative:
-                        BenchIterative(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
+                        BenchIterative(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
                         break;
                     case BenchMode.Debug:
-                        BenchDebug(new Board(fen), depth, out moves, out score, out nodes, out pvErrors);
+                        BenchDebug(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
                         break;
                     default:
                         return; //Unsupported mode!
@@ -409,7 +415,7 @@ namespace MinimalChessBoard
                 long t1 = Stopwatch.GetTimestamp();
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
 
-                totalNodes += nodes;
+                totalEvals += evals;
    
                 if(pvErrors > 0)
                 {
@@ -421,65 +427,76 @@ namespace MinimalChessBoard
                     error++;
                     Console.WriteLine($"{line++} ERROR! ce={score}, expected {refScore}. ");
                     if (moves.Length != refMoves.Count || !moves.All(refMoves.Contains))
-                        Console.WriteLine($"moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
+                        Console.WriteLine($"moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoveCount)}. FEN: {fen}");
                     else
                         Console.WriteLine($"moves={string.Join(' ', moves)}. FEN: {fen}");
                 }
                 else if(mode != BenchMode.Debug && (moves.Length != refMoves.Count || !moves.All(refMoves.Contains)))
                 {
                     error++;
-                    Console.WriteLine($"{line++} ERROR! moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
+                    Console.WriteLine($"{line++} ERROR! moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoveCount)}. FEN: {fen}");
                 }
                 else //GOOD! but how good?
                 {
                     success++;
                     double timeRatio = dt / refTime;
-                    double nodeRatio = nodes / (double)refNodes;
+                    double evalRatio = evals / (double)refEvalCount;
+                    double moveRatio = movegens / (double)refMoveCount;
+                    double posRatio = positions / (double)refPosCount; 
+
                     timeRatioSum += timeRatio;
-                    nodeRatioSum += nodeRatio;
-                    Console.WriteLine($"{line++} OK! acn {nodes} / {refNodes} = {nodeRatio:0.###}, acs {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
+                    evalRatioSum += evalRatio;
+                    moveRatioSum += moveRatio;
+                    posRatioSum += posRatio;
+                    Console.WriteLine($"{line++} OK! eval {evalRatio:0.###}, moves {moveRatio:0.###}, positions {posRatio:0.###} acs {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
                 }
                 Console.WriteLine();
             }
             double elapsed = (Stopwatch.GetTimestamp() - tStart) / (double)Stopwatch.Frequency;
-            int knps = (int)(totalNodes / elapsed / 1000);
-            Console.WriteLine($"Test finished with {error} wrong results! {totalNodes} Nodes evaluated. Avg time ratio: {timeRatioSum/success:0.###}, Avg node ratio: {nodeRatioSum/success:0.###}, Performance: {knps}kN/sec");
+            int knps = (int)(totalEvals / elapsed / 1000);
+            Console.WriteLine($"Test finished with {error} wrong results! Time ratio: {timeRatioSum/success:0.###}, Eval ratio: {evalRatioSum/success:0.###}, Move ratio: {moveRatioSum / success:0.###}, Eval ratio: {posRatioSum / success:0.###}, Performance: {knps}kN/sec");
         }
 
         private static void BenchMinMax(Board board, int depth, out Move[] moves, out int score, out long nodes)
         {
-            Search.EvalCount = 0;
+            Search.ClearStats();
             moves = Search.GetBestMovesMinMax(board, depth, out score).ToArray();
-            nodes = Search.EvalCount;
+            nodes = Search.PositionsEvaluated;
         }
 
-        private static void BenchAlphaBeta(Board board, int depth, out Move[] moves, out int score, out long nodes, out int pvError)
+        private static void BenchAlphaBeta(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
         {
             AlphaBetaSearch search = new AlphaBetaSearch(board);
             search.Search(depth);
             moves = search.Moves;
             score = search.Score;
-            nodes = search.EvalCount;
+            evals = search.PositionsEvaluated;
+            positions = search.MovesPlayed;
+            movegen = search.MovesGenerated;
             pvError = ValidatePV(board, score, search.Lines);
         }
 
-        private static void BenchIterative(Board board, int depth, out Move[] moves, out int score, out long nodes, out int pvError)
+        private static void BenchIterative(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
         {
             IterativeSearch search = new IterativeSearch(board);
             search.Search(depth);
             moves = search.Moves;
             score = search.Score;
-            nodes = search.EvalCount;
+            evals = search.PositionsEvaluated;
+            positions = search.MovesPlayed;
+            movegen = search.MovesGenerated;
             pvError = ValidatePV(board, score, search.Lines);
         }
 
-        private static void BenchDebug(Board board, int depth, out Move[] moves, out int score, out long nodes, out int pvError)
+        private static void BenchDebug(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
         {
             IterativeSearch2 search = new IterativeSearch2(board);
             search.Search(depth);
             moves = search.PrincipalVariation;
             score = search.Score;
-            nodes = search.EvalCount;
+            evals = search.PositionsEvaluated;
+            positions = search.MovesPlayed;
+            movegen = search.MovesGenerated;
             pvError = ValidatePV(board, score, new Move[][] { search.PrincipalVariation });
         }
 
@@ -493,7 +510,7 @@ namespace MinimalChessBoard
                 foreach (var move in pv)
                     copy.Play(move);
 
-                int playedScore = Evaluation.Evaluate(copy);
+                int playedScore = Evaluation.EvaluateWithMate(copy);
                 string pvString = string.Join(' ', pv);
                 if (playedScore != score)
                 {
@@ -526,7 +543,9 @@ namespace MinimalChessBoard
                 int bestScore = Evaluation.MinValue;
                 List<Move> bestMoves = new List<Move>();
                 var window = SearchWindow.Infinite;
-                Search.EvalCount = 0;
+
+                Search.ClearStats();
+
                 long t0 = Stopwatch.GetTimestamp();
                 foreach (var move in moves)
                 {
@@ -549,7 +568,7 @@ namespace MinimalChessBoard
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
                 //with a simple heuristic there are probably many best moves - pick one randomly
                 string bmString = string.Join(' ', bestMoves);
-                string result = $"ce {pvEval};bm {bmString};acd {depth};acn {Search.EvalCount};acs {dt:0.###}";
+                string result = $"ce {pvEval};bm {bmString};acd {depth};evals {Search.PositionsEvaluated};moves {Search.MovesGenerated};positions {Search.PositionsEvaluated};acs {dt:0.###}";
                 target.WriteLine($"{fen};{result}");
                 target.Flush();
 
