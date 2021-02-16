@@ -159,7 +159,7 @@ namespace MinimalChessEngine
         private void Collect()
         {
             int score = (int)_search.Position.ActiveColor * _search.Score;
-            Uci.Info(_search.Depth, score, _search.EvalCount, ElapsedMilliseconds, _search.PrincipalVariation);
+            Uci.Info(_search.Depth, score, _search.PositionsEvaluated, ElapsedMilliseconds, _search.PrincipalVariation);
             _best = _search.PrincipalVariation[0];
         }
 

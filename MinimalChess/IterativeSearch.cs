@@ -183,7 +183,7 @@ namespace MinimalChess
 
         public void Search(int maxDepth)
         {
-            while (maxDepth > Depth)
+            while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
 

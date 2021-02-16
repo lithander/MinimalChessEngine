@@ -42,8 +42,8 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                //try
-                //{
+                try
+                {
                     if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
@@ -129,11 +129,11 @@ namespace MinimalChessBoard
                     double dt = (t1 - t0) / (double)Stopwatch.Frequency;
                     if(dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
-                //}
-                //catch (Exception error)
-                //{
-                //    Console.WriteLine("ERROR: " + error.Message);
-                //}
+                }
+                catch (Exception error)
+                {
+                    Console.WriteLine("ERROR: " + error.Message);
+                }
             }
         }
 

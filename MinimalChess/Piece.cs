@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MinimalChess
 {
@@ -12,79 +10,58 @@ namespace MinimalChess
 
     public enum Piece
     {
+        //1st Bit = Piece or None?
         None = 0,
-        WhitePawn = 1,
-        WhiteKnight = 2,
-        WhiteBishop = 3,
-        WhiteRook = 4,
-        WhiteQueen = 5,
-        WhiteKing = 6,
-        BlackPawn = 7,
-        BlackKnight = 8,
-        BlackBishop = 9,
-        BlackRook = 10,
-        BlackQueen = 11,
-        BlackKing = 12,
-    }
 
-    public enum PieceType
-    {
-        Pawn = 0,
-        Knight = 1,
-        Bishop = 2,
-        Rook = 3,
-        Queen = 4,
-        King = 5
+        //2nd Bit = White or Black?
+        Black = 1,
+        White = 3,
+
+        //3rd+ Bits = Type of Piece
+        Pawn = 1 << 2,
+        Knight = 2 << 2,
+        Bishop = 3 << 2,
+        Rook = 4 << 2,
+        Queen = 5 << 2,
+        King = 6 << 2,
+
+        //White + Type = White Pieces
+        WhitePawn = White + Pawn,
+        WhiteKnight = White + Knight,
+        WhiteBishop = White + Bishop,
+        WhiteRook = White + Rook,
+        WhiteQueen = White + Queen,
+        WhiteKing = White + King,
+
+        //Black + Type = Black Pieces
+        BlackPawn = Black + Pawn,
+        BlackKnight = Black + Knight,
+        BlackBishop = Black + Bishop,
+        BlackRook = Black + Rook,
+        BlackQueen = Black + Queen,
+        BlackKing = Black + King,
+
+        //Mask
+        ColorMask = 3,
+        TypeMask = 255 - 3
     }
 
     public static class Pieces
     {
-        public static Color GetColor(Piece piece)
-        {
-            if (piece >= Piece.BlackPawn)
-                return Color.Black;
-            else if (piece >= Piece.WhitePawn)
-                return Color.White;
+        //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
+        public static Piece ColorFlags(Color color) => (Piece)(color + 2);
 
-            throw new ArgumentException(piece + " has no color!");
-        }
+        //Use Piece.ColorMask to clear all bits execept the ones for color, then convert from Piece to Color by subtracting 2
+        //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
+        public static Color GetColor(this Piece piece) => (Color)((piece & Piece.ColorMask) - 2);
 
-        public static PieceType GetType(Piece piece)
-        {
-            if (piece >= Piece.BlackPawn)
-                return (PieceType)piece - 7;
-            else if (piece >= Piece.WhitePawn)
-                return (PieceType)piece - 1;
+        //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
+        public static Piece OfColor(this Piece piece, Color color) => (piece & Piece.TypeMask) | ColorFlags(color);
 
-            throw new ArgumentException(piece + " has no type!");
-        }
+        internal static bool IsWhite(Piece piece) => (piece & Piece.ColorMask) == Piece.White;
 
-        public static Piece OfColor(this Piece piece, Color color)
-        {
-            //if black offset type by 7 (-1 & 7 == 7) otherwise by 1 (1 & 7 == 1)
-            return (Piece)(GetType(piece) + ((int)color & 7));
-        }
+        internal static bool IsBlack(Piece piece) => (piece & Piece.ColorMask) == Piece.Black;
 
-        public static Color Flip(Color color)
-        {
-            return (Color)(-(int)color);
-        }
-
-        internal static bool IsWhite(Piece piece)
-        {
-            return piece >= Piece.WhitePawn && piece < Piece.BlackPawn;
-        }
-
-        internal static bool IsBlack(Piece piece)
-        {
-            return piece >= Piece.BlackPawn;
-        }
-
-        internal static Piece Pawn(Color color) => (Piece)(PieceType.Pawn + ((int)color & 7));
-        internal static Piece King(Color color) => (Piece)(PieceType.King + ((int)color & 7));
-        internal static Piece Queen(Color color) => (Piece)(PieceType.Queen + ((int)color & 7));
-        internal static Piece Rook(Color color) => (Piece)(PieceType.Rook + ((int)color & 7));
-        internal static Piece Knight(Color color) => (Piece)(PieceType.Knight + ((int)color & 7));
-        internal static Piece Bishop(Color color) => (Piece)(PieceType.Bishop + ((int)color & 7));
+        public static Color Flip(Color color) => (Color)(-(int)color);
     }
 }
