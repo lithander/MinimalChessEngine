@@ -37,6 +37,7 @@ namespace MinimalChessBoard
                 string[] tokens = input.Split();
                 string command = tokens[0];
 
+                long t0 = Stopwatch.GetTimestamp();
                 try
                 {
                     if (command == "reset")
@@ -85,6 +86,11 @@ namespace MinimalChessBoard
                     {
                         ApplyMoves(board, tokens);
                     }
+
+                    long t1 = Stopwatch.GetTimestamp();
+                    double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                    if (dt > 0.01)
+                        Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
                 catch (Exception error)
                 {
@@ -129,7 +135,7 @@ namespace MinimalChessBoard
                     Console.BackgroundColor = ConsoleColor.DarkCyan;
             }
 
-            if (piece != Piece.None && Pieces.GetColor(piece) == Color.White)
+            if (piece.GetColor() == Color.White)
                 Console.ForegroundColor = ConsoleColor.White;
             else
                 Console.ForegroundColor = ConsoleColor.Gray;

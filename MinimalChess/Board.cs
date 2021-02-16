@@ -311,37 +311,38 @@ namespace MinimalChess
 
         public bool IsChecked(Color color)
         {
-            Piece king = Pieces.King(color);
+            Piece king = Piece.King.OfColor(color);
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
                 if (_state[squareIndex] == king)
-                    return IsAttacked(squareIndex, Pieces.Flip(color));
+                    return IsSquareAttacked(squareIndex, Pieces.Flip(color));
 
             throw new Exception($"Board state is missing a {king}!");
         }
 
-        private bool IsAttacked(int index, Color color)
+        private bool IsSquareAttacked(int index, Color attackedBy)
         {
+            Piece color = Pieces.ColorFlags(attackedBy);
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
-            var pawnAttacks = color == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
+            var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[index])
-                if (_state[target] == Pieces.Pawn(color))
+                if (_state[target] == (Piece.Pawn | color))
                     return true;
 
             //2. Knight
             foreach (int target in Attacks.Knight[index])
-                if (_state[target] == Pieces.Knight(color))
+                if (_state[target] == (Piece.Knight | color))
                     return true;
 
             //3. King
             foreach (int target in Attacks.King[index])
-                if (_state[target] == Pieces.King(color))
+                if (_state[target] == (Piece.King | color))
                     return true;
 
             //4. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
-                    if (_state[target] == Pieces.Bishop(color) || _state[target] == Pieces.Queen(color))
+                    if (_state[target] == (Piece.Bishop | color) || _state[target] == (Piece.Queen | color))
                         return true;
                     if (_state[target] != Piece.None)
                         break;
@@ -351,7 +352,7 @@ namespace MinimalChess
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                 {
-                    if (_state[target] == Pieces.Rook(color) || _state[target] == Pieces.Queen(color))
+                    if (_state[target] == (Piece.Rook | color) || _state[target] == (Piece.Queen | color))
                         return true;
                     if (_state[target] != Piece.None)
                         break;
@@ -393,8 +394,8 @@ namespace MinimalChess
 
         private bool CanCastle(int kingSquare, int rookSquare, Color color)
         {
-            Debug.Assert(_state[kingSquare] == Pieces.King(color), "CanCastle shouldn't be called if castling right has been lost!");
-            Debug.Assert(_state[rookSquare] == Pieces.Rook(color), "CanCastle shouldn't be called if castling right has been lost!");
+            Debug.Assert(_state[kingSquare] == Piece.King.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
+            Debug.Assert(_state[rookSquare] == Piece.Rook.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
 
             Color enemyColor = Pieces.Flip(color);
             int gap = Math.Abs(rookSquare - kingSquare) - 1;
@@ -407,7 +408,7 @@ namespace MinimalChess
 
             //the king must not start, end or pass through a square that is attacked by an enemy piece. (but the rook and the square next to the rook on queenside may be attacked)
             for (int i = 0; i < 3; i++)
-                if (IsAttacked(kingSquare + i * dir, enemyColor))
+                if (IsSquareAttacked(kingSquare + i * dir, enemyColor))
                     return false;
 
             return true;
@@ -540,9 +541,9 @@ namespace MinimalChess
         private int Up(int index, int steps = 1) => index + steps * 8;
         private int Down(int index, int steps = 1) => index - steps * 8;
 
-        private bool IsValidTarget(Piece piece) => piece == Piece.None || ((piece >= Piece.BlackPawn) ^ (_activeColor == Color.Black));
+        private bool IsValidTarget(Piece piece) => (piece & Piece.ColorMask) != Pieces.ColorFlags(_activeColor);
 
-        private bool IsActivePiece(Piece piece) => piece > Piece.None && ((piece >= Piece.BlackPawn) ^ (_activeColor == Color.White));
+        private bool IsActivePiece(Piece piece) => (piece & Piece.ColorMask) == Pieces.ColorFlags(_activeColor);
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {
