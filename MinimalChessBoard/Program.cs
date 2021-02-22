@@ -42,7 +42,7 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
+                //try
                 {
                     if (command == "reset")
                     {
@@ -78,12 +78,12 @@ namespace MinimalChessBoard
                     else if (command == "?")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        ListMoves(board, depth);
+                        ListBestMove(board, depth);
                     }
                     else if (command == "??")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        ListMoves2(board, depth);
+                        ListMoves(board, depth);
                     }
                     else if (command == "#")
                     {
@@ -130,10 +130,10 @@ namespace MinimalChessBoard
                     if(dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -193,26 +193,26 @@ namespace MinimalChessBoard
 
         private static void ListMoves(Board board, int depth)
         {
-            IterativeSearch search = new IterativeSearch(board);
-            search.Search(depth);
-
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
-                Move[] line = search.Lines.FirstOrDefault(line => line[0] == move);
+                Board next = new Board(board, move);
+                IterativeSearch search = new IterativeSearch(next);
+                search.Search(depth-1);
+                Move[] line = search.PrincipalVariation;
                 if (line != null)
                 {
-                    string pv = string.Join(' ', line);
-                    Console.WriteLine($"{i++,4}. {pv} = {search.Score:+0.00;-0.00}");
+                    string pvString = move + " " + string.Join(' ', line);
+                    Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
                 }
                 else
                     Console.WriteLine($"{i++,4}. {move}");
             }
         }
 
-        private static void ListMoves2(Board board, int depth)
+        private static void ListBestMove(Board board, int depth)
         {
-            IterativeSearch2 search = new IterativeSearch2(board);
+            IterativeSearch search = new IterativeSearch(board);
             search.Search(depth);
             Move[] line = search.PrincipalVariation;
 
@@ -350,6 +350,8 @@ namespace MinimalChessBoard
             double evalRatioSum = 0;
             double moveRatioSum = 0;
             double posRatioSum = 0;
+            long moveGenSum = 0;
+            long movePlayedSum = 0;
             long tStart = Stopwatch.GetTimestamp();
             long totalEvals = 0;
             while (!file.EndOfStream)
@@ -392,22 +394,22 @@ namespace MinimalChessBoard
                 long evals = 0;
                 long movegens = 0;
                 long positions = 0;
-                int pvErrors = 0;
 
                 long t0 = Stopwatch.GetTimestamp();
-                switch(mode)
+                Board board = new Board(fen);
+                switch (mode)
                 {
                     case BenchMode.MinMax:
-                        BenchMinMax(new Board(fen), depth, out moves, out score, out evals);
+                        BenchMinMax(board, depth, out moves, out score, out evals);
                         break;
                     case BenchMode.AlphaBeta:
-                        BenchAlphaBeta(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
+                        BenchSearch(new AlphaBetaSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     case BenchMode.Iterative:
-                        BenchIterative(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
+                        BenchSearch(new IterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     case BenchMode.Debug:
-                        BenchDebug(new Board(fen), depth, out moves, out score, out evals, out movegens, out positions, out pvErrors);
+                        BenchSearch(new FastIterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     default:
                         return; //Unsupported mode!
@@ -416,37 +418,39 @@ namespace MinimalChessBoard
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
 
                 totalEvals += evals;
-   
-                if(pvErrors > 0)
+
+                if (!ValidatePV(board, score, moves, moves.Length < depth))
                 {
-                    error += pvErrors;
-                    Console.WriteLine($"{line++} ERROR! {pvErrors} PVs couldn't be validated. FEN: {fen}");
-                }
+                    error++;
+                    Console.WriteLine($"{line++} ERROR! PV validation failed. FEN: {fen}");
+                }                
                 else if (score != refScore)
                 {
                     error++;
                     Console.WriteLine($"{line++} ERROR! ce={score}, expected {refScore}. ");
-                    if (moves.Length != refMoves.Count || !moves.All(refMoves.Contains))
-                        Console.WriteLine($"moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoveCount)}. FEN: {fen}");
-                    else
-                        Console.WriteLine($"moves={string.Join(' ', moves)}. FEN: {fen}");
-                }
-                else if(mode != BenchMode.Debug && (moves.Length != refMoves.Count || !moves.All(refMoves.Contains)))
+                }                
+                else if(!refMoves.Contains(moves[0]))
                 {
                     error++;
-                    Console.WriteLine($"{line++} ERROR! moves={string.Join(' ', moves)}, expected {string.Join(' ', refMoveCount)}. FEN: {fen}");
+                    Console.WriteLine($"{line++} ERROR! bm={string.Join(' ', moves[0])}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
                 }
                 else //GOOD! but how good?
                 {
                     success++;
-                    double timeRatio = dt / refTime;
-                    double evalRatio = evals / (double)refEvalCount;
-                    double moveRatio = movegens / (double)refMoveCount;
-                    double posRatio = positions / (double)refPosCount; 
 
+                    moveGenSum = movegens;
+                    movePlayedSum = positions;
+
+                    double timeRatio = dt / refTime;
                     timeRatioSum += timeRatio;
+
+                    double evalRatio = evals / (double)refEvalCount;
                     evalRatioSum += evalRatio;
+
+                    double moveRatio = movegens / (double)refMoveCount;
                     moveRatioSum += moveRatio;
+
+                    double posRatio = positions / (double)refPosCount; 
                     posRatioSum += posRatio;
                     Console.WriteLine($"{line++} OK! eval {evalRatio:0.###}, moves {moveRatio:0.###}, positions {posRatio:0.###} acs {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
                 }
@@ -454,7 +458,8 @@ namespace MinimalChessBoard
             }
             double elapsed = (Stopwatch.GetTimestamp() - tStart) / (double)Stopwatch.Frequency;
             int knps = (int)(totalEvals / elapsed / 1000);
-            Console.WriteLine($"Test finished with {error} wrong results! Time ratio: {timeRatioSum/success:0.###}, Eval ratio: {evalRatioSum/success:0.###}, Move ratio: {moveRatioSum / success:0.###}, Eval ratio: {posRatioSum / success:0.###}, Performance: {knps}kN/sec");
+            Console.WriteLine($"Test finished with {error} wrong results! Time: {timeRatioSum/success:0.###}, Eval: {evalRatioSum/success:0.###}, Moves generated: {moveRatioSum / success:0.###}, Moves played: {posRatioSum / success:0.###}, Performance: {knps}kN/sec");
+            Console.WriteLine($"A total of {moveGenSum} moves were generated. {movePlayedSum} were played. {(movePlayedSum * 100) / moveGenSum}%");
         }
 
         private static void BenchMinMax(Board board, int depth, out Move[] moves, out int score, out long nodes)
@@ -464,64 +469,34 @@ namespace MinimalChessBoard
             nodes = Search.PositionsEvaluated;
         }
 
-        private static void BenchAlphaBeta(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
+        private static void BenchSearch(ISearch search, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions)
         {
-            AlphaBetaSearch search = new AlphaBetaSearch(board);
-            search.Search(depth);
-            moves = search.Moves;
-            score = search.Score;
-            evals = search.PositionsEvaluated;
-            positions = search.MovesPlayed;
-            movegen = search.MovesGenerated;
-            pvError = ValidatePV(board, score, search.Lines);
-        }
-
-        private static void BenchIterative(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
-        {
-            IterativeSearch search = new IterativeSearch(board);
-            search.Search(depth);
-            moves = search.Moves;
-            score = search.Score;
-            evals = search.PositionsEvaluated;
-            positions = search.MovesPlayed;
-            movegen = search.MovesGenerated;
-            pvError = ValidatePV(board, score, search.Lines);
-        }
-
-        private static void BenchDebug(Board board, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions, out int pvError)
-        {
-            IterativeSearch2 search = new IterativeSearch2(board);
             search.Search(depth);
             moves = search.PrincipalVariation;
             score = search.Score;
             evals = search.PositionsEvaluated;
             positions = search.MovesPlayed;
             movegen = search.MovesGenerated;
-            pvError = ValidatePV(board, score, new Move[][] { search.PrincipalVariation });
         }
 
-
-        private static int ValidatePV(Board board, int score, Move[][] lines)
+        private static bool ValidatePV(Board board, int score, Move[] line, bool withMateCheck)
         {
-            int pvError = 0;
-            foreach (var pv in lines)
-            {
-                Board copy = new Board(board);
-                foreach (var move in pv)
-                    copy.Play(move);
+            Board copy = new Board(board);
+            foreach (var move in line)
+                copy.Play(move);
 
-                int playedScore = Evaluation.EvaluateWithMate(copy);
-                string pvString = string.Join(' ', pv);
-                if (playedScore != score)
-                {
-                    Console.WriteLine($"PV {pvString} = {playedScore:+0.00;-0.00}, expected {score}");
-                    Print(copy, pv.Last());
-                    pvError++;
-                }
-                else
-                    Console.WriteLine($"PV {pvString} = {playedScore:+0.00;-0.00}, OK!");
+            int playedScore = withMateCheck ? Evaluation.EvaluateWithMate(copy) : Evaluation.Evaluate(copy);
+            string pvString = string.Join(' ', line);
+            if (playedScore != score)
+            {
+                Console.WriteLine($"PV {pvString} = {playedScore:+0.00;-0.00}, expected {score}");
+                Print(copy, line.Last());
+                return false;
             }
-            return pvError;
+            else
+                Console.WriteLine($"PV {pvString} = {playedScore:+0.00;-0.00}, OK!");
+
+            return true;
         }
 
         private static void MakeBenchmark(string filePath, int depth, string outputFilePath)
@@ -533,7 +508,7 @@ namespace MinimalChessBoard
             while (!source.EndOfStream)
             {
                 //The parser expects a fen-string
-                //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1
+                //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
                 string entry = source.ReadLine();
                 string fen = string.Join(' ', entry.Split()[0..4]);
                 Console.WriteLine($"{line++}. {fen}");
@@ -566,7 +541,6 @@ namespace MinimalChessBoard
                 long pvEval = color * bestScore;
                 long t1 = Stopwatch.GetTimestamp();
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
-                //with a simple heuristic there are probably many best moves - pick one randomly
                 string bmString = string.Join(' ', bestMoves);
                 string result = $"ce {pvEval};bm {bmString};acd {depth};evals {Search.PositionsEvaluated};moves {Search.MovesGenerated};positions {Search.PositionsEvaluated};acs {dt:0.###}";
                 target.WriteLine($"{fen};{result}");

@@ -5,7 +5,18 @@ using System.Linq;
 using System.Text;
 
 namespace MinimalChess
-{   
+{
+    public interface ISearch
+    {
+        long PositionsEvaluated { get; }
+        long MovesGenerated { get; }
+        long MovesPlayed { get; }
+        Move[] PrincipalVariation { get; }
+        int Score { get; }
+
+        void Search(int maxDepth);
+    }
+
     public static class Search
     {
         public static long PositionsEvaluated = 0;

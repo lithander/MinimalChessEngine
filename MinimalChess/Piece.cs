@@ -13,7 +13,7 @@ namespace MinimalChess
         //1st Bit = Piece or None?
         None = 0,
 
-        //2nd Bit = White or Black?
+        //2nd Bit = White or Black? (implies the Piece bit to be set to)
         Black = 1,
         White = 3,
 
@@ -48,19 +48,21 @@ namespace MinimalChess
 
     public static class Pieces
     {
+        public static Piece ColorBits(Piece piece) => piece & Piece.ColorMask;
+
         //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
-        public static Piece ColorFlags(Color color) => (Piece)(color + 2);
+        public static Piece ColorBits(Color color) => (Piece)(color + 2);
 
         //Use Piece.ColorMask to clear all bits execept the ones for color, then convert from Piece to Color by subtracting 2
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
-        public static Color GetColor(this Piece piece) => (Color)((piece & Piece.ColorMask) - 2);
+        public static Color GetColor(this Piece piece) => (Color)(ColorBits(piece) - 2);
 
         //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
-        public static Piece OfColor(this Piece piece, Color color) => (piece & Piece.TypeMask) | ColorFlags(color);
+        public static Piece OfColor(this Piece piece, Color color) => (piece & Piece.TypeMask) | ColorBits(color);
 
-        internal static bool IsWhite(Piece piece) => (piece & Piece.ColorMask) == Piece.White;
+        internal static bool IsWhite(Piece piece) => ColorBits(piece) == Piece.White;
 
-        internal static bool IsBlack(Piece piece) => (piece & Piece.ColorMask) == Piece.Black;
+        internal static bool IsBlack(Piece piece) => ColorBits(piece) == Piece.Black;
 
         public static Color Flip(Color color) => (Color)(-(int)color);
     }

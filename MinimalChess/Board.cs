@@ -321,7 +321,7 @@ namespace MinimalChess
 
         private bool IsSquareAttacked(int index, Color attackedBy)
         {
-            Piece color = Pieces.ColorFlags(attackedBy);
+            Piece color = Pieces.ColorBits(attackedBy);
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[index])
@@ -541,9 +541,9 @@ namespace MinimalChess
         private int Up(int index, int steps = 1) => index + steps * 8;
         private int Down(int index, int steps = 1) => index - steps * 8;
 
-        private bool IsValidTarget(Piece piece) => (piece & Piece.ColorMask) != Pieces.ColorFlags(_activeColor);
+        private bool IsValidTarget(Piece piece) => Pieces.ColorBits(piece) != Pieces.ColorBits(_activeColor); //'None' will also be a valid target
 
-        private bool IsActivePiece(Piece piece) => (piece & Piece.ColorMask) == Pieces.ColorFlags(_activeColor);
+        private bool IsActivePiece(Piece piece) => Pieces.ColorBits(piece) == Pieces.ColorBits(_activeColor);
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {

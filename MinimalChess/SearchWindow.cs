@@ -72,6 +72,21 @@ namespace MinimalChess
 
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
 
-        public int GetScoreFromLimit(Color color) => color == Color.White ? Floor + 1 : Ceiling - 1;
+        public SearchWindow GetNullWindow(Color color)
+        {
+            //used to quickly determine that a move is not improving the score for color.
+            if (color == Color.White)
+                return new SearchWindow(Floor, Floor + 1);
+            else
+                return new SearchWindow(Ceiling - 1, Ceiling);
+        }
+
+        internal bool IsWorseOrEqual(Color color, int nullScore)
+        {
+            if (color == Color.White)
+                return nullScore <= Floor;
+            else
+                return nullScore >= Ceiling;
+        }
     }
 }

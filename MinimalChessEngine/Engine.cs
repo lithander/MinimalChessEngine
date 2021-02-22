@@ -13,7 +13,7 @@ namespace MinimalChessEngine
         const int MOVE_TIME_MARGIN = 10;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
-        IterativeSearch2 _search = null;
+        FastIterativeSearch _search = null;
         Thread _searching = null;
         Move _best = default;
         long _t0 = -1;
@@ -166,7 +166,7 @@ namespace MinimalChessEngine
         private void StartSearch()
         {
             _t0 = Now;
-            _search = new IterativeSearch2(_board, moves => AvoidRepetitionAndRandomize(_board, moves, _history));
+            _search = new FastIterativeSearch(_board, moves => AvoidRepetitionAndRandomize(_board, moves, _history));
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
             _searching = new Thread(Search);

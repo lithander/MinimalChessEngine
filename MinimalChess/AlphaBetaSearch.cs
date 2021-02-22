@@ -6,88 +6,77 @@ using System.Text;
 
 namespace MinimalChess
 {
-    public class AlphaBetaSearch
+    public class AlphaBetaSearch : ISearch
     {
         public long PositionsEvaluated { get; private set; }
         public long MovesGenerated { get; private set; }
         public long MovesPlayed { get; private set; }
 
         public int Depth { get; private set; }
-        public long EvalCount { get; private set; }
         public int Score { get; private set; }
-        public Move[][] Lines => _bestMoves.ToArray();
-        public Move[] Moves => _bestMoves.Select(line => line.First()).ToArray();
+        public Board Position => new Board(_root); //return copy, _root must not be modified during search!
+        public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
+        public bool GameOver => _pv.IsGameOver(Depth);
 
         Board _root = null;
-        List<Move[]> _bestMoves = new List<Move[]>();
+        LegalMoves _rootMoves = null;
         PrincipalVariation _pv;
 
         public AlphaBetaSearch(Board board)
         {
-            _root = board;
+            _root = new Board(board);
+            _rootMoves = new LegalMoves(board);
         }
 
-        public void Search(int depth)
+        public AlphaBetaSearch(Board board, Action<LegalMoves> rootMovesModifier) : this(board)
         {
-            _pv = new PrincipalVariation(depth);
-            int bestScore = short.MinValue;
-            int color = (int)_root.ActiveColor;
-            var moves = new LegalMoves(_root);
-            var window = SearchWindow.Infinite;
-            foreach (var move in moves)
-            {
-                Board next = new Board(_root, move);
-                int eval = Evaluate(next, depth - 1, window);
-                int score = color * eval;
-
-                if (score < bestScore)
-                    continue;
-
-                if (score > bestScore)
-                {
-                    _bestMoves.Clear();
-                    bestScore = score;
-                    //add -1 offset so that other root-moves with the same value are not discarded
-                    window.Limit(eval, _root.ActiveColor);
-                }
-
-                //the move's pv is among the best
-                _pv[depth] = move;
-                _bestMoves.Add(_pv.GetLine(depth));
-            }
-            Score = color * bestScore;
+            rootMovesModifier(_rootMoves);
         }
 
-        public int Evaluate(Board board, int depth, SearchWindow window)
+        public void Search(int maxDepth)
+        {
+            Depth = maxDepth;
+            _pv = new PrincipalVariation(Depth);
+            var window = SearchWindow.Infinite;            
+            Score = EvalPosition(_root, Depth, window);
+        }
+
+        private int EvalMove(Board position, Move move, int depth, SearchWindow window)
+        {
+            MovesPlayed++;
+            Board resultingPosition = new Board(position, move);
+            return EvalPosition(resultingPosition, depth - 1, window);
+        }
+
+        private int EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth == 0)
             {
                 PositionsEvaluated++;
-                return Evaluation.Evaluate(board);
+                return Evaluation.Evaluate(position);
             }
 
-            Color color = board.ActiveColor;
-            var moves = new LegalMoves(board);
+            Color color = position.ActiveColor;
+            var moves = (depth == Depth) ? _rootMoves : new LegalMoves(position);
             MovesGenerated += moves.Count;
 
             //having no legal moves can mean two things: (1) lost or (2) draw?
             if (moves.Count == 0)
             {
                 _pv.Clear(depth);
-                return board.IsChecked(board.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
             }
 
             foreach (var move in moves)
             {
-                MovesPlayed++;
-                int score = Evaluate(new Board(board, move), depth - 1, window);
-                if (window.Outside(score, color))
-                    continue;
-
-                //this is a new best score!
-                _pv[depth] = move;
-                if (window.Cut(score, color))
-                    return window.GetScore(color);
+                int score = EvalMove(position, move, depth, window);
+                if (window.Inside(score, color))
+                {
+                    //this is a new best score!
+                    _pv[depth] = move;
+                    if (window.Cut(score, color))
+                        return window.GetScore(color);
+                }
             }
 
             return window.GetScore(color);

@@ -159,6 +159,55 @@ namespace MinimalChess
         }
     }
 
+    public class PseudoLegalMoves : List<Move>, IMovesVisitor
+    {
+        private static Board _tempBoard = new Board();
+        private Board _reference;
+
+        public PseudoLegalMoves(Board reference) : base(40)
+        {
+            _reference = reference;
+            _reference.CollectMoves(this);
+            _reference = null;
+        }
+
+        public bool Done => false;
+
+        public void Consider(Move move)
+        {
+            //only add if the move doesn't result in a check for active color
+            Add(move);
+        }
+
+        public void Consider(int from, int to, Piece promotion)
+        {
+            Add(new Move(from, to, promotion));
+        }
+
+        public void Consider(int from, int to)
+        {
+            Add(new Move(from, to));
+        }
+
+        public void AddUnchecked(Move move)
+        {
+            Add(move);
+        }
+
+        public void Randomize()
+        {
+            Random rnd = new Random();
+            for (int i = 0; i < Count; i++)
+            {
+                int j = rnd.Next(0, Count);
+                //swap i with j
+                Move temp = this[i];
+                this[i] = this[j];
+                this[j] = temp;
+            }
+        }
+    }
+
     public class AnyLegalMoves : IMovesVisitor
     {
         private static Board _tempBoard = new Board();
