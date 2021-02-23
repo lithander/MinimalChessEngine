@@ -97,6 +97,8 @@ namespace MinimalChess
                 }
             }
 
+            MoveOrdering.SortMvvLva(moves, position);
+
             foreach (var move in moves)
             {
                 if (move == killer)

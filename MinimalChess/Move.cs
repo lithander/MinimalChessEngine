@@ -253,4 +253,30 @@ namespace MinimalChess
             CanMove = true;
         }
     }
+
+
+    public static class MoveOrdering
+    {
+        public static void SortMvvLva(List<Move> moves, Board context)
+        {
+            int Score(Move move)
+            {
+                Piece victim = context[move.ToIndex];
+                if (victim == Piece.None)
+                    return 0;
+
+                Piece attacker = context[move.FromIndex];
+                //Most Valuable Victims first - offset by the attackers value
+                int score = (100 * (int)victim) - (int)attacker;
+                //list will be sorted in ascending order!
+                return -score;
+            }
+
+            int Compare(Move a, Move b)
+            {
+                return Score(a).CompareTo(Score(b));
+            }
+            moves.Sort(Compare);
+        }
+    }
 }

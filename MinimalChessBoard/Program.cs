@@ -182,7 +182,9 @@ namespace MinimalChessBoard
         private static void PrintMoves(Board board)
         {
             int i = 1;
-            foreach (var move in new LegalMoves(board))
+            var moves = new LegalMoves(board);
+            MoveOrdering.SortMvvLva(moves, board);
+            foreach (var move in moves)
             {
                 Console.WriteLine($"{i++}. {board.ActiveColor} >> {move}");
                 var copy = new Board(board, move);
@@ -212,7 +214,7 @@ namespace MinimalChessBoard
 
         private static void ListBestMove(Board board, int depth)
         {
-            IterativeSearch search = new IterativeSearch(board);
+            ISearch search = new FastIterativeSearch(board);
             search.Search(depth);
             Move[] line = search.PrincipalVariation;
 
