@@ -21,6 +21,9 @@ namespace MinimalChessEngine
 
         private static void ParseUciCommand(string input)
         {
+            //Aborting the program with Ctrl+D on Linux cause the Task that reads the console to return 'null'
+            if (input == null) return;
+
             //remove leading & trailing whitecases, convert to lower case characters and split using ' ' as delimiter
             string[] tokens = input.Trim().Split();
             switch (tokens[0])
