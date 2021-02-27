@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using MinimalChess;
@@ -10,10 +11,11 @@ namespace MinimalChessEngine
 {
     class Engine
     {
+        const int REPEAT_POSITION_THRESHOLD = -50;
         const int MOVE_TIME_MARGIN = 10;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
-        FastIterativeSearch _search = null;
+        IterativeQSearch _search = null;
         Thread _searching = null;
         Move _best = default;
         long _t0 = -1;
@@ -21,6 +23,8 @@ namespace MinimalChessEngine
         int _timeBudget = 0;
         int _searchDepth = 0;
         Board _board = new Board(Board.STARTING_POS_FEN);
+        List<Move> _moves = new List<Move>();
+        List<Move> _repetitions = new List<Move>();
         List<Board> _history = new List<Board>();
 
         public bool Running { get; private set; }
@@ -119,56 +123,66 @@ namespace MinimalChessEngine
 
         private void Search()
         {
-            _tN = Now;
-            _search.SearchDeeper(() => RemainingTimeBudget < 0);
-
-            //aborted?
-            if (_search.Aborted)
+            while(true)
             {
-                Uci.Log($"WASTED {MilliSeconds(Now - _tN)}ms on an aborted a search!");
-                Uci.BestMove(_best);
-                _search = null;
-                return;
+                _tN = Now;
+                _search.SearchDeeper(() => RemainingTimeBudget < 0);
+
+                //aborted?
+                if (_search.Aborted)
+                {
+                    Uci.Log($"WASTED {MilliSeconds(Now - _tN)}ms on an aborted a search!");
+                    break;
+                }
+
+                //collect PV
+                Collect();
+
+                //return now to save time?
+                int estimate = BRANCHING_FACTOR_ESTIMATE * MilliSeconds(Now - _tN);
+                if (RemainingTimeBudget < estimate)
+                {
+                    Uci.Log($"Estimate of {estimate}ms EXCEEDS budget of {RemainingTimeBudget}ms. Quit!");
+                    break;
+                }
+
+                //max depth reached or game over?
+                if (_search.Depth >= _searchDepth || _search.GameOver)
+                    break;
             }
-
-            //collect PV
-            Collect();
-
-            //return now to save time?
-            int estimate = BRANCHING_FACTOR_ESTIMATE * MilliSeconds(Now - _tN);
-            if (RemainingTimeBudget < estimate)
-            {
-                Uci.Log($"Estimate of {estimate}ms EXCEEDS budget of {RemainingTimeBudget}ms. Quit!");
-                Uci.BestMove(_best);
-                _search = null;
-                return;
-            }
-
-            //max depth reached or game over?
-            if (_search.Depth >= _searchDepth || _search.GameOver)
-            {
-                Uci.BestMove(_best);
-                _search = null;
-                return;
-            }
-
-            //Search deeper...
-            Search();
+            //Done searching!
+            Uci.BestMove(_best);
+            _search = null;
         }
 
         private void Collect()
         {
             int score = (int)_search.Position.ActiveColor * _search.Score;
             Uci.Info(_search.Depth, score, _search.PositionsEvaluated, ElapsedMilliseconds, _search.PrincipalVariation);
-            _best = _search.PrincipalVariation[0];
+
+            //Go for a draw?
+            if (_repetitions.Count > 0 && score < REPEAT_POSITION_THRESHOLD)
+                _best = _repetitions[0];
+            else
+                _best = _search.PrincipalVariation[0];
         }
 
         private void StartSearch()
         {
             _t0 = Now;
-            _search = new FastIterativeSearch(_board, moves => AvoidRepetitionAndRandomize(_board, moves, _history));
+
+            //find the root moves
+            _moves = new LegalMoves(_board);
+            //find root moves that would result in a previous position
+            _repetitions = _moves.Where(move => _history.Contains(new Board(_board, move))).ToList();
+            //if we have enough moves don't consider repetitions
+            if (_repetitions.Count < _moves.Count)
+                _moves.RemoveAll(move => _repetitions.Contains(move));
+
+            _search = new IterativeQSearch(_board, _moves);
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
+
             _searching = new Thread(Search);
             _searching.Priority = ThreadPriority.Highest;
             _searching.Start();
@@ -185,22 +199,5 @@ namespace MinimalChessEngine
         private int ElapsedMilliseconds => MilliSeconds(Now - _t0);
 
         private int RemainingTimeBudget => _timeBudget - ElapsedMilliseconds;
-
-        private void AvoidRepetitionAndRandomize(Board root, LegalMoves moves, List<Board> history)
-        {
-            //while there are more then 1 moves iterate backwards and remove those that lead to a repetition
-            for (int i = moves.Count - 1; i >= 0 && moves.Count > 1; i--)
-            {
-                Move move = moves[i];
-                Board test = new Board(root, move);
-                //is the board in the history? skip the move!
-                if (history.Contains(test))
-                {
-                    Console.WriteLine($"Move {move} would repeat a position. Skipped!");
-                    moves.RemoveAt(i);
-                }
-            }
-            moves.Randomize();
-        }
     }
 }

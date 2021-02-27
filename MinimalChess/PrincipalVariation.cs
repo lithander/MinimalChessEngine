@@ -22,6 +22,11 @@ namespace MinimalChess
             return (d * d + d) / 2;
         }
 
+        public void Clear()
+        {
+            Array.Clear(_moves, 0, _moves.Length);
+        }
+
         public void Clear(int depth)
         {
             int iDepth = Index(depth);
@@ -32,7 +37,6 @@ namespace MinimalChess
         public void Grow(int depth)
         {
             //TODO: if depth > maxdepth return or else we get a crash. but that's fine for now as it will probably a bug has caused an "endless" search and we want to find those!
-
             Clear(depth);
             if (depth <= 1)
                 return;

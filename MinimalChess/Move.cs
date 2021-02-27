@@ -262,21 +262,19 @@ namespace MinimalChess
             int Score(Move move)
             {
                 Piece victim = context[move.ToIndex];
-                if (victim == Piece.None)
-                    return 0;
-
                 Piece attacker = context[move.FromIndex];
-                //Most Valuable Victims first - offset by the attackers value
-                int score = (100 * (int)victim) - (int)attacker;
-                //list will be sorted in ascending order!
-                return -score;
+                //Rating: Victims value first - offset by the attackers value
+                return (victim == Piece.None) ? 0 : ((100 * (int)victim) - (int)attacker);
             }
+            moves.Sort((a, b) => Score(b).CompareTo(Score(a)));
+        }
 
-            int Compare(Move a, Move b)
-            {
-                return Score(a).CompareTo(Score(b));
-            }
-            moves.Sort(Compare);
+        public static void RemoveNonCapturesAndSortMvvLva(List<Move> moves, Board context)
+        {
+            //remove all non captures
+            moves.RemoveAll(move => context[move.ToIndex] == Piece.None);
+            //and sort the rest
+            SortMvvLva(moves, context);
         }
     }
 }

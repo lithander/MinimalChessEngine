@@ -29,11 +29,12 @@ namespace MinimalChessEngine
 
     public static class Program
     {
+        const string NAME_VERSION = "MinimalChess 0.2.5 PST+Q";
         static Engine _engine = new Engine();
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine("MinimalChess 0.2.3");
+            Console.WriteLine(NAME_VERSION);
             _engine.Start();
             while (_engine.Running)
             {
@@ -49,8 +50,8 @@ namespace MinimalChessEngine
             switch (tokens[0])
             {
                 case "uci":
-                    Console.WriteLine("id name MinimalChess");
-                    Console.WriteLine("id author Thomas Jahn");
+                    Console.WriteLine($"id name {NAME_VERSION}");
+                    Console.WriteLine($"id author Thomas Jahn");
                     Console.WriteLine("uciok");
                     break;
                 case "isready":

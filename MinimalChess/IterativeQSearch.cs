@@ -6,7 +6,7 @@ using System.Text;
 
 namespace MinimalChess
 {
-    public class FastIterativeSearch : ISearch
+    public class IterativeQSearch : ISearch
     {
         public long PositionsEvaluated { get; private set; }
         public long MovesGenerated { get; private set; }
@@ -20,20 +20,15 @@ namespace MinimalChess
         public bool GameOver => _pv.IsGameOver(Depth);
 
         Board _root = null;
-        LegalMoves _rootMoves = null;
+        List<Move> _rootMoves = null;
         PrincipalVariation _pv;
         KillSwitch _killSwitch;
 
-        public FastIterativeSearch(Board board)
+        public IterativeQSearch(Board board, List<Move> rootMoves)
         {
             _root = new Board(board);
-            _rootMoves = new LegalMoves(board);
+            _rootMoves = rootMoves;
             _pv = new PrincipalVariation(20);
-        }
-
-        public FastIterativeSearch(Board board, Action<LegalMoves> rootMovesModifier) : this(board)
-        {
-            rootMovesModifier(_rootMoves);
         }
 
         public void Search(int maxDepth)
@@ -41,7 +36,7 @@ namespace MinimalChess
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
-        
+
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
             if (GameOver)
@@ -70,26 +65,20 @@ namespace MinimalChess
             if (depth == 0)
             {
                 PositionsEvaluated++;
-                return Evaluation.EvaluatePST(position);
-                //return Evaluation.EvaluateWithMate(position);
+                return Evaluation.QEval(position, window, out _);
             }
 
             if (_killSwitch.Triggered) return 0;
 
             Color color = position.ActiveColor;
-            List<Move> moves;
-            if (depth == Depth)
-                moves = _rootMoves;
-            else
-                moves = new PseudoLegalMoves(position);
-
+            List<Move> moves = (depth == Depth) ? _rootMoves : new PseudoLegalMoves(position);
             MovesGenerated += moves.Count;
-            long oldMovesPlayed = MovesPlayed;
 
+            long oldMovesPlayed = MovesPlayed;
             var killer = _pv[depth];
             if (moves.Contains(killer))
             {
-                if(TryEvalMove(position, killer, depth, window, out int score) && window.Inside(score, color))
+                if (TryEvalMove(position, killer, depth, window, out int score) && window.Inside(score, color))
                 {
                     //this is a new best score!
                     _pv[depth] = killer;
@@ -105,13 +94,13 @@ namespace MinimalChess
                 if (move == killer)
                     continue;
 
-                if (depth == Depth)
-                {
-                    //Search null window!
-                    SearchWindow nullWindow = window.GetNullWindow(color);
-                    if(TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.IsWorseOrEqual(color, nullScore))
-                        continue;
-                }
+                //if (depth == Depth)
+                //{
+                //    //Search null window!
+                //    SearchWindow nullWindow = window.GetNullWindow(color);
+                //    if (TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.IsWorseOrEqual(color, nullScore))
+                //        continue;
+                //}
 
                 if (TryEvalMove(position, move, depth, window, out int score) && window.Inside(score, color))
                 {
@@ -122,7 +111,7 @@ namespace MinimalChess
                 }
             }
 
-            if(oldMovesPlayed == MovesPlayed) //no expansion happened from this node!
+            if (oldMovesPlayed == MovesPlayed) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);

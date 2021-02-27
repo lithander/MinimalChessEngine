@@ -49,10 +49,9 @@ namespace MinimalChessBoard
                         board = new Board(Board.STARTING_POS_FEN);
                         move = default;
                     }
-                    else if (command == "fen")
+                    else if (command.Count(c => c == '/') == 7) //Fen-string detection
                     {
-                        string fen = input.Substring(4);
-                        board.SetupPosition(fen);
+                        board.SetupPosition(input);
                         move = default;
                     }
                     else if (command == "perft")
@@ -78,12 +77,14 @@ namespace MinimalChessBoard
                     else if (command == "?")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        ListBestMove(board, depth);
+                        bool quiesce = tokens.Length > 2 ? tokens[2] == "q" : false;
+                        ListBestMove(board, depth, quiesce);
                     }
                     else if (command == "??")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        ListMoves(board, depth);
+                        bool quiesce = tokens.Length > 2 ? tokens[2] == "q" : false;
+                        ListMoves(board, depth, quiesce);
                     }
                     else if (command == "#")
                     {
@@ -137,6 +138,11 @@ namespace MinimalChessBoard
             }
         }
 
+        private static int QEval(Board position)
+        {
+            return Evaluation.QEval(position, SearchWindow.Infinite, out Move capture);
+        }     
+
         private static void Print(Board board, Move move = default)
         {
             Console.WriteLine("   A B C D E F G H");
@@ -155,7 +161,11 @@ namespace MinimalChessBoard
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine(" '----------------'");
-            Console.WriteLine($"  A B C D E F G H {Evaluation.Evaluate(board):+0.00;-0.00}");
+            Console.WriteLine($"  A B C D E F G H");
+            Console.WriteLine();
+            Console.WriteLine($"  Material {Evaluation.Evaluate(board):+0;-0}");
+            Console.WriteLine($"  PSTs     {Evaluation.EvaluatePST(board):+0;-0}");
+            Console.WriteLine($"  Quiet    {QEval(board):+0; -0}");
         }
 
         private static void SetColor(Piece piece, int rank, int file, Move move)
@@ -193,13 +203,18 @@ namespace MinimalChessBoard
             }
         }
 
-        private static void ListMoves(Board board, int depth)
+        private static void ListMoves(Board board, int depth, bool qSearch)
         {
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
                 Board next = new Board(board, move);
-                IterativeSearch search = new IterativeSearch(next);
+                ISearch search;
+                if (qSearch)
+                    search = new IterativeQSearch(next);
+                else
+                    search = new FastIterativeSearch(next);
+
                 search.Search(depth-1);
                 Move[] line = search.PrincipalVariation;
                 if (line != null)
@@ -208,13 +223,21 @@ namespace MinimalChessBoard
                     Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
                 }
                 else
-                    Console.WriteLine($"{i++,4}. {move}");
+                {
+                    int score = qSearch ? QEval(next) : Evaluation.Evaluate(next);
+                    Console.WriteLine($"{i++,4}. {move} = {score:+0.00;-0.00}");
+                }
             }
         }
 
-        private static void ListBestMove(Board board, int depth)
+        private static void ListBestMove(Board board, int depth, bool qSearch)
         {
-            ISearch search = new FastIterativeSearch(board);
+            ISearch search;
+            if (qSearch)
+                search = new IterativeQSearch(board);
+            else
+                search = new FastIterativeSearch(board);
+            
             search.Search(depth);
             Move[] line = search.PrincipalVariation;
 
@@ -408,10 +431,10 @@ namespace MinimalChessBoard
                         BenchSearch(new AlphaBetaSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     case BenchMode.Iterative:
-                        BenchSearch(new IterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
+                        BenchSearch(new FastIterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     case BenchMode.Debug:
-                        BenchSearch(new FastIterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
+                        BenchSearch(new IterativeQSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
                         break;
                     default:
                         return; //Unsupported mode!
