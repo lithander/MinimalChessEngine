@@ -21,7 +21,7 @@ namespace MinimalChessBoard
             Move move = default;
             while (running)
             {
-                try
+                //try
                 {
                     Console.WriteLine();
                     Print(board, move);
@@ -30,10 +30,10 @@ namespace MinimalChessBoard
                     if (board.IsChecked(Color.White))
                         Console.WriteLine(" <!> White is in check");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
 
                 Console.WriteLine();
                 Console.Write($"{board.ActiveColor} >> ");
@@ -89,6 +89,11 @@ namespace MinimalChessBoard
                     else if (command == "#")
                     {
                         PrintMoves(board);
+                    }
+                    else if (command == "pst")
+                    {
+                        string file = $"pst/{tokens[1]}.pst";
+                        PieceSquareTable.Load(File.OpenText(file));
                     }
                     else if (command == "bench")
                     {
@@ -163,8 +168,7 @@ namespace MinimalChessBoard
             Console.WriteLine(" '----------------'");
             Console.WriteLine($"  A B C D E F G H");
             Console.WriteLine();
-            Console.WriteLine($"  Material {Evaluation.Evaluate(board):+0;-0}");
-            Console.WriteLine($"  PSTs     {Evaluation.EvaluatePST(board):+0;-0}");
+            Console.WriteLine($"  PSTs     {Evaluation.Evaluate(board):+0;-0}");
             Console.WriteLine($"  Quiet    {QEval(board):+0; -0}");
         }
 

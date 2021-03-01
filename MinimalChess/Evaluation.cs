@@ -9,7 +9,7 @@ namespace MinimalChess
         public static int MinValue => -9999;
         public static int MaxValue => 9999;
 
-        public static int[] PieceValues = new int[14]
+        public static readonly int[] PieceValues = new int[14]
         {
              0,     //Black = 0,
              0,     //White = 1,
@@ -33,6 +33,7 @@ namespace MinimalChess
              0    //WhiteKing = 13,
         };
 
+        /*
         public static int Evaluate(Board board)
         {
             int score = 0;
@@ -42,58 +43,16 @@ namespace MinimalChess
                 score += PieceValues[j];
             }
             return score;
-        }
+        }*/
 
-        public static int EvaluatePST(Board board)
+        public static int Evaluate(Board board)
         {
-            int whiteScore = 0;
-            int blackScore = 0;
-            int white_king_edge = 0;
-            int black_king_edge = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                int j = (int)board[i] >> 1;
-                //TODO: 2D Lookuptable PST[Piece][Square]
-                switch(board[i])
-                {
-                    case Piece.WhitePawn:
-                        whiteScore += PieceValues[j] + PST.Pawn[PST.White[i]]; break;
-                    case Piece.WhiteKnight:
-                        whiteScore += PieceValues[j] + PST.Knight[PST.White[i]]; break;
-                    case Piece.WhiteBishop:
-                        whiteScore += PieceValues[j] + PST.Bishop[PST.White[i]]; break;
-                    case Piece.WhiteRook:
-                        whiteScore += PieceValues[j] + PST.Rook[PST.White[i]]; break;
-                    case Piece.WhiteQueen:
-                        whiteScore += PieceValues[j] + PST.Queen[PST.White[i]]; break;
-                    case Piece.WhiteKing:
-                        white_king_edge = PST.KingEndgame[PST.White[i]];
-                        whiteScore += PieceValues[j] + PST.King[PST.White[i]]; break;
-
-                    case Piece.BlackPawn:
-                        blackScore += PieceValues[j] - PST.Pawn[i]; break;
-                    case Piece.BlackKnight:
-                        blackScore += PieceValues[j] - PST.Knight[i]; break;
-                    case Piece.BlackBishop:
-                        blackScore += PieceValues[j] - PST.Bishop[i]; break;
-                    case Piece.BlackRook:
-                        blackScore += PieceValues[j] - PST.Rook[i]; break;
-                    case Piece.BlackQueen:
-                        blackScore += PieceValues[j] - PST.Queen[i]; break;
-                    case Piece.BlackKing:
-                        black_king_edge = -PST.KingEndgame[i];
-                        blackScore += PieceValues[j] - PST.King[i]; break;
-                }
-            }
-            if (blackScore == 0) //only bare king!
-                blackScore += black_king_edge;
-
-            if (whiteScore == 0) //only bare king!
-                whiteScore += white_king_edge;
-
-            return blackScore + whiteScore;
+            return PieceSquareTable.Evaluate(board);
+            //int score = 0;
+            //for (int i = 0; i < 64; i++)
+            //    score += PieceSquareTable.Value(board[i], i);
+            //return score;
         }
-
 
         public static int EvaluateWithMate(Board board)
         {
@@ -116,7 +75,7 @@ namespace MinimalChess
             best = default;
 
             //Eval just counts material! If the active color would be in check or stalemated this doesn't affect the score
-            int standPatScore = Evaluation.EvaluatePST(position);
+            int standPatScore = Evaluation.Evaluate(position);
 
             Color color = position.ActiveColor;
             //if inCheck we can't use standPat, need to escape check!

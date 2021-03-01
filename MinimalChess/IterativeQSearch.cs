@@ -24,6 +24,13 @@ namespace MinimalChess
         PrincipalVariation _pv;
         KillSwitch _killSwitch;
 
+        public IterativeQSearch(Board board)
+        {
+            _root = new Board(board);
+            _rootMoves = new LegalMoves(board);
+            _pv = new PrincipalVariation(20);
+        }
+
         public IterativeQSearch(Board board, List<Move> rootMoves)
         {
             _root = new Board(board);

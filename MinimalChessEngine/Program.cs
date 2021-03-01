@@ -29,7 +29,7 @@ namespace MinimalChessEngine
 
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.2.5 PST+Q";
+        const string NAME_VERSION = "MinimalChess 0.2.5 PSTSunfish+Q";
         static Engine _engine = new Engine();
 
         static async Task Main(string[] args)

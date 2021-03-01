@@ -5,7 +5,10 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Update="default.pst">
+    <None Update="pst\default.pst">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <None Update="pst\material.pst">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
   </ItemGroup>
