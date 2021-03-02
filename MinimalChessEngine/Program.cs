@@ -1,7 +1,9 @@
 ﻿using MinimalChess;
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -25,22 +27,47 @@ namespace MinimalChessEngine
         {
             Console.WriteLine($"info string {message}");
         }
+
+        static public void OptionPieceSquareTables(IEnumerable<string> pstFiles, string defaultNameIfPresent)
+        {
+            if (pstFiles == null || !pstFiles.Any())
+                return;
+
+            List<string> pstNames = pstFiles.Select(file => Path.GetFileNameWithoutExtension(file)).ToList();
+
+            string defaultName = pstNames.Contains("simple") ? "simple" : pstNames[0];
+            string uciOption = $"option name PieceSquareTables type combo default {defaultName}";
+            foreach (string pstName in pstNames)
+                uciOption += $" var {pstName}";
+
+            Console.WriteLine(uciOption);
+        }
     }
 
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.2.5 PSTSunfish+Q";
+        const string NAME_VERSION = "MinimalChess 0.2.6";
+        const string UCI_DEFAULT_PST = "simple";
+
         static Engine _engine = new Engine();
+        static string[] _pstFiles;
 
         static async Task Main(string[] args)
         {
             Console.WriteLine(NAME_VERSION);
-            _engine.Start();
+            Start();
             while (_engine.Running)
             {
                 string input = await Task.Run(Console.ReadLine);
                 ParseUciCommand(input);
             }
+        }
+
+        private static void Start()
+        {
+            //Scan for PSTs...
+            _pstFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pst", SearchOption.AllDirectories);
+            _engine.Start();
         }
 
         private static void ParseUciCommand(string input)
@@ -52,6 +79,7 @@ namespace MinimalChessEngine
                 case "uci":
                     Console.WriteLine($"id name {NAME_VERSION}");
                     Console.WriteLine($"id author Thomas Jahn");
+                    Uci.OptionPieceSquareTables(_pstFiles, UCI_DEFAULT_PST);
                     Console.WriteLine("uciok");
                     break;
                 case "isready":
@@ -71,10 +99,28 @@ namespace MinimalChessEngine
                 case "quit":
                     _engine.Quit();
                     break;
+                case "setoption":
+                    UciSetOption(tokens);
+                    break;
                 default:
                     Console.WriteLine("UNKNOWN INPUT " + input);
                     return;
             }
+        }
+
+        private static void UciSetOption(string[] tokens)
+        {
+            if(tokens[1] == "name" && tokens[2] == "PieceSquareTables" && tokens[3] == "value")
+            {
+                foreach(string pstFile in _pstFiles)
+                    if(Path.GetFileNameWithoutExtension(pstFile) == tokens[4])
+                    {
+                        var stream = File.OpenText(pstFile);
+                        PieceSquareTable.Load(stream);
+                        return;
+                    }
+            }
+            Console.WriteLine("setoption failed!");
         }
 
         private static void UciPosition(string[] tokens)
