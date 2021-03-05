@@ -1,0 +1,3 @@
+8/8/8/1B6/6p1/8/4KPpp/3N2kr w - -;ce 0;bm e2e1;acd 5;evals 582;moves 1734;positions 971;acs 0.001
+1k6/5RP1/1P6/1K6/6r1/8/8/8 w - -;ce 711;bm f7f8;acd 5;evals 10122;moves 32641;positions 11863;acs 0.009
+4k2b/7P/4KP1P/8/8/pB6/P7/8 w - -;ce 636;bm b3c2;acd 5;evals 3441;moves 8110;positions 4092;acs 0.003

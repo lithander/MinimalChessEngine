@@ -48,21 +48,27 @@ namespace MinimalChess
 
     public static class Pieces
     {
-        public static Piece ColorBits(Piece piece) => piece & Piece.ColorMask;
+        public const int MaxRank = 6;
+
+        public static int Rank(Piece piece) => ((int)piece >> 2);
+
+        public static Piece Type(Piece piece) => piece & Piece.TypeMask;
+
+        public static Piece Color(Piece piece) => piece & Piece.ColorMask;
 
         //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
-        public static Piece ColorBits(Color color) => (Piece)(color + 2);
+        public static Piece Color(Color color) => (Piece)(color + 2);
 
         //Use Piece.ColorMask to clear all bits execept the ones for color, then convert from Piece to Color by subtracting 2
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
-        public static Color GetColor(this Piece piece) => (Color)(ColorBits(piece) - 2);
+        public static Color GetColor(this Piece piece) => (Color)(Color(piece) - 2);
 
         //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
-        public static Piece OfColor(this Piece piece, Color color) => (piece & Piece.TypeMask) | ColorBits(color);
+        public static Piece OfColor(this Piece piece, Color color) => Type(piece) | Color(color);
 
-        internal static bool IsWhite(Piece piece) => ColorBits(piece) == Piece.White;
+        internal static bool IsWhite(Piece piece) => Color(piece) == Piece.White;
 
-        internal static bool IsBlack(Piece piece) => ColorBits(piece) == Piece.Black;
+        internal static bool IsBlack(Piece piece) => Color(piece) == Piece.Black;
 
         public static Color Flip(Color color) => (Color)(-(int)color);
     }

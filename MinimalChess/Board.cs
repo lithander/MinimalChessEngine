@@ -40,7 +40,9 @@ namespace MinimalChess
         private Piece[] _state = new Piece[64];
         private CastlingRights _castlingRights = CastlingRights.All;
         private Color _activeColor = Color.White;
-        private int _enPassantSquare = -1;
+        private sbyte _enPassantSquare = -1;
+        private sbyte _blackKingSquare = 0;
+        private sbyte _whiteKingSquare = 0;
         /*** STATE DATA ***/
 
         public Color ActiveColor => _activeColor;
@@ -70,6 +72,9 @@ namespace MinimalChess
             _activeColor = board._activeColor;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
+            _blackKingSquare = board._blackKingSquare;
+            _whiteKingSquare = board._whiteKingSquare;
+            ValidateKingSquares();
         }
 
         public Piece this[int index]
@@ -94,7 +99,7 @@ namespace MinimalChess
             if (fields.Length < 4)
                 throw new ArgumentException($"FEN needs at least 4 fields. Has only {fields.Length} fields.");
 
-            // Place pieces on board.
+            //Place pieces on board
             Array.Clear(_state, 0, 64);
             string[] fenPosition = fields[0].Split('/');
             int rank = 7;
@@ -114,18 +119,17 @@ namespace MinimalChess
                 rank--;
             }
 
-            // Set side to move.
+            //Set side to move
             _activeColor = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase) ? Color.White : Color.Black;
 
-            // Set castling rights.
+            //Set castling rights
             SetCastlingRights(CastlingRights.WhiteKingside, fields[2].IndexOf("K") > -1);
             SetCastlingRights(CastlingRights.WhiteQueenside, fields[2].IndexOf("Q") > -1);
             SetCastlingRights(CastlingRights.BlackKingside, fields[2].IndexOf("k") > -1);
             SetCastlingRights(CastlingRights.BlackQueenside, fields[2].IndexOf("q") > -1);
-            //TODO: Validate that pieces are at the places indicated by Castlling rights!
-
-            // Set en passant square.
-            _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquareIndex(fields[3]);
+            
+            //Set en-passant square
+            _enPassantSquare = fields[3] == "-" ? (sbyte)-1 : (sbyte)Notation.ToSquareIndex(fields[3]);
 
             //Move counts
             if (fields.Length == 6)
@@ -135,6 +139,29 @@ namespace MinimalChess
                 // Set full move number.
                 int fullMoveNumber = int.Parse(fields[5]);
             }
+
+            //Init king squares
+            _whiteKingSquare = -1;
+            _blackKingSquare = -1;
+            for (sbyte squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+                if (_state[squareIndex] == Piece.BlackKing)
+                    _blackKingSquare = squareIndex;
+                if (_state[squareIndex] == Piece.WhiteKing)
+                    _whiteKingSquare = squareIndex;
+            }
+
+            ValidateKingSquares();
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidateKingSquares()
+        {
+            if (_whiteKingSquare < 0 || _whiteKingSquare >= 64 || _state[_whiteKingSquare] != Piece.WhiteKing)
+                throw new Exception($"No WhiteKing found on square {_whiteKingSquare}!");
+
+            if (_blackKingSquare < 0 || _blackKingSquare >= 64 || _state[_blackKingSquare] != Piece.BlackKing)
+                throw new Exception($"No BlackKing found on squre {_blackKingSquare}!");
         }
 
         //*****************
@@ -143,6 +170,8 @@ namespace MinimalChess
 
         public Piece Play(Move move)
         {
+            ValidateKingSquares();
+
             Piece capturedPiece = _state[move.ToIndex];
             Piece movingPiece = _state[move.FromIndex];
             if (move.Promotion != Piece.None)
@@ -168,10 +197,9 @@ namespace MinimalChess
                 _state[rookMove.FromIndex] = Piece.None;
             }
 
-            //remember if move enables en passant
+            //update board state
             UpdateEnPassent(move);
-
-            //update castling rights
+            UpdateKingSquares(move);
             UpdateCastlingRights(move.FromIndex);
             UpdateCastlingRights(move.ToIndex);
 
@@ -194,6 +222,17 @@ namespace MinimalChess
                 SetCastlingRights(CastlingRights.BlackKingside, false);
         }
 
+        private void UpdateKingSquares(Move move)
+        {
+            int to = move.ToIndex;
+            Piece movingPiece = _state[move.ToIndex];
+
+            if (movingPiece == Piece.WhiteKing)
+                _whiteKingSquare = (sbyte)move.ToIndex;
+            if (movingPiece == Piece.BlackKing)
+                _blackKingSquare = (sbyte)move.ToIndex;
+        }
+
         private void UpdateEnPassent(Move move)
         {
             int to = move.ToIndex;
@@ -202,9 +241,9 @@ namespace MinimalChess
 
             //movingPiece needs to be either a BlackPawn...
             if (movingPiece == Piece.BlackPawn && Rank(to) == Rank(from) - 2)
-                _enPassantSquare = Down(from);
+                _enPassantSquare = (sbyte)Down(from);
             else if (movingPiece == Piece.WhitePawn && Rank(to) == Rank(from) + 2)
-                _enPassantSquare = Up(from);
+                _enPassantSquare = (sbyte)Up(from);
             else
                 _enPassantSquare = -1;
         }
@@ -311,17 +350,15 @@ namespace MinimalChess
 
         public bool IsChecked(Color color)
         {
-            Piece king = Piece.King.OfColor(color);
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (_state[squareIndex] == king)
-                    return IsSquareAttacked(squareIndex, Pieces.Flip(color));
-
-            throw new Exception($"Board state is missing a {king}!");
+            if(color == Color.White)
+                return IsSquareAttacked(_whiteKingSquare, Color.Black);
+            else
+                return IsSquareAttacked(_blackKingSquare, Color.White);
         }
 
         private bool IsSquareAttacked(int index, Color attackedBy)
         {
-            Piece color = Pieces.ColorBits(attackedBy);
+            Piece color = Pieces.Color(attackedBy);
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[index])
@@ -333,12 +370,7 @@ namespace MinimalChess
                 if (_state[target] == (Piece.Knight | color))
                     return true;
 
-            //3. King
-            foreach (int target in Attacks.King[index])
-                if (_state[target] == (Piece.King | color))
-                    return true;
-
-            //4. Queen or Bishops on diagonals lines
+            //3. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
@@ -348,7 +380,7 @@ namespace MinimalChess
                         break;
                 }
 
-            //5. Queen or Rook on straight lines
+            //4. Queen or Rook on straight lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                 {
@@ -357,6 +389,11 @@ namespace MinimalChess
                     if (_state[target] != Piece.None)
                         break;
                 }
+
+            //5. King
+            foreach (int target in Attacks.King[index])
+                if (_state[target] == (Piece.King | color))
+                    return true;
 
             return false; //not threatened by anyone!
         }
@@ -541,9 +578,9 @@ namespace MinimalChess
         private int Up(int index, int steps = 1) => index + steps * 8;
         private int Down(int index, int steps = 1) => index - steps * 8;
 
-        private bool IsValidTarget(Piece piece) => Pieces.ColorBits(piece) != Pieces.ColorBits(_activeColor); //'None' will also be a valid target
+        private bool IsValidTarget(Piece piece) => Pieces.Color(piece) != Pieces.Color(_activeColor); //'None' will also be a valid target
 
-        private bool IsActivePiece(Piece piece) => Pieces.ColorBits(piece) == Pieces.ColorBits(_activeColor);
+        private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_activeColor);
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {

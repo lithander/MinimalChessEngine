@@ -15,7 +15,7 @@ namespace MinimalChessEngine
         const int MOVE_TIME_MARGIN = 10;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
-        IterativeQSearch _search = null;
+        DebugSearch _search = null;
         Thread _searching = null;
         Move _best = default;
         long _t0 = -1;
@@ -179,7 +179,7 @@ namespace MinimalChessEngine
             if (_repetitions.Count < _moves.Count)
                 _moves.RemoveAll(move => _repetitions.Contains(move));
 
-            _search = new IterativeQSearch(_board, _moves);
+            _search = new DebugSearch(_board, _moves);
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
 
