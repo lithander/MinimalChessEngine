@@ -55,61 +55,50 @@ namespace MinimalChess
             Score = EvalPosition(_root, Depth, window);
         }
 
-        private bool TryEvalMove(Board position, Move move, int depth, SearchWindow window, out int score)
+        private IEnumerable<(Move, Board)> Expand(Board position, int depth = 0)
         {
-            score = 0;
-            Board resultingPosition = new Board(position, move);
-            if (resultingPosition.IsChecked(position.ActiveColor))
-                return false;
+            ChildNodes5 nodes = (depth == Depth) ? new ChildNodes5(position, _rootMoves) : new ChildNodes5(position, true);
+            MovesGenerated += nodes.Count;
+            nodes.PlayFirst(_pv[depth]);
+            nodes.SortMoves();
+            return nodes;
+        }
 
-            MovesPlayed++;
-            score = EvalPosition(resultingPosition, depth - 1, window);
-            return true;
+        private IEnumerable<Board> Expand(Board position, bool includeNonCaptures)
+        {
+            ChildNodes5 nodes = new ChildNodes5(position, includeNonCaptures);
+            nodes.SortMoves();
+            return nodes.Select(tuple => tuple.Board);
         }
 
         private int EvalPosition(Board position, int depth, SearchWindow window)
         {
+            if (_killSwitch.Triggered)
+                return 0;
+
             if (depth == 0)
-            {
-                PositionsEvaluated++;
-                return Evaluation.QEval2(position, window);
-            }
+                return QEval(position, window);
 
-            if (_killSwitch.Triggered) return 0;
-
+            PositionsEvaluated++;
             Color color = position.ActiveColor;
-            List<Move> moves = (depth == Depth) ? _rootMoves : new PseudoLegalMoves(position);
-            MovesGenerated += moves.Count;
 
-            long oldMovesPlayed = MovesPlayed;
-            var killer = _pv[depth];
-            if (moves.Contains(killer))
+            int expandedNodes = 0;
+            foreach ((Move move, Board board) in Expand(position, depth))
             {
-                if (TryEvalMove(position, killer, depth, window, out int score) && window.Inside(score, color))
+                expandedNodes++;
+
+                //For all rootmoves after the first search with "null window"
+                if (expandedNodes > 1 && depth == Depth)
                 {
-                    //this is a new best score!
-                    _pv[depth] = killer;
-                    if (window.Cut(score, color))
-                        return window.GetScore(color);
-                }
-            }
-
-            MoveOrdering.SortMvvLva(moves, position);
-
-            foreach (var move in moves)
-            {
-                if (move == killer)
-                    continue;
-
-                if (depth == Depth)
-                {
-                    //Search null window!
                     SearchWindow nullWindow = window.GetNullWindow(color);
-                    if (TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.IsWorseOrEqual(color, nullScore))
+                    int nullScore = EvalPosition(board, depth - 1, nullWindow);
+                    if (nullWindow.Outside(nullScore, color))
                         continue;
                 }
 
-                if (TryEvalMove(position, move, depth, window, out int score) && window.Inside(score, color))
+                int score = EvalPosition(board, depth - 1, window);
+
+                if (window.Inside(score, color))
                 {
                     //this is a new best score!
                     _pv[depth] = move;
@@ -118,7 +107,7 @@ namespace MinimalChess
                 }
             }
 
-            if (oldMovesPlayed == MovesPlayed) //no expansion happened from this node!
+            if (expandedNodes == 0) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);
@@ -127,6 +116,52 @@ namespace MinimalChess
             }
 
             return window.GetScore(color);
+        }
+
+        private int QEval(Board position, SearchWindow window)
+        {
+            PositionsEvaluated++;
+            Color color = position.ActiveColor;
+
+            //if inCheck we can't use standPat, need to escape check!
+            bool inCheck = position.IsChecked(color);
+            if (!inCheck)
+            {
+                int standPatScore = Evaluation.Evaluate(position);
+                //Cut will raise alpha and perform beta cutoff when standPatScore is too good
+                if (window.Cut(standPatScore, color))
+                    return window.GetScore(color);
+            }
+
+            bool canMove = false;
+            //play remaining captures (or any moves if king is in check)
+            foreach (var childNode in Expand(position, inCheck))
+            {
+                canMove = true;
+                //recursively evaluate the resulting position (after the capture) with QEval
+                int score = QEval(childNode, window);
+
+                //Cut will raise alpha and perform beta cutoff when the move is too good
+                if (window.Cut(score, color))
+                    break;
+            }
+
+            //checkmate?
+            if (!canMove && inCheck)
+                return (int)color * Evaluation.MinValue;
+
+            //stalemate?
+            if (!canMove && !AnyLegalMoves(position))
+                return 0;
+
+            //can't capture. We return the 'alpha' which may have been raised by "stand pat"
+            return window.GetScore(color);
+        }
+
+        public bool AnyLegalMoves(Board position)
+        {
+            var moves = new AnyLegalMoves(position);
+            return moves.CanMove;
         }
     }
 }

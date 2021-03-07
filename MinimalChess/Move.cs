@@ -711,4 +711,119 @@ namespace MinimalChess
             return GetEnumerator();
         }
     }
+
+
+    public class ChildNodes5 : IMovesVisitor, IEnumerable<(Move Move, Board Board)>
+    {
+        List<(int Score, Move Move)> _captures;
+        List<Move> _nonCaptures = null;
+        Board _parentNode;
+        bool _includeNonCaptures;
+
+        public ChildNodes5(Board parent, bool includeNonCaptures)
+        {
+            _parentNode = parent;
+            _includeNonCaptures = includeNonCaptures;
+            _captures = new List<(int, Move)>(10);
+            if (_includeNonCaptures)
+                _nonCaptures = new List<Move>(40);
+
+            _parentNode.CollectMoves(this);
+        }
+
+        public ChildNodes5(Board parent, List<Move> moves)
+        {
+            _parentNode = parent;
+            _includeNonCaptures = true;
+            _captures = new List<(int, Move)>(10);
+            _nonCaptures = new List<Move>(moves.Count); //won't need more space than this
+
+            foreach (var move in moves)
+                Add(move);
+        }
+
+        internal void PlayFirst(Move move)
+        {
+            int priorityScore = Pieces.MaxRank * Pieces.MaxRank;
+            Piece victim = _parentNode[move.ToIndex];
+            if (victim == Piece.None)
+            {
+                if(_nonCaptures.Remove(move))
+                    _captures.Add((priorityScore, move));
+            }
+            else
+            {
+                int index = _captures.FindIndex(0, entry => entry.Move == move);
+                if (index >= 0)
+                    _captures[index] = (priorityScore, move);
+            }
+        }
+
+        public void SortMoves()
+        {
+            _captures.Sort((a, b) => b.Score.CompareTo(a.Score));
+        }
+
+        private void Add(Move move)
+        {
+            //*** MVV-LVA ***
+            //Sort by the value of the victim in descending order.
+            //Groups of same-value victims are sorted by value of attecer in ascending order.
+            //***************
+            Piece victim = _parentNode[move.ToIndex];
+            if (victim != Piece.None)
+            {
+                Piece attacker = _parentNode[move.FromIndex];
+                //We can compute a rating that produces this order in one sorting pass:
+                //-> scale the victim value by max rank and then offset it by the attacker value
+                int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                _captures.Add((score, move));
+            }
+            else if (_includeNonCaptures)
+            {
+                _nonCaptures.Add(move);
+            }
+        }
+
+        private bool TryMove(Move move, out Board childNode)
+        {
+            //because the move was 'pseudolegal' we make sure it doesnt result in a position 
+            //where our (color) king is in check - in that case we can't play it
+            childNode = new Board(_parentNode, move);
+            return !childNode.IsChecked(_parentNode.ActiveColor);
+        }
+
+        public IEnumerator<(Move, Board)> GetEnumerator()
+        {
+            //Return the best capture and remove it until captures are depleated
+            foreach (var capture in _captures)
+                if (TryMove(capture.Move, out Board childNode))
+                    yield return (capture.Move, childNode);
+
+            if (_nonCaptures == null)
+                yield break;
+
+            //Return nonCaptures in any order until stack is depleated
+            foreach (var move in _nonCaptures)
+                if (TryMove(move, out Board childNode))
+                    yield return (move, childNode);
+        }
+
+        public int Count => _captures.Count + _nonCaptures?.Count ?? 0;
+
+        public bool Done => false;
+
+        public void Consider(Move move) => Add(move);
+
+        public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
+
+        public void Consider(int from, int to) => Add(new Move(from, to));
+
+        public void AddUnchecked(Move move) => Add(move);
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+    }
 }

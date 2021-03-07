@@ -80,13 +80,5 @@ namespace MinimalChess
             else
                 return new SearchWindow(Ceiling - 1, Ceiling);
         }
-
-        internal bool IsWorseOrEqual(Color color, int nullScore)
-        {
-            if (color == Color.White)
-                return nullScore <= Floor;
-            else
-                return nullScore >= Ceiling;
-        }
     }
 }

@@ -241,7 +241,7 @@ namespace MinimalChessBoard
         {
             ISearch search;
             if (qSearch)
-                search = new IterativeQSearch(board);
+                search = new DebugSearch(board);
             else
                 search = new FastIterativeSearch(board);
             
