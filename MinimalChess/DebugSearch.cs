@@ -57,18 +57,15 @@ namespace MinimalChess
 
         private IEnumerable<(Move, Board)> Expand(Board position, int depth = 0)
         {
-            ChildNodes5 nodes = (depth == Depth) ? new ChildNodes5(position, _rootMoves) : new ChildNodes5(position, true);
-            MovesGenerated += nodes.Count;
-            nodes.PlayFirst(_pv[depth]);
-            nodes.SortMoves();
-            return nodes;
+            MoveSequence moves = (depth == Depth) ? MoveSequence.FromList(position, _rootMoves) : MoveSequence.AllMoves(position);
+            MovesGenerated += moves.Count;
+            return moves.Boost(_pv[depth]).SortCaptures().PlayMoves();
         }
 
-        private IEnumerable<Board> Expand(Board position, bool includeNonCaptures)
+        private IEnumerable<Board> Expand(Board position, bool escapeCheck)
         {
-            ChildNodes5 nodes = new ChildNodes5(position, includeNonCaptures);
-            nodes.SortMoves();
-            return nodes.Select(tuple => tuple.Board);
+            MoveSequence nodes = escapeCheck ? MoveSequence.AllMoves(position) : MoveSequence.CapturesOnly(position);
+            return nodes.SortCaptures().Play();
         }
 
         private int EvalPosition(Board position, int depth, SearchWindow window)
@@ -83,7 +80,7 @@ namespace MinimalChess
             Color color = position.ActiveColor;
 
             int expandedNodes = 0;
-            foreach ((Move move, Board board) in Expand(position, depth))
+            foreach ((Move move, Board child) in Expand(position, depth))
             {
                 expandedNodes++;
 
@@ -91,12 +88,12 @@ namespace MinimalChess
                 if (expandedNodes > 1 && depth == Depth)
                 {
                     SearchWindow nullWindow = window.GetNullWindow(color);
-                    int nullScore = EvalPosition(board, depth - 1, nullWindow);
+                    int nullScore = EvalPosition(child, depth - 1, nullWindow);
                     if (nullWindow.Outside(nullScore, color))
                         continue;
                 }
 
-                int score = EvalPosition(board, depth - 1, window);
+                int score = EvalPosition(child, depth - 1, window);
 
                 if (window.Inside(score, color))
                 {
@@ -106,13 +103,13 @@ namespace MinimalChess
                         return window.GetScore(color);
                 }
             }
+            MovesPlayed += expandedNodes;
 
             if (expandedNodes == 0) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);
                 return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
-
             }
 
             return window.GetScore(color);
@@ -133,13 +130,13 @@ namespace MinimalChess
                     return window.GetScore(color);
             }
 
-            bool canMove = false;
+            int expandedNodes = 0;
             //play remaining captures (or any moves if king is in check)
-            foreach (var childNode in Expand(position, inCheck))
+            foreach (Board child in Expand(position, inCheck))
             {
-                canMove = true;
+                expandedNodes++;
                 //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(childNode, window);
+                int score = QEval(child, window);
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))
@@ -147,11 +144,11 @@ namespace MinimalChess
             }
 
             //checkmate?
-            if (!canMove && inCheck)
+            if (expandedNodes == 0 && inCheck)
                 return (int)color * Evaluation.MinValue;
 
             //stalemate?
-            if (!canMove && !AnyLegalMoves(position))
+            if (expandedNodes == 0 && !AnyLegalMoves(position))
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"

@@ -101,13 +101,13 @@ namespace MinimalChess
                 if (move == killer)
                     continue;
 
-                //if (depth == Depth)
-                //{
-                //    //Search null window!
-                //    SearchWindow nullWindow = window.GetNullWindow(color);
-                //    if (TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.IsWorseOrEqual(color, nullScore))
-                //        continue;
-                //}
+                if (depth == Depth)
+                {
+                    //Search null window!
+                    SearchWindow nullWindow = window.GetNullWindow(color);
+                    if (TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.Outside(nullScore, color))
+                        continue;
+                }
 
                 if (TryEvalMove(position, move, depth, window, out int score) && window.Inside(score, color))
                 {
