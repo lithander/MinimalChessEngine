@@ -55,10 +55,10 @@ Hit the play button and it should compile and start!
 
 ### Linux
 
-Read the official instructions on how to [Install .NET on Linux](https://docs.microsoft.com/en-us/dotnet/core/install/linux)
-There are also [Ubuntu Linux specific .NET Core installations instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu)
+Read the official instructions on how to [Install .NET on Linux](https://docs.microsoft.com/en-us/dotnet/core/install/linux).
+There are also [Ubuntu Linux specific installations instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu).
 
-Then you can clone the repository and compile it like this:
+You can clone the repository and compile it like this:
 
 ```
 $ wget https://packages.microsoft.com/config/ubuntu/20.10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
