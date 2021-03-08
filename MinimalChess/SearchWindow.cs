@@ -41,6 +41,23 @@
                 return score < Ceiling;
         }
 
+        public bool Outside(int score, Color color)
+        {
+            if (color == Color.White)
+                return score <= Floor;
+            else
+                return score >= Ceiling; //outside search window
+        }
+
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
+
+        public SearchWindow GetNullWindow(Color color)
+        {
+            //used to quickly determine that a move is not improving the score for color.
+            if (color == Color.White)
+                return new SearchWindow(Floor, Floor + 1);
+            else
+                return new SearchWindow(Ceiling - 1, Ceiling);
+        }
     }
 }

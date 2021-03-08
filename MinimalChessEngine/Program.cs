@@ -1,17 +1,22 @@
 ﻿using MinimalChess;
 using System;
+using System.IO;
 using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
     public static class Program
     {
+        const string NAME_VERSION = "MinimalChess 0.3";
+        const string UCI_DEFAULT_PST = "simple";
+
         static Engine _engine = new Engine();
+        static string[] _pstFiles;
 
         static async Task Main(string[] args)
         {
-            Console.WriteLine("MinimalChess 0.2.1");
-            _engine.Start();
+            Console.WriteLine(NAME_VERSION);
+            Start();
             while (_engine.Running)
             {
                 string input = await Task.Run(Console.ReadLine);
@@ -19,18 +24,23 @@ namespace MinimalChessEngine
             }
         }
 
+        private static void Start()
+        {
+            //Scan for PSTs...
+            _pstFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pst", SearchOption.AllDirectories);
+            _engine.Start();
+        }
+
         private static void ParseUciCommand(string input)
         {
-            //Aborting the program with Ctrl+D on Linux cause the Task that reads the console to return 'null'
-            if (input == null) return;
-
             //remove leading & trailing whitecases, convert to lower case characters and split using ' ' as delimiter
             string[] tokens = input.Trim().Split();
             switch (tokens[0])
             {
                 case "uci":
-                    Console.WriteLine("id name MinimalChess 0.2");
-                    Console.WriteLine("id author Thomas Jahn");
+                    Console.WriteLine($"id name {NAME_VERSION}");
+                    Console.WriteLine($"id author Thomas Jahn");
+                    Uci.OptionPieceSquareTables(_pstFiles, UCI_DEFAULT_PST);
                     Console.WriteLine("uciok");
                     break;
                 case "isready":
@@ -50,10 +60,28 @@ namespace MinimalChessEngine
                 case "quit":
                     _engine.Quit();
                     break;
+                case "setoption":
+                    UciSetOption(tokens);
+                    break;
                 default:
                     Console.WriteLine("UNKNOWN INPUT " + input);
                     return;
             }
+        }
+
+        private static void UciSetOption(string[] tokens)
+        {
+            if (tokens[1] == "name" && tokens[2] == "PieceSquareTables" && tokens[3] == "value")
+            {
+                foreach (string pstFile in _pstFiles)
+                    if (Path.GetFileNameWithoutExtension(pstFile) == tokens[4])
+                    {
+                        var stream = File.OpenText(pstFile);
+                        PieceSquareTable.Load(stream);
+                        return;
+                    }
+            }
+            Console.WriteLine("setoption failed!");
         }
 
         private static void UciPosition(string[] tokens)
@@ -62,10 +90,7 @@ namespace MinimalChessEngine
             if (tokens[1] == "startpos")
                 _engine.SetupPosition(new Board(Board.STARTING_POS_FEN));
             else if (tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-            {
-                string fen = string.Join(' ', tokens, 2, tokens.Length - 2);
-                _engine.SetupPosition(new Board(fen));
-            }
+                _engine.SetupPosition(new Board($"{tokens[2]} {tokens[3]} {tokens[4]} {tokens[5]} {tokens[6]} {tokens[7]}"));
             else
             {
                 Uci.Log("'position' parameters missing or not understood. Assuming 'startpos'.");

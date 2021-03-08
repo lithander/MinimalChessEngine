@@ -3,6 +3,7 @@ using System;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
+using System.Linq;
 
 namespace MinimalChessBoard
 {
@@ -45,10 +46,9 @@ namespace MinimalChessBoard
                         board = new Board(Board.STARTING_POS_FEN);
                         move = default;
                     }
-                    else if (command == "fen")
+                    else if (command.Count(c => c == '/') == 7) //Fen-string detection
                     {
-                        string fen = input.Substring(4);
-                        board.SetupPosition(fen);
+                        board.SetupPosition(input);
                         move = default;
                     }
                     else if (command == "perft")
@@ -117,7 +117,7 @@ namespace MinimalChessBoard
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine(" '----------------'");
-            Console.WriteLine($"  A B C D E F G H {Evaluation.Evaluate(board):+0.00;-0.00}");
+            Console.WriteLine($"  A B C D E F G H {PieceSquareTable.Evaluate(board):+0.00;-0.00}");
         }
 
         private static void SetColor(Piece piece, int rank, int file, Move move)
