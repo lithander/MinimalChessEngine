@@ -9,7 +9,7 @@ namespace MinimalChessEngine
 {
     class Engine
     {
-        const int REPEAT_POSITION_THRESHOLD = -50;
+        const int CONTEMPT = 0;
         const int MOVE_TIME_MARGIN = 10;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
@@ -159,7 +159,7 @@ namespace MinimalChessEngine
             Uci.Info(_search.Depth, score, _search.PositionsEvaluated, ElapsedMilliseconds, _search.PrincipalVariation);
 
             //Go for a draw?
-            if (_repetitions.Count > 0 && score < REPEAT_POSITION_THRESHOLD)
+            if (_repetitions.Count > 0 && score < CONTEMPT)
                 _best = _repetitions[0];
             else
                 _best = _search.PrincipalVariation[0];
