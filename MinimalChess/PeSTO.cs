@@ -4,6 +4,11 @@ namespace MinimalChess
 {
     public class PeSTO
     {
+        //PSTs and code based on a forum post by Ronald Friederich: 
+        //Source: http://talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=10#p772515
+
+        public static int LostValue => -9999;
+
         //strip the first bit and
         private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
 

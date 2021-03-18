@@ -106,7 +106,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);
-                return position.IsChecked(position.ActiveColor) ? (int)color * PieceSquareTable.LostValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * PeSTO.LostValue : 0;
             }
 
             return window.GetScore(color);
@@ -142,7 +142,7 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * PieceSquareTable.LostValue;
+                return (int)color * PeSTO.LostValue;
 
             //stalemate?
             if (expandedNodes == 0 && !AnyLegalMoves(position))
