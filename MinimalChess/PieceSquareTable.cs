@@ -71,18 +71,13 @@ namespace MinimalChess
                     int iBlackSquare = rank * 8 + file;
                     int iWhiteSquare = (7 - rank) * 8 + file;
                     Tables[PieceTableIndex(piece | Piece.Black), iBlackSquare] = -pieceSquareValue;
-                    Tables[PieceTableIndex(piece | Piece.White), iWhiteSquare] = (pieceValue + squareValueOffset);
+                    Tables[PieceTableIndex(piece | Piece.White), iWhiteSquare] = pieceSquareValue;
                 }
             }
         }
 
         //strip the first bit and
         private static int PieceTableIndex(Piece piece) => ((int)piece >> 1);
-
-        public static int Value(Piece piece, int squareIndex)
-        {
-            return Tables[PieceTableIndex(piece), squareIndex];
-        }
 
         public static int Evaluate(Board board)
         {
