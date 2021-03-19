@@ -418,4 +418,143 @@ namespace MinimalChess
 
         public void AddUnchecked(Move move) => Add(move);
     }
+
+    /*
+    class QSearchSortedMoveSequence : IMovesVisitor
+    {
+        List<(int Score, Move Move)> _scoredCaptures;
+        List<(int Score, Move Move)> _recaptures;
+        List<(int Score, Move Move)> _pvMoves;
+        List<Move> _moves;
+        Board _parentNode;
+        PrincipalVariation _pv;
+        int _pvDepth;
+        Move _lastMove;
+
+        public QSearchSortedMoveSequence(Board parent, PrincipalVariation pv, int pvDepth, Move lastMove)
+        {
+            _parentNode = parent;
+            _moves = new List<Move>(40);
+            _pvMoves = new List<(int Score, Move Move)>(pvDepth);
+            _recaptures = new List<(int Score, Move Move)>(3);
+            _pv = pv;
+            _pvDepth = pvDepth;
+            _lastMove = lastMove;
+            _parentNode.CollectMoves(this);
+        }
+
+        public QSearchSortedMoveSequence(Board parent, List<Move> moves, PrincipalVariation pv, int pvDepth)
+        {
+            _parentNode = parent;
+            _moves = new List<Move>(40);
+            _pvMoves = new List<(int Score, Move Move)>(pvDepth);
+            _recaptures = new List<(int Score, Move Move)>(3);
+            _pv = pv;
+            _pvDepth = pvDepth;
+            foreach (var move in moves)
+                Add(move);
+        }
+
+        private void Add(Move move)
+        {
+            if (_pv.Contains(move, _pvDepth, 1, out int offset))
+            {
+                _pvMoves.Add((-offset, move));
+            }
+            else if(_lastMove != default && move.ToIndex == _lastMove.ToIndex)
+            {
+                _recaptures.Add((0, move));
+            }
+            else 
+                _moves.Add(move);
+        }
+
+        internal IEnumerable<(Move, Board)> PlayMoves()
+        {
+            //string pvString = string.Join(' ', _pvMoves);
+            //Console.WriteLine(pvString);
+            //_pvMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
+            foreach (var move in _pvMoves)
+            {
+                var childNode = new Board(_parentNode, move.Move);
+                if(!childNode.IsChecked(_parentNode.ActiveColor))
+                    yield return (move.Move, childNode);
+            }
+
+            foreach (var move in _recaptures)
+            {
+                var childNode = new Board(_parentNode, move.Move);
+                if (!childNode.IsChecked(_parentNode.ActiveColor))
+                    yield return (move.Move, childNode);
+            }
+
+            _scoredCaptures = new List<(int Score, Move Move)>(10);
+            foreach (var move in _moves)
+            {
+                Piece victim = _parentNode[move.ToIndex];
+                if (victim == Piece.None)
+                    continue;
+
+                Board childNode = new Board(_parentNode, move);
+                if (childNode.IsChecked(_parentNode.ActiveColor))
+                    continue;
+
+                Piece attacker = _parentNode[move.FromIndex];
+                //We can compute a rating that produces this order in one sorting pass:
+                //-> scale the victim value by max rank and then offset it by the attacker value
+                int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                //score *= 50;
+                //score = PeSTO.Evaluate(childNode) * (int)_parentNode.ActiveColor;
+                //score -= Pieces.Rank(attacker);
+                _scoredCaptures.Add((score, move));
+            }
+
+            _scoredCaptures.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+            //Return the best capture and remove it until captures are depleated
+            foreach (var move in _scoredCaptures)
+            {
+                //Board childNode = new Board(_parentNode, move.Move);
+                //if (!childNode.IsChecked(_parentNode.ActiveColor))
+                    yield return (move.Move, new Board(_parentNode, move.Move));
+            }
+
+            //_scoredMoves = new List<(int Score, Move Move)>(_moves.Count);
+            foreach (var move in _moves)
+            {
+                Piece victim = _parentNode[move.ToIndex];
+                if (victim != Piece.None)
+                    continue;
+
+                Board childNode = new Board(_parentNode, move);
+                if (childNode.IsChecked(_parentNode.ActiveColor))
+                    continue;
+
+                yield return (move, childNode);
+
+                //int score = PeSTO.Evaluate(childNode) * (int)_parentNode.ActiveColor;
+                //score -= Pieces.Rank(_parentNode[move.FromIndex]);
+                //_scoredMoves.Add((score, move));
+            }
+
+            //_scoredMoves.Sort((a, b) => b.Score.CompareTo(a.Score));
+            //
+            ////Return the best capture and remove it until captures are depleated
+            //foreach (var move in _scoredMoves)
+            //    yield return (move.Move, new Board(_parentNode, move.Move));
+        }
+
+        public int Count => _moves.Count;
+
+        public bool Done => false;
+
+        public void Consider(Move move) => Add(move);
+
+        public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
+
+        public void Consider(int from, int to) => Add(new Move(from, to));
+
+        public void AddUnchecked(Move move) => Add(move);
+    }
+    */
 }

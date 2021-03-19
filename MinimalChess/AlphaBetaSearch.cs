@@ -36,7 +36,7 @@ namespace MinimalChess
         public void Search(int maxDepth)
         {
             Depth = maxDepth;
-            _pv = new PrincipalVariation(Depth);
+            _pv = new PrincipalVariation(20);
             var window = SearchWindow.Infinite;            
             Score = EvalPosition(_root, Depth, window);
         }

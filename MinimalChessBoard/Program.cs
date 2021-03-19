@@ -148,7 +148,7 @@ namespace MinimalChessBoard
 
         private static int QEval(Board position)
         {
-            return Evaluation.QEval(position, SearchWindow.Infinite, out Move capture);
+            return Evaluation.QEval(position, SearchWindow.Infinite);
         }     
 
         private static void Print(Board board, Move move = default)
@@ -171,7 +171,7 @@ namespace MinimalChessBoard
             Console.WriteLine(" '----------------'");
             Console.WriteLine($"  A B C D E F G H");
             Console.WriteLine();
-            Console.WriteLine($"  PSTs     {Evaluation.Evaluate(board):+0;-0}");
+            Console.WriteLine($"  PSTs     {PeSTO.Evaluate(board):+0;-0}");
             Console.WriteLine($"  Quiet    {QEval(board):+0; -0}");
         }
 
@@ -468,7 +468,7 @@ namespace MinimalChessBoard
                 else if(!refMoves.Contains(moves[0]))
                 {
                     error++;
-                    Console.WriteLine($"{line++} ERROR! bm={string.Join(' ', moves[0])}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
+                    Console.WriteLine($"{line++} WARNING! bm={string.Join(' ', moves[0])}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
                 }
                 else //GOOD! but how good?
                 {
@@ -523,7 +523,7 @@ namespace MinimalChessBoard
             foreach (var move in line)
                 copy.Play(move);
 
-            int playedScore = Evaluation.QEval(copy, SearchWindow.Infinite, out _);
+            int playedScore = Evaluation.QEval(copy, SearchWindow.Infinite);
             string pvString = string.Join(' ', line);
             if (playedScore != score)
             {

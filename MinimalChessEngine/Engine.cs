@@ -1,17 +1,15 @@
-﻿using System;
+﻿using MinimalChess;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
-using MinimalChess;
 
 
 namespace MinimalChessEngine
 {
     class Engine
     {
-        const int REPEAT_POSITION_THRESHOLD = -50;
+        const int CONTEMPT = 0;
         const int MOVE_TIME_MARGIN = 10;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
@@ -123,7 +121,7 @@ namespace MinimalChessEngine
 
         private void Search()
         {
-            while(true)
+            while (true)
             {
                 _tN = Now;
                 _search.SearchDeeper(() => RemainingTimeBudget < 0);
@@ -161,7 +159,7 @@ namespace MinimalChessEngine
             Uci.Info(_search.Depth, score, _search.PositionsEvaluated, ElapsedMilliseconds, _search.PrincipalVariation);
 
             //Go for a draw?
-            if (_repetitions.Count > 0 && score < REPEAT_POSITION_THRESHOLD)
+            if (_repetitions.Count > 0 && score < CONTEMPT)
                 _best = _repetitions[0];
             else
                 _best = _search.PrincipalVariation[0];
@@ -179,7 +177,7 @@ namespace MinimalChessEngine
             if (_repetitions.Count < _moves.Count)
                 _moves.RemoveAll(move => _repetitions.Contains(move));
 
-            _search = new DebugSearch(_board, _moves);
+            _search = new DebugSearch(_board);
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
 

@@ -1,52 +1,13 @@
 ﻿using MinimalChess;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
-    public static class Uci
-    {
-        static public void BestMove(Move move)
-        {
-            Console.WriteLine($"bestmove {move}");
-        }
-
-        static internal void Info(int depth, int score, long nodes, int timeMs, Move[] pv)
-        {
-            double tS = Math.Max(1,timeMs) / 1000.0;
-            int nps = (int)(nodes / tS);
-            Console.WriteLine($"info depth {depth} score cp {score} nodes {nodes} nps {nps} time {timeMs} pv {string.Join(' ', pv)}");
-        }
-
-        static public void Log(string message)
-        {
-            Console.WriteLine($"info string {message}");
-        }
-
-        static public void OptionPieceSquareTables(IEnumerable<string> pstFiles, string defaultNameIfPresent)
-        {
-            if (pstFiles == null || !pstFiles.Any())
-                return;
-
-            List<string> pstNames = pstFiles.Select(file => Path.GetFileNameWithoutExtension(file)).ToList();
-
-            string defaultName = pstNames.Contains(defaultNameIfPresent) ? defaultNameIfPresent : pstNames[0];
-            string uciOption = $"option name PieceSquareTables type combo default {defaultName}";
-            foreach (string pstName in pstNames)
-                uciOption += $" var {pstName}";
-
-            Console.WriteLine(uciOption);
-        }
-    }
-
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.2.7";
+        const string NAME_VERSION = "MinimalChess 0.3 dev (PeSTO)";
         const string UCI_DEFAULT_PST = "simple";
 
         static Engine _engine = new Engine();
@@ -110,10 +71,10 @@ namespace MinimalChessEngine
 
         private static void UciSetOption(string[] tokens)
         {
-            if(tokens[1] == "name" && tokens[2] == "PieceSquareTables" && tokens[3] == "value")
+            if (tokens[1] == "name" && tokens[2] == "PieceSquareTables" && tokens[3] == "value")
             {
-                foreach(string pstFile in _pstFiles)
-                    if(Path.GetFileNameWithoutExtension(pstFile) == tokens[4])
+                foreach (string pstFile in _pstFiles)
+                    if (Path.GetFileNameWithoutExtension(pstFile) == tokens[4])
                     {
                         var stream = File.OpenText(pstFile);
                         PieceSquareTable.Load(stream);
@@ -129,7 +90,10 @@ namespace MinimalChessEngine
             if (tokens[1] == "startpos")
                 _engine.SetupPosition(new Board(Board.STARTING_POS_FEN));
             else if (tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-                _engine.SetupPosition(new Board($"{tokens[2]} {tokens[3]} {tokens[4]} {tokens[5]} {tokens[6]} {tokens[7]}"));
+            {
+                string fen = string.Join(' ', tokens[2..]);
+                _engine.SetupPosition(new Board(fen));
+            }
             else
             {
                 Uci.Log("'position' parameters missing or not understood. Assuming 'startpos'.");
@@ -155,7 +119,7 @@ namespace MinimalChessEngine
                 TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
                 _engine.Go(timePerMove, searchDepth);
             }
-            else if(TryParse(tokens, "btime", out int blackTime) && TryParse(tokens, "wtime", out int whiteTime))
+            else if (TryParse(tokens, "btime", out int blackTime) && TryParse(tokens, "wtime", out int whiteTime))
             {
                 //Searching on a budget that may increase at certain intervals
                 //40 Moves in 5 Minutes = go wtime 300000 btime 300000 movestogo 40
@@ -167,11 +131,11 @@ namespace MinimalChessEngine
                 TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
                 _engine.Go(blackTime, whiteTime, blackIncrement, whiteIncrement, movesToGo, searchDepth);
             }
-            else if(TryParse(tokens, "depth", out int searchDepth))
+            else if (TryParse(tokens, "depth", out int searchDepth))
             {
                 _engine.Go(searchDepth);
             }
-            else if(IsDefined(tokens, "infinite"))
+            else if (IsDefined(tokens, "infinite"))
             {
                 //Infinite = go infinite
                 _engine.Go();

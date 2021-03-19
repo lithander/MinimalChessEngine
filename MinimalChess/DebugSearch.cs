@@ -15,31 +15,25 @@ namespace MinimalChess
         public int Depth { get; private set; }
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
-        public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
+        public Move[] PrincipalVariation => _pv.GetLine(0, Depth);
         public bool Aborted => _killSwitch.Triggered;
-        public bool GameOver => _pv.IsGameOver(Depth);
+        public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
         List<Move> _rootMoves = null;
-        PrincipalVariation _pv;
+        PrincipalVariation2 _pv;
         KillSwitch _killSwitch;
 
         public DebugSearch(Board board)
         {
             _root = new Board(board);
             _rootMoves = new LegalMoves(board);
-            _pv = new PrincipalVariation(20);
-        }
-
-        public DebugSearch(Board board, List<Move> rootMoves)
-        {
-            _root = new Board(board);
-            _rootMoves = rootMoves;
-            _pv = new PrincipalVariation(20);
+            _pv = new PrincipalVariation2();
         }
 
         public void Search(int maxDepth)
         {
+            Depth = 0;
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
@@ -49,15 +43,16 @@ namespace MinimalChess
             if (GameOver)
                 return;
 
-            _pv.Grow(++Depth);
+            Depth++;
+            _pv.Cleanup(0);
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
-            Score = EvalPosition(_root, Depth, window);
+            Score = EvalPosition(_root, 0, window);
         }
 
         private IEnumerable<(Move, Board)> Expand(Board position, int depth = 0)
         {
-            MoveSequence moves = (depth == Depth) ? MoveSequence.FromList(position, _rootMoves) : MoveSequence.AllMoves(position);
+            MoveSequence moves = (depth == 0) ? MoveSequence.FromList(position, _rootMoves) : MoveSequence.AllMoves(position);
             MovesGenerated += moves.Count;
             return moves.Boost(_pv[depth]).SortCaptures().PlayMoves();
         }
@@ -73,8 +68,8 @@ namespace MinimalChess
             if (_killSwitch.Triggered)
                 return 0;
 
-            if (depth == 0)
-                return QEval(position, window);
+            if (depth == Depth)
+                return QEval(position, window, depth);
 
             PositionsEvaluated++;
             Color color = position.ActiveColor;
@@ -85,16 +80,15 @@ namespace MinimalChess
                 expandedNodes++;
 
                 //For all rootmoves after the first search with "null window"
-                if (expandedNodes > 1 && depth == Depth)
+                if (expandedNodes > 1 && depth == 0)
                 {
                     SearchWindow nullWindow = window.GetNullWindow(color);
-                    int nullScore = EvalPosition(child, depth - 1, nullWindow);
+                    int nullScore = EvalPosition(child, depth + 1, nullWindow);
                     if (nullWindow.Outside(nullScore, color))
                         continue;
                 }
 
-                int score = EvalPosition(child, depth - 1, window);
-
+                int score = EvalPosition(child, depth + 1, window);
                 if (window.Inside(score, color))
                 {
                     //this is a new best score!
@@ -108,14 +102,14 @@ namespace MinimalChess
             if (expandedNodes == 0) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
-                _pv.Clear(depth);
+                _pv[depth] = default;
                 return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.MinValue : 0;
             }
 
             return window.GetScore(color);
         }
 
-        private int QEval(Board position, SearchWindow window)
+        private int QEval(Board position, SearchWindow window, int depth)
         {
             PositionsEvaluated++;
             Color color = position.ActiveColor;
@@ -136,7 +130,7 @@ namespace MinimalChess
             {
                 expandedNodes++;
                 //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(child, window);
+                int score = QEval(child, window, depth + 1);
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))

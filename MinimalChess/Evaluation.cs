@@ -37,7 +37,7 @@ namespace MinimalChess
 
         public static int Evaluate(Board board)
         {
-            return PieceSquareTable.Evaluate(board);
+            return PeSTO.Evaluate(board);
             //int score = 0;
             //for (int i = 0; i < 64; i++)
             //    score += PieceSquareTable.Value(board[i], i);
@@ -60,10 +60,8 @@ namespace MinimalChess
             return 0;
         }
 
-        public static int QEval(Board position, SearchWindow window, out Move best)
+        public static int QEval(Board position, SearchWindow window)
         {
-            best = default;
-
             //Eval just counts material! If the active color would be in check or stalemated this doesn't affect the score
             int standPatScore = Evaluation.Evaluate(position);
 
@@ -101,7 +99,7 @@ namespace MinimalChess
 
                 hasMoved = true;
                 //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(nextPosition, window, out _);
+                int score = QEval(nextPosition, window);
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))
