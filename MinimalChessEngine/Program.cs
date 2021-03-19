@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.3 PeSTO";
+        const string NAME_VERSION = "MinimalChess 0.3.1 PeSTO";
 
         static Engine _engine = new Engine();
 
@@ -75,7 +75,10 @@ namespace MinimalChessEngine
             if (tokens[1] == "startpos")
                 _engine.SetupPosition(new Board(Board.STARTING_POS_FEN));
             else if (tokens[1] == "fen") //rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1
-                _engine.SetupPosition(new Board($"{tokens[2]} {tokens[3]} {tokens[4]} {tokens[5]} {tokens[6]} {tokens[7]}"));
+            {
+                string fen = string.Join(' ', tokens[2..]);
+                _engine.SetupPosition(new Board(fen));
+            }
             else
             {
                 Uci.Log("'position' parameters missing or not understood. Assuming 'startpos'.");

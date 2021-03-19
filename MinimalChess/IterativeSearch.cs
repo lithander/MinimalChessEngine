@@ -12,9 +12,9 @@ namespace MinimalChess
         public int Depth { get; private set; }
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
-        public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
+        public Move[] PrincipalVariation => _pv.GetLine(Depth);
         public bool Aborted => _killSwitch.Triggered;
-        public bool GameOver => _pv.IsGameOver(Depth);
+        public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
         List<Move> _rootMoves = null;
@@ -25,14 +25,14 @@ namespace MinimalChess
         {
             _root = new Board(board);
             _rootMoves = new LegalMoves(board);
-            _pv = new PrincipalVariation(20);
+            _pv = new PrincipalVariation();
         }
 
         public IterativeSearch(Board board, List<Move> rootMoves)
         {
             _root = new Board(board);
             _rootMoves = rootMoves;
-            _pv = new PrincipalVariation(20);
+            _pv = new PrincipalVariation();
         }
 
         public void Search(int maxDepth)
@@ -105,7 +105,7 @@ namespace MinimalChess
             if (expandedNodes == 0) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
-                _pv.Clear(depth);
+                _pv[depth] = default;
                 return position.IsChecked(position.ActiveColor) ? (int)color * PeSTO.LostValue : 0;
             }
 
