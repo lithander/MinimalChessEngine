@@ -28,7 +28,7 @@ namespace MinimalChess
         {
             _root = new Board(board);
             _rootMoves = new LegalMoves(board);
-            _pv = new PrincipalVariation(20);
+            _pv = new PrincipalVariation();
         }
 
         public IterativeSearch(Board board, Action<LegalMoves> rootMovesModifier) : this(board)

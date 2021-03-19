@@ -17,7 +17,7 @@ namespace MinimalChess
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => Depth > 0 ? _pv.GetLine(Depth) : null;
         public bool Aborted => _killSwitch.Triggered;
-        public bool GameOver => _pv.IsGameOver(Depth);
+        public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
         List<Move> _rootMoves = null;
@@ -28,7 +28,7 @@ namespace MinimalChess
         {
             _root = new Board(board);
             _rootMoves = new LegalMoves(board);
-            _pv = new PrincipalVariation(20);
+            _pv = new PrincipalVariation();
         }
 
         public void Search(int maxDepth)
@@ -43,6 +43,11 @@ namespace MinimalChess
                 return;
 
             _pv.Grow(++Depth);
+            for (int i = Depth; i >= 0; i--)
+            {
+                var line = _pv.GetLine(i);
+                Console.WriteLine(string.Join(' ', line));
+            }
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);

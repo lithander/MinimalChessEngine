@@ -7,24 +7,14 @@ namespace MinimalChess
 {
     class PrincipalVariation
     {
-        readonly Move[] _moves;
-
-        public PrincipalVariation(int maxDepth)
-        {
-            int length = Index(maxDepth + 1);
-            _moves = new Move[length];
-        }
+        Move[] _moves = new Move[0];
+        int _depth = 0;
 
         private int Index(int depth)
         {
             //return depth + (depth - 1) + (depth - 2) + ... + 1;
             int d = depth - 1;
             return (d * d + d) / 2;
-        }
-
-        public void Clear()
-        {
-            Array.Clear(_moves, 0, _moves.Length);
         }
 
         public void Clear(int depth)
@@ -36,26 +26,45 @@ namespace MinimalChess
 
         public void Grow(int depth)
         {
-            //TODO: if depth > maxdepth return or else we get a crash. but that's fine for now as it will probably a bug has caused an "endless" search and we want to find those!
-            Clear(depth);
-            if (depth <= 1)
-                return;
+            while (_depth < depth)
+                GrowMainLine();
+        }
 
-            //copy previous line
-            int start = Index(depth-1);
-            int nullMove = Array.IndexOf(_moves, default, start, depth);
-            int count = nullMove - start;
-
-            Clear(depth);
-            int target = Index(depth);
-            for (int i = 0; i < count; i++)
-                _moves[target + i] = _moves[start + i];
-            
-            //copy to sub-pv's
-            for(int i = 1; i < depth; i++)
+        public void GrowMainLine()
+        {
+            _depth++;
+            int size = Index(_depth + 1);
+            Move[] moves = new Move[size];
+            //copy pv lines to new array
+            int to = 0;
+            for (int depth = 0; depth < _depth; depth++)
             {
-                this[i] = _moves[target + depth - i];
+                //copy the last d elements of the mainline 
+                for (int i = 0; i < depth; i++)
+                    moves[to++] = _moves[^(depth - i)];
+                //leave one free
+                to++;
             }
+            _moves = moves;
+        }
+
+        public void Grow()
+        {
+            _depth++;
+            int size = Index(_depth + 1);
+            Move[] moves = new Move[size];
+            //copy pv lines to new array
+            int from = 0;
+            int to = 0;
+            for (int d = 0; d < _depth; d++)
+            {
+                //copy the line 
+                for (int i = 0; i < d; i++)
+                    moves[to++] = _moves[from++];
+                //leave one free
+                to++;
+            }
+            _moves = moves;
         }
 
         public Move[] GetLine(int depth)
@@ -65,7 +74,7 @@ namespace MinimalChess
             int count = (nullMove == -1) ? depth : nullMove - start;
 
             Move[] line = new Move[count];
-            Array.Copy(_moves, Index(depth), line, 0, count);
+            Array.Copy(_moves, start, line, 0, count);
             return line;
         }
 
@@ -78,16 +87,15 @@ namespace MinimalChess
 
         public Move this[int depth]
         {
-            get 
-            { 
-                return _moves[Index(depth)]; 
+            get
+            {
+                return _moves[Index(depth)];
             }
             set
             {
                 int a = Index(depth);
                 _moves[a] = value;
-
-                int b = Index(depth -1);
+                int b = Index(depth - 1);
                 for (int i = 0; i < depth - 1; i++)
                     _moves[a + i + 1] = _moves[b + i];
             }
