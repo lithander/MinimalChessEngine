@@ -1,13 +1,12 @@
 ﻿using MinimalChess;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.3.1 PeSTO";
+        const string NAME_VERSION = "MinimalChess 0.3.2 PeSTO";
 
         static Engine _engine = new Engine();
 
