@@ -113,31 +113,6 @@ namespace MinimalChess
         }
     }
 
-    public static class MoveOrdering
-    {
-        public static void SortMvvLva(List<Move> moves, Board context)
-        {
-            int Score(Move move)
-            {
-                Piece victim = context[move.ToIndex];
-                if (victim == Piece.None)
-                    return 0;//we don't sort those
-                Piece attacker = context[move.FromIndex];
-                //Rating: Victims value first - offset by the attackers value
-                return ((100 * (int)victim) - (int)attacker);
-            }
-            moves.Sort((a, b) => Score(b).CompareTo(Score(a)));
-        }
-
-        public static void RemoveNonCapturesAndSortMvvLva(List<Move> moves, Board context)
-        {
-            //remove all non captures
-            moves.RemoveAll(move => context[move.ToIndex] == Piece.None);
-            //and sort the rest
-            SortMvvLva(moves, context);
-        }
-    }
-
     public class MoveSequence : IMovesVisitor
     {
         List<(int Score, Move Move)> _captures;
