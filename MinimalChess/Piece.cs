@@ -50,6 +50,7 @@ namespace MinimalChess
     {
         public const int MaxRank = 6;
 
+        //Pawn = 1, Knight = 2, Bishop = 3; Rook = 4, Queen = 5, King = 6
         public static int Rank(Piece piece) => ((int)piece >> 2);
 
         public static Piece Type(Piece piece) => piece & Piece.TypeMask;

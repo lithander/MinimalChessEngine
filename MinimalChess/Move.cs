@@ -419,6 +419,152 @@ namespace MinimalChess
         public void AddUnchecked(Move move) => Add(move);
     }
 
+    public class MoveSequence2 : IMovesVisitor
+    {
+        List<(int Score, Move Move)> _priority;
+        List<(int Score, Move Move)> _later = null;
+        Board _parentNode;
+        bool _includeNonCaptures;
+        PrincipalVariation _pv;
+        Killers _killers;
+        History _history;
+        int _depth;
+
+        const int PVScore = 10000;
+        const int KillerCaptureBonus = 1000;
+
+        public MoveSequence2(PrincipalVariation pv, Killers killer, History history, int depth)
+        {
+            _depth = depth;
+            _pv = pv;
+            _killers = killer;
+            _history = history;
+        }
+
+        public void FromList(Board position, List<Move> moves)
+        {
+            _parentNode = position;
+            _includeNonCaptures = true;
+            _priority = new List<(int, Move)>(10);
+            _later = new List<(int, Move)>(moves.Count); //won't need more space than this
+
+            foreach (var move in moves)
+                Add(move);
+        }
+
+        public void AllMoves(Board position)
+        {
+            _parentNode = position;
+            _includeNonCaptures = true;
+            _priority = new List<(int, Move)>(10);
+            _later = new List<(int, Move)>(40);
+
+            _parentNode.CollectMoves(this);
+        }
+        public void CapturesOnly(Board position)
+        {
+            _parentNode = position;
+            _includeNonCaptures = false;
+            _priority = new List<(int, Move)>(10);
+            _parentNode.CollectMoves(this);
+        }
+
+        private void Add(Move move)
+        {
+            //*** MVV-LVA ***
+            //Sort by the value of the victim in descending order.
+            //Groups of same-value victims are sorted by value of attecer in ascending order.
+            //***************
+            Piece victim = _parentNode[move.ToIndex];
+            if(move == _pv[_depth])
+            {
+                _priority.Add((PVScore, move));
+            }
+            else if(victim == Piece.None && _killers.Contains(move, _depth))
+            {
+                _priority.Add((0, move));
+            }
+            else if (victim != Piece.None)
+            {
+                Piece attacker = _parentNode[move.FromIndex];
+                //We can compute a rating that produces this order in one sorting pass:
+                //-> scale the victim value by max rank and then offset it by the attacker value
+                int mvvlva = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                //if (_killers.Contains(move, _depth))
+                //    mvvlva += KillerCaptureBonus;
+
+                    //if (_depth > 3)
+                    //{
+                    //    int see = (int)_parentNode.ActiveColor *  Evaluation.SEE(new Board(_parentNode, move));
+                    //    //Console.WriteLine(see + " vs " + mvvlva);
+                    //    _priority.Add((10000 + see + mvvlva, move));
+                    //}
+                    //else
+                    //{
+                _priority.Add((mvvlva, move));
+                //}
+            }
+            else if (_includeNonCaptures)
+            {
+                if(_history.Contains(move, out long value))
+                {
+                    int score = (int)value;
+                    _later.Add((score, move));
+                }
+                else
+                    _later.Add((0, move));
+            }
+        }
+
+        private bool TryMove(Move move, out Board childNode)
+        {
+            //because the move was 'pseudolegal' we make sure it doesnt result in a position 
+            //where our (color) king is in check - in that case we can't play it
+            childNode = new Board(_parentNode, move);
+            return !childNode.IsChecked(_parentNode.ActiveColor);
+        }
+
+        internal IEnumerable<(Move, Board)> PlayMoves()
+        {
+            _priority.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+            //Return the best capture and remove it until captures are depleated
+            foreach (var capture in _priority)
+                if (TryMove(capture.Move, out Board childNode))
+                {                    
+                    //Console.WriteLine(_depth + new string(' ', _killers.Index(_depth)) + capture.Score + ": " + capture.Move);
+                    yield return (capture.Move, childNode);
+                }
+
+            //Return nonCaptures in any order until stack is depleated
+            if (!_includeNonCaptures)
+                yield break;
+
+            _later.Sort((a, b) => b.Score.CompareTo(a.Score)); 
+            foreach (var quiet in _later)
+                if (TryMove(quiet.Move, out Board childNode))
+                {
+                    _MoveOrderRatio = _later.IndexOf(quiet) / (float)_later.Count;
+                    //Console.WriteLine(_depth + new string(' ', _killers.Index(_depth)) + "Q: " + quiet.Move);
+                    yield return (quiet.Move, childNode);
+                }
+        }
+
+        public static float _MoveOrderRatio = 0;
+
+        public int Count => _priority.Count + _later?.Count ?? 0;
+
+        public bool Done => false;
+
+        public void Consider(Move move) => Add(move);
+
+        public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
+
+        public void Consider(int from, int to) => Add(new Move(from, to));
+
+        public void AddUnchecked(Move move) => Add(move);
+    }
+
     /*
     class QSearchSortedMoveSequence : IMovesVisitor
     {

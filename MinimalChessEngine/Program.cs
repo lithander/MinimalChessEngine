@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.3 dev (PeSTO)";
+        const string NAME_VERSION = "MinimalChess 0.3.3 dev (Killer+History+PeSTO)";
         const string UCI_DEFAULT_PST = "simple";
 
         static Engine _engine = new Engine();

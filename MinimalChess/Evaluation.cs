@@ -63,7 +63,7 @@ namespace MinimalChess
         public static int QEval(Board position, SearchWindow window)
         {
             //Eval just counts material! If the active color would be in check or stalemated this doesn't affect the score
-            int standPatScore = Evaluation.Evaluate(position);
+            int standPatScore = Evaluate(position);
 
             Color color = position.ActiveColor;
             //if inCheck we can't use standPat, need to escape check!
@@ -110,7 +110,7 @@ namespace MinimalChess
             if (!hasMoved)
             {
                 if(inCheck)
-                    return (int)color * Evaluation.MinValue;
+                    return (int)color * MinValue;
 
                 //stalemate?
                 var moves = new AnyLegalMoves(position);

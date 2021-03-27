@@ -177,7 +177,7 @@ namespace MinimalChessEngine
             if (_repetitions.Count < _moves.Count)
                 _moves.RemoveAll(move => _repetitions.Contains(move));
 
-            _search = new DebugSearch(_board);
+            _search = new DebugSearch(_board, _moves);
             _search.SearchDeeper(); //do the first iteration. it's cheap, no time check, no thread
             Collect();
 

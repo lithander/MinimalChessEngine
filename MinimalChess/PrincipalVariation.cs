@@ -5,7 +5,7 @@ using System.Text;
 
 namespace MinimalChess
 {
-    class PrincipalVariation
+    public class PrincipalVariation
     {
         Move[] _moves = new Move[0];
         int _depth = 0;
@@ -84,6 +84,26 @@ namespace MinimalChess
             int nullMove = Array.IndexOf(_moves, default, start, depth);
             return nullMove != -1;
         }
+
+        public Move this[int depth, int offset]
+        {
+            get
+            {
+                int index = Index(depth);
+                return _moves[index + offset];
+            }
+        }
+
+        public bool Contains(Move move, int depth)
+        {
+            return Array.IndexOf(_moves, move) > -1;
+            for (int offset = 0; depth + offset <= _depth; offset += 2)
+                if (this[depth + offset, offset] == move)
+                    return true;
+
+            return false;
+        }
+
 
         public Move this[int depth]
         {
