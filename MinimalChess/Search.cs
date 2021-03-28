@@ -8,7 +8,7 @@ namespace MinimalChess
 {
     public interface ISearch
     {
-        long PositionsEvaluated { get; }
+        long NodesVisited { get; }
         long MovesGenerated { get; }
         long MovesPlayed { get; }
         Move[] PrincipalVariation { get; }

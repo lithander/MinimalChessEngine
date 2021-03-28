@@ -1,19 +1,31 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Text;
 
 namespace MinimalChess
 {
+    public enum MoveFlags
+    {
+        Empty = 0,
+        Capture = 1,
+        PV      = 2,
+        Killer  = 4,
+        History = 8
+    }
+
     public struct Move
     {
         public byte FromIndex;
         public byte ToIndex;
         public Piece Promotion;
+        public MoveFlags Flags;
 
         public Move(byte fromIndex, byte toIndex, Piece promotion)
         {
+            Flags = MoveFlags.Empty;
             FromIndex = fromIndex;
             ToIndex = toIndex;
             Promotion = promotion;
@@ -21,6 +33,7 @@ namespace MinimalChess
 
         public Move(int fromIndex, int toIndex)
         {
+            Flags = MoveFlags.Empty;
             FromIndex = (byte)fromIndex;
             ToIndex = (byte)toIndex;
             Promotion = Piece.None;
@@ -28,6 +41,7 @@ namespace MinimalChess
 
         public Move(int fromIndex, int toIndex, Piece promotion)
         {
+            Flags = MoveFlags.Empty;
             FromIndex = (byte)fromIndex;
             ToIndex = (byte)toIndex;
             Promotion = promotion;
@@ -49,6 +63,12 @@ namespace MinimalChess
             ToIndex = Notation.ToSquareIndex(toSquare);
             //the presence of a 5th character should mean promotion
             Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
+            Flags = MoveFlags.Empty;
+        }
+
+        public bool HasFlags(MoveFlags mask)
+        {
+            return (Flags & mask) == mask;
         }
 
         public override bool Equals(object obj)
@@ -476,7 +496,10 @@ namespace MinimalChess
             //Groups of same-value victims are sorted by value of attecer in ascending order.
             //***************
             Piece victim = _parentNode[move.ToIndex];
-            if(move == _pv[_depth])
+            if (victim != Piece.None)
+                move.Flags |= MoveFlags.Capture;
+
+            if (move == _pv[_depth])
             {
                 _priority.Add((PVScore, move));
             }
@@ -506,13 +529,9 @@ namespace MinimalChess
             }
             else if (_includeNonCaptures)
             {
-                if(_history.Contains(move, out long value))
-                {
-                    int score = (int)value;
-                    _later.Add((score, move));
-                }
-                else
-                    _later.Add((0, move));
+                long value = _history.GetValue(move);
+                Debug.Assert(value < int.MaxValue && value > int.MinValue);
+                _later.Add(((int)value, move));
             }
         }
 

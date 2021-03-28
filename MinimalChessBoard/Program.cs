@@ -512,7 +512,7 @@ namespace MinimalChessBoard
             search.Search(depth);
             moves = search.PrincipalVariation;
             score = search.Score;
-            evals = search.PositionsEvaluated;
+            evals = search.NodesVisited;
             positions = search.MovesPlayed;
             movegen = search.MovesGenerated;
         }
@@ -561,7 +561,7 @@ namespace MinimalChessBoard
                 long pvEval = search.Score;
                 long t1 = Stopwatch.GetTimestamp();
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
-                string result = $"ce {pvEval};bm {bestMove};acd {depth};evals {search.PositionsEvaluated};moves {search.MovesGenerated};positions {search.MovesPlayed};acs {dt:0.###}";
+                string result = $"ce {pvEval};bm {bestMove};acd {depth};evals {search.NodesVisited};moves {search.MovesGenerated};positions {search.MovesPlayed};acs {dt:0.###}";
                 target.WriteLine($"{fen};{result}");
                 target.Flush();
 

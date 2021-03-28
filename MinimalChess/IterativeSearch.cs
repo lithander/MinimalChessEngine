@@ -8,7 +8,7 @@ namespace MinimalChess
 {  
     public class IterativeSearch : ISearch
     {
-        public long PositionsEvaluated { get; private set; }
+        public long NodesVisited { get; private set; }
         public long MovesGenerated { get; private set; }
         public long MovesPlayed { get; private set; }
 
@@ -64,7 +64,7 @@ namespace MinimalChess
         {
             if (depth == 0)
             {
-                PositionsEvaluated++;
+                NodesVisited++;
                 return Evaluation.Evaluate(position);
             }
 

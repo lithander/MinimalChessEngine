@@ -156,7 +156,7 @@ namespace MinimalChessEngine
         private void Collect()
         {
             int score = (int)_search.Position.ActiveColor * _search.Score;
-            Uci.Info(_search.Depth, score, _search.PositionsEvaluated, ElapsedMilliseconds, _search.PrincipalVariation);
+            Uci.Info(_search.Depth, score, _search.NodesVisited, ElapsedMilliseconds, _search.PrincipalVariation);
 
             //Go for a draw?
             if (_repetitions.Count > 0 && score < CONTEMPT)

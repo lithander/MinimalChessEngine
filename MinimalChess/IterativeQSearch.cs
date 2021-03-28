@@ -8,7 +8,7 @@ namespace MinimalChess
 {
     public class IterativeQSearch : ISearch
     {
-        public long PositionsEvaluated { get; private set; }
+        public long NodesVisited { get; private set; }
         public long MovesGenerated { get; private set; }
         public long MovesPlayed { get; private set; }
 
@@ -75,7 +75,7 @@ namespace MinimalChess
             if (depth == 0)
                 return QEval(position, window);
 
-            PositionsEvaluated++;
+            NodesVisited++;
             Color color = position.ActiveColor;
 
             int expandedNodes = 0;
@@ -116,7 +116,7 @@ namespace MinimalChess
 
         private int QEval(Board position, SearchWindow window)
         {
-            PositionsEvaluated++;
+            NodesVisited++;
             Color color = position.ActiveColor;
 
             //if inCheck we can't use standPat, need to escape check!

@@ -5,124 +5,14 @@ using System.Linq;
 using System.Text;
 
 namespace MinimalChess
-{
-    public class Killers
-    {
-        List<Move> _moves = new List<Move>();
-        List<Move> _backup = new List<Move>();
-        int _depth = -1;
-
-        public void Grow(int depth)
-        {
-            _depth = depth;
-            while (_moves.Count < _depth)
-                _moves.Add(default);
-
-            while (_backup.Count < _depth)
-                _backup.Add(default);
-        }
-
-        public void Consider(Board position, Move move, int depth)
-        {
-            if (position[move.ToIndex] != Piece.None)
-                return; //not a quiet move!
-
-            int index = _depth - depth;
-            if(_moves[index] != move)
-            {
-                _backup[index] = _moves[index];
-                _moves[index] = move;
-            }
-        }
-
-        public bool Contains(Move move, int depth)
-        {
-            int index = _depth - depth;
-            return (_moves[index] == move || _backup[index] == move);
-        }
-
-        public int Index(int depth) => _depth - depth;
-    }
-
-    public class History
-    {
-        const int SIZE = 64 * 64;
-        long[] _dec = new long[SIZE];
-        long[] _inc = new long[SIZE];
-
-        int Index(Move move) => move.FromIndex + (move.ToIndex << 6);
-
-        public void Increase(Move move, int depth)
-        {
-            _inc[Index(move)] += depth * depth;
-        }
-
-        public void Decrease(Move move, int depth)
-        {
-            _dec[Index(move)] -= depth * depth;
-        }
-
-        public bool Contains(Move move, out long value)
-        {
-            int index = Index(move);
-            value = _inc[index] + _dec[index];
-            return _inc[index] > 0;
-        }
-
-        public void Print()
-        {
-            for(int i = 0; i < 64; i++)
-                for(int j = 0; j < 64; j++)
-                {
-                    int index = i + (j << 6);
-                    if(_inc[index] > 0 || _dec[index] < 0)
-                    {
-                        long value = _inc[index] + _dec[index];
-                        Move move = new Move(i, j);
-                        Console.WriteLine($"{move} Value: {value} (+{_inc[index]} {_dec[index]})");
-                    }
-                }
-        }
-
-        public void Stats()
-        {
-            int good = 0;
-            int bad = 0;
-            for (int i = 0; i < 64; i++)
-                for (int j = 0; j < 64; j++)
-                {
-                    int index = i + (j << 6);
-                    if (_inc[index] > 0 || _dec[index] < 0)
-                    {
-                        Move move = new Move(i, j);
-                        if (Contains(move, out long value))
-                        {
-                            if (value > 0)
-                                good++;
-                            else
-                                bad++;
-                        }
-                    }
-                }
-            Console.WriteLine($"History contains {good} good and {bad} bad moves!");
-        }
-    }
+{   
 
     public class DebugSearch : ISearch
     {
-        public long PositionsEvaluated { get; private set; }
-        public long MovesGenerated { get; private set; }
-        public long MovesPlayed { get; private set; }
+        public long NodesVisited { get; private set; }
 
-        public long PVCuts { get; private set; }
-        public long QuietGoodHistoryCuts { get; private set; }
-        public long QuietBadHistoryCuts { get; private set; }
-        public long KillerCuts { get; private set; }
-        public long CaptureCuts { get; private set; }
-        public long CaptureKillerCuts { get; private set; }
-        public long QuietCuts { get; private set; }
-        public double QuietCutRatioAccu { get; private set; }
-        public long NoCuts { get; private set; }
+        public long MovesGenerated => 0;
+        public long MovesPlayed => 0;
 
         public int Depth { get; private set; }
         public int Score { get; private set; }
@@ -132,28 +22,22 @@ namespace MinimalChess
         public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
-        List<Move> _rootMoves = null;
         PrincipalVariation _pv;
         KillSwitch _killSwitch;
-        Killers _killers;
-        History _history;
+        Playmaker _playmaker;
 
         public DebugSearch(Board board)
         {
             _root = new Board(board);
-            _rootMoves = new LegalMoves(board);
             _pv = new PrincipalVariation();
-            _killers = new Killers();
-            _history = new History();
+            _playmaker = new Playmaker(_pv);
         }
 
         public DebugSearch(Board board, List<Move> rootMoves)
         {
             _root = new Board(board);
-            _rootMoves = rootMoves;
             _pv = new PrincipalVariation();
-            _killers = new Killers();
-            _history = new History();
+            _playmaker = new Playmaker(_pv, rootMoves);
         }
 
         public void Search(int maxDepth)
@@ -169,34 +53,10 @@ namespace MinimalChess
                 return;
 
             _pv.Grow(++Depth);
-            _killers.Grow(Depth);
-            //Print PV
-            //for (int i = Depth; i >= 0; i--)
-            //{
-            //    var line = _pv.GetLine(i);
-            //    Console.WriteLine(string.Join(' ', line));
-            //}
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
-            //_history.Print();
-            long allQuietCuts = QuietCuts + QuietGoodHistoryCuts + QuietBadHistoryCuts;
-            int quietCutPercentile = (int)(100 * QuietCutRatioAccu / Math.Max(allQuietCuts,1));
-            Console.WriteLine($"Cuts by PV: {PVCuts}, Captures {CaptureCuts+CaptureKillerCuts} (~Killer {CaptureKillerCuts}), " +
-                $"Killer {KillerCuts}, Quiet {allQuietCuts} (~Good {QuietGoodHistoryCuts}, ~Bad {QuietBadHistoryCuts}, {quietCutPercentile}%), Played {NoCuts}");
-            //_history.Stats();
-        }
-
-        private IEnumerable<(Move, Board)> Expand(Board position, int depth)
-        {
-            MoveSequence2 moves = new MoveSequence2(_pv, _killers, _history, depth);
-            if (depth == Depth)
-                moves.FromList(position, _rootMoves);
-            else
-                moves.AllMoves(position);
-
-            MovesGenerated += moves.Count;
-            return moves.PlayMoves();
+            _playmaker.PrintStats();
         }
 
         private IEnumerable<Board> Expand(Board position, bool escapeCheck)
@@ -216,11 +76,11 @@ namespace MinimalChess
                 return QEval(position, window);
             }
 
-            PositionsEvaluated++;
+            NodesVisited++;
             Color color = position.ActiveColor;
 
             int expandedNodes = 0;
-            foreach ((Move move, Board child) in Expand(position, depth))
+            foreach ((Move move, Board child) in _playmaker.Play(position, depth))
             {
                 expandedNodes++;
 
@@ -233,66 +93,20 @@ namespace MinimalChess
                         continue;
                 }
 
-                float moveorder = MoveSequence2._MoveOrderRatio;
                 int score = EvalPosition(child, depth - 1, window);
-
-                bool isQuiet = position[move.ToIndex] == Piece.None;
                 if (window.Inside(score, color))
                 {
-                    bool wasPV = _pv[depth] == move;
-
-                    //bool anyPV = _pv.Contains(move, depth);
-                    //this is a new best score!
+                    _playmaker.NotifyBest(move, depth);
                     _pv[depth] = move;
                     if (window.Cut(score, color))
                     {
-                        Piece victim = position[move.ToIndex];
-                        if (wasPV)
-                        {
-                            PVCuts++;
-                            //Console.WriteLine(depth + new string(' ', Depth - depth) + "X by PV " + move);
-                        }
-                        else if(victim != Piece.None)
-                        {
-                            if (_killers.Contains(move, depth))
-                                CaptureKillerCuts++;
-                            else
-                                CaptureCuts++;
-                            //Console.WriteLine(depth + new string(' ', Depth - depth) + "X by Capture " + move);
-                        }
-                        else if (_killers.Contains(move, depth))
-                        {
-                            KillerCuts++;
-                            //Console.WriteLine(depth + new string(' ', Depth - depth) + "X by Killer " + move);
-                        }
-                        else
-                        {
-                            //Console.WriteLine("Quiet Cut: " + moveorder);
-                            QuietCutRatioAccu += moveorder;
-                            if (_history.Contains(move, out long value))
-                            {
-                                if(value > 0)
-                                    QuietGoodHistoryCuts++;
-                                else
-                                    QuietBadHistoryCuts++;
-                            }
-                            else
-                                QuietCuts++;
-                        }
-                        if (isQuiet)
-                            _history.Increase(move, depth);
-
-                        _killers.Consider(position, move, depth);
+                        _playmaker.NotifyCutoff(move, depth);
                         return window.GetScore(color);
                     }
                 }
-                //if (isQuiet)
-                //    _history.Decrease(move, depth);
+                else
+                    _playmaker.NotifyBad(move, depth);
             }
-            MovesPlayed += expandedNodes;
-            if(depth > 1)
-                NoCuts++;
-            //Console.WriteLine(depth + new string(' ', Depth - depth) + "Played");
 
             if (expandedNodes == 0) //no expansion happened from this node!
             {
@@ -306,7 +120,7 @@ namespace MinimalChess
 
         private int QEval(Board position, SearchWindow window)
         {
-            PositionsEvaluated++;
+            NodesVisited++;
             Color color = position.ActiveColor;
 
             //if inCheck we can't use standPat, need to escape check!
