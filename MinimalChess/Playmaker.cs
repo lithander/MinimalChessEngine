@@ -20,7 +20,7 @@ namespace MinimalChess
                 _backup.Add(default);
         }
 
-        public void Consider(Move move, int depth)
+        public void Remember(Move move, int depth)
         {
             if (move.HasFlags(MoveFlags.Capture))
                 return;
@@ -233,10 +233,6 @@ namespace MinimalChess
             public bool Done => false;
 
             public void Consider(Move move) => Add(move);
-
-            public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
-
-            public void Consider(int from, int to) => Add(new Move(from, to));
 
             public void AddUnchecked(Move move) => Add(move);
         }

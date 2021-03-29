@@ -23,13 +23,6 @@ namespace MinimalChess
         public Piece Promotion;
         public MoveFlags Flags;
 
-        public Move(byte fromIndex, byte toIndex, Piece promotion)
-        {
-            Flags = MoveFlags.Empty;
-            FromIndex = fromIndex;
-            ToIndex = toIndex;
-            Promotion = promotion;
-        }
 
         public Move(int fromIndex, int toIndex)
         {
@@ -121,8 +114,6 @@ namespace MinimalChess
     {
         public bool Done { get; }
         public void Consider(Move move);
-        public void Consider(int from, int to);
-        public void Consider(int from, int to, Piece promotion);
         void AddUnchecked(Move move);
     }
 
@@ -149,16 +140,6 @@ namespace MinimalChess
                 return;
 
             Add(move);
-        }
-
-        public void Consider(int from, int to, Piece promotion)
-        {
-            Consider(new Move(from, to, promotion));
-        }
-
-        public void Consider(int from, int to)
-        {
-            Consider(new Move(from, to));
         }
 
         public void AddUnchecked(Move move)
@@ -197,16 +178,6 @@ namespace MinimalChess
         {
             //only add if the move doesn't result in a check for active color
             Add(move);
-        }
-
-        public void Consider(int from, int to, Piece promotion)
-        {
-            Add(new Move(from, to, promotion));
-        }
-
-        public void Consider(int from, int to)
-        {
-            Add(new Move(from, to));
         }
 
         public void AddUnchecked(Move move)
@@ -256,16 +227,6 @@ namespace MinimalChess
                 return;
 
             CanMove = true;
-        }
-
-        public void Consider(int from, int to, Piece promotion)
-        {
-            Consider(new Move(from, to, promotion));
-        }
-
-        public void Consider(int from, int to)
-        {
-            Consider(new Move(from, to));
         }
 
         public void AddUnchecked(Move move)
@@ -431,10 +392,6 @@ namespace MinimalChess
         public bool Done => false;
 
         public void Consider(Move move) => Add(move);
-
-        public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
-
-        public void Consider(int from, int to) => Add(new Move(from, to));
 
         public void AddUnchecked(Move move) => Add(move);
     }

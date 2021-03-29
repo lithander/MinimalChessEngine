@@ -100,7 +100,7 @@ namespace MinimalChess
                     if (window.Cut(score, color))
                     {
                         _history.RememberCutoff(move, depth);
-                        _killers.Consider(move, depth);
+                        _killers.Remember(move, depth);
                         return window.GetScore(color);
                     }
                 }
