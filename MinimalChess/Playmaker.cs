@@ -20,16 +20,11 @@ namespace MinimalChess
                 _backup.Add(default);
         }
 
-        public void Consider(Board position, Move move, int depth)
+        public void Consider(Move move, int depth)
         {
-            if (position[move.ToIndex] != Piece.None)
-                return; //not a quiet move!
+            if (move.HasFlags(MoveFlags.Capture))
+                return;
 
-            Store(move, depth);
-        }
-
-        public void Store(Move move, int depth)
-        {
             int index = _depth - depth;
             if (_moves[index] != move)
             {
@@ -54,16 +49,6 @@ namespace MinimalChess
 
         int Index(Move move) => move.FromIndex + (move.ToIndex << 6);
 
-        public void Increase(Move move, int delta)
-        {
-            _history[Index(move)] += delta;
-        }
-
-        public void Decrease(Move move, int delta)
-        {
-            _history[Index(move)] -= delta;
-        }
-
         public long GetValue(Move move)
         {
             int index = Index(move);
@@ -85,6 +70,23 @@ namespace MinimalChess
                 }
         }
 
+        internal void RememberCutoff(Move move, int depth)
+        {
+            if (!move.HasFlags(MoveFlags.Capture))
+                _history[Index(move)] += depth * depth;
+        }
+        internal void RememberBest(Move move, int depth)
+        {
+            if (!move.HasFlags(MoveFlags.Capture))
+                _history[Index(move)] += depth * depth;
+        }
+
+        internal void RememberWeak(Move move, int depth)
+        {
+            if (!move.HasFlags(MoveFlags.Capture))
+                _history[Index(move)] -= depth;
+        }
+
         public void PrintStats()
         {
             int good = 0;
@@ -101,7 +103,7 @@ namespace MinimalChess
                     min = Math.Min(min, value);
                     if (value > 0)
                         good++;
-                    else if(value < 0)
+                    else if (value < 0)
                         bad++;
                 }
             Console.WriteLine($"History contains {good} good and {bad} bad moves! Max score: {max}, Min score {min}");
@@ -116,61 +118,127 @@ namespace MinimalChess
         int _depth = -1;
         List<Move> _rootMoves = null;
 
-
-        public Playmaker(PrincipalVariation pv, IEnumerable<Move> rootMoves)
+        public Playmaker(PrincipalVariation pv, Killers killers, History history, IEnumerable<Move> rootMoves)
         {
             _pv = pv;
-            _killers = new Killers();
-            _history = new History();
-            _rootMoves = new List<Move>(rootMoves);
+            _killers = killers;
+            _history = history;
 
-        }
-
-        public Playmaker(PrincipalVariation pv)
-        {
-            _pv = pv;
-            _killers = new Killers();
-            _history = new History();
+            if (rootMoves != null)
+                _rootMoves = new List<Move>(rootMoves);
         }
 
         public IEnumerable<(Move, Board)> Play(Board position, int depth)
         {
-            while(depth > _depth)
-                _killers.Grow(++_depth);
+            _depth = Math.Max(_depth, depth);
+            bool isRoot = depth == _depth;
 
-            MoveSequence2 moves = new MoveSequence2(_pv, _killers, _history, depth);
-            if (depth == _depth && _rootMoves != null)
-                moves.FromList(position, _rootMoves);
-            else
-                moves.AllMoves(position);
-
-            return moves.PlayMoves();
+            //there are multiple MoveSequence being played at the same time, so we create a MoveSequence instance to keep track
+            MoveSequence moves = new MoveSequence(_pv, _killers, _history, depth);
+            return moves.PlayMoves(position, isRoot ? _rootMoves : null);
         }
 
-        internal void NotifyCutoff(Move move, int depth)
+        public class MoveSequence : IMovesVisitor
         {
-            if (move.HasFlags(MoveFlags.Capture))
-                return; //only quiet cutoffs are stored
+            List<(int Score, Move Move)> _priority;
+            List<(int Score, Move Move)> _later = null;
+            Board _position;
+            PrincipalVariation _pv;
+            Killers _killers;
+            History _history;
+            int _depth;
 
-            _history.Increase(move, depth*depth);
-            _killers.Store(move, depth);
-        }
+            const int PV_SCORE = Pieces.MaxRank * Pieces.MaxRank;
 
-        internal void NotifyBest(Move move, int depth)
-        {
-            if (!move.HasFlags(MoveFlags.Capture))
-                _history.Increase(move, depth * depth);
-        }
+            public MoveSequence(PrincipalVariation pv, Killers killer, History history, int depth)
+            {
+                _depth = depth;
+                _pv = pv;
+                _killers = killer;
+                _history = history;
 
-        internal void NotifyBad(Move move, int depth)
-        {
-            if (!move.HasFlags(MoveFlags.Capture))
-                _history.Decrease(move, depth);
-        }
+                _priority = new List<(int, Move)>(10);
+                _later = new List<(int, Move)>(40);
+            }
 
-        public void PrintStats()
-        {
-            _history.PrintStats();
+            internal IEnumerable<(Move, Board)> PlayMoves(Board position, List<Move> moves)
+            {
+                _position = position;
+
+                if (moves != null)
+                {
+                    foreach (var move in moves)
+                        Add(move);
+                }
+                else
+                {
+                    _position.CollectMoves(this);
+                }
+
+                _priority.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+                //Return the best capture and remove it until captures are depleated
+                foreach (var capture in _priority)
+                    if (TryMove(capture.Move, out Board childNode))
+                    {
+                        //Console.WriteLine(_depth + new string(' ', _killers.Index(_depth)) + capture.Score + ": " + capture.Move);
+                        yield return (capture.Move, childNode);
+                    }
+
+                _later.Sort((a, b) => b.Score.CompareTo(a.Score));
+
+                foreach (var quiet in _later)
+                    if (TryMove(quiet.Move, out Board childNode))
+                        yield return (quiet.Move, childNode);
+            }
+
+            private bool TryMove(Move move, out Board childNode)
+            {
+                //because the move was 'pseudolegal' we make sure it doesnt result in a position 
+                //where our (color) king is in check - in that case we can't play it
+                childNode = new Board(_position, move);
+                return !childNode.IsChecked(_position.ActiveColor);
+            }
+
+            private void Add(Move move)
+            {
+                Piece victim = _position[move.ToIndex];
+                if (victim != Piece.None)
+                    move.Flags |= MoveFlags.Capture;
+
+                if (move == _pv[_depth])
+                {
+                    _priority.Add((PV_SCORE, move));
+                }
+                else if (victim == Piece.None && _killers.Contains(move, _depth))
+                {
+                    _priority.Add((0, move));
+                }
+                else if (victim != Piece.None)
+                {
+                    Piece attacker = _position[move.FromIndex];
+                    //*** MVV-LVA ***
+                    //Sort by the value of the victim in descending order. Ties are broken by playing the highes valued attacker first.
+                    //We can compute a rating that produces this order in one sorting pass:
+                    int mvvlva = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                    _priority.Add((mvvlva, move));
+                }
+                else
+                {
+                    long value = _history.GetValue(move);
+                    _later.Add(((int)value, move));
+                }
+            }
+
+            public bool Done => false;
+
+            public void Consider(Move move) => Add(move);
+
+            public void Consider(int from, int to, Piece promotion) => Add(new Move(from, to, promotion));
+
+            public void Consider(int from, int to) => Add(new Move(from, to));
+
+            public void AddUnchecked(Move move) => Add(move);
         }
     }
 }

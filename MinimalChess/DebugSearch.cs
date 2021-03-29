@@ -24,20 +24,17 @@ namespace MinimalChess
         Board _root = null;
         PrincipalVariation _pv;
         KillSwitch _killSwitch;
+        History _history;
+        Killers _killers;
         Playmaker _playmaker;
 
-        public DebugSearch(Board board)
+        public DebugSearch(Board board, List<Move> rootMoves = null)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
-            _playmaker = new Playmaker(_pv);
-        }
-
-        public DebugSearch(Board board, List<Move> rootMoves)
-        {
-            _root = new Board(board);
-            _pv = new PrincipalVariation();
-            _playmaker = new Playmaker(_pv, rootMoves);
+            _history = new History();
+            _killers = new Killers();
+            _playmaker = new Playmaker(_pv, _killers, _history, rootMoves);
         }
 
         public void Search(int maxDepth)
@@ -52,11 +49,13 @@ namespace MinimalChess
             if (GameOver)
                 return;
 
-            _pv.Grow(++Depth);
+            Depth++;
+            _pv.Grow(Depth);
+            _killers.Grow(Depth);
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
-            _playmaker.PrintStats();
+            _history.PrintStats();
         }
 
         private IEnumerable<Board> Expand(Board position, bool escapeCheck)
@@ -96,16 +95,17 @@ namespace MinimalChess
                 int score = EvalPosition(child, depth - 1, window);
                 if (window.Inside(score, color))
                 {
-                    _playmaker.NotifyBest(move, depth);
                     _pv[depth] = move;
+                    _history.RememberBest(move, depth);
                     if (window.Cut(score, color))
                     {
-                        _playmaker.NotifyCutoff(move, depth);
+                        _history.RememberCutoff(move, depth);
+                        _killers.Consider(move, depth);
                         return window.GetScore(color);
                     }
                 }
                 else
-                    _playmaker.NotifyBad(move, depth);
+                    _history.RememberWeak(move, depth);
             }
 
             if (expandedNodes == 0) //no expansion happened from this node!
