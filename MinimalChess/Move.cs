@@ -343,15 +343,15 @@ namespace MinimalChess
             Piece victim = _parentNode[move.ToIndex];
             if (victim != Piece.None)
             {
-                Piece attacker = _parentNode[move.FromIndex];
                 //We can compute a rating that produces this order in one sorting pass:
                 //-> scale the victim value by max rank and then offset it by the attacker value
-                int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
-                _captures.Add((score, move));
+                //Piece attacker = _parentNode[move.FromIndex];
+                //int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                //_captures.Add((score, move));
 
-                //int see = (int)_parentNode.ActiveColor * Evaluation.SEE(_parentNode, move);
-                //if(see >= 0 || _includeNonCaptures)
-                //    _captures.Add((see, move));
+                int see = (int)_parentNode.ActiveColor * Evaluation.SEE(_parentNode, move);
+                if(see >= 0 || _includeNonCaptures)
+                    _captures.Add((see, move));
 
             }
             else if (_includeNonCaptures)
