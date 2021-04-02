@@ -109,7 +109,7 @@ namespace MinimalChess
                 {
                     //Search null window!
                     SearchWindow nullWindow = window.GetNullWindow(color);
-                    if(TryEvalMove(position, move, depth, nullWindow, out int nullScore) && nullWindow.Outside(nullScore, color))
+                    if(TryEvalMove(position, move, depth, nullWindow, out int nullScore) && !nullWindow.Inside(nullScore, color))
                         continue;
                 }
 

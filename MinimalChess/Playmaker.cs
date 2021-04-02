@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace MinimalChess
@@ -8,6 +9,7 @@ namespace MinimalChess
     {
         List<Move> _moves = new List<Move>();
         List<Move> _backup = new List<Move>();
+        List<Move> _backup2 = new List<Move>();
         int _depth = -1;
 
         public void Grow(int depth)
@@ -18,6 +20,9 @@ namespace MinimalChess
 
             while (_backup.Count < _depth)
                 _backup.Add(default);
+
+            while (_backup2.Count < _depth)
+                _backup2.Add(default);
         }
 
         public void Remember(Move move, int depth)
@@ -28,15 +33,42 @@ namespace MinimalChess
             int index = _depth - depth;
             if (_moves[index] != move)
             {
+                if (_backup[index] != move)
+                {
+                    _backup2[index] = _backup[index];
+                }
+
                 _backup[index] = _moves[index];
                 _moves[index] = move;
+
+                Debug.Assert(_backup2[index] == default || (_backup2[index] != _backup[index] && _backup2[index] != _moves[index]));
             }
         }
 
-        public bool Contains(Move move, int depth)
+        public bool Contains(Move move, int depth, out int order)
         {
             int index = _depth - depth;
-            return (_moves[index] == move || _backup[index] == move);
+
+            if (_moves[index] == move)
+            {
+                order = 0;
+                return true;
+            }
+
+            if (_backup[index] == move)
+            {
+                order = -1;
+                return true;
+            }
+
+            if (_backup2[index] == move)
+            {
+                order = -2;
+                return true;
+            }
+            order = -3;
+            return false;
+            //return _moves[index] == move || _backup[index] == move || _backup2[index] == move);
         }
 
         public int Index(int depth) => _depth - depth;
@@ -148,7 +180,7 @@ namespace MinimalChess
             History _history;
             int _depth;
 
-            const int PV_SCORE = Pieces.MaxRank * Pieces.MaxRank;
+            const int PV_SCORE = int.MaxValue;
 
             public MoveSequence(PrincipalVariation pv, Killers killer, History history, int depth)
             {
@@ -202,6 +234,8 @@ namespace MinimalChess
 
             private void Add(Move move)
             {
+                //Debug.Assert(_position[move.ToIndex] == Piece.None || move.HasFlags(MoveFlags.Capture));
+
                 Piece victim = _position[move.ToIndex];
                 if (victim != Piece.None)
                     move.Flags |= MoveFlags.Capture;
@@ -210,18 +244,21 @@ namespace MinimalChess
                 {
                     _priority.Add((PV_SCORE, move));
                 }
-                else if (victim == Piece.None && _killers.Contains(move, _depth))
+                else if (victim == Piece.None && _killers.Contains(move, _depth, out int order))
                 {
-                    _priority.Add((0, move));
+                    _priority.Add((order, move));
                 }
                 else if (victim != Piece.None)
                 {
-                    Piece attacker = _position[move.FromIndex];
                     //*** MVV-LVA ***
                     //Sort by the value of the victim in descending order. Ties are broken by playing the highes valued attacker first.
                     //We can compute a rating that produces this order in one sorting pass:
+                    Piece attacker = _position[move.FromIndex];
                     int mvvlva = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
                     _priority.Add((mvvlva, move));
+
+                    //int see = (int)_position.ActiveColor * Evaluation.SEE(_position, move);
+                    //_priority.Add((see, move));
                 }
                 else
                 {

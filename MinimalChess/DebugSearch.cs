@@ -88,7 +88,7 @@ namespace MinimalChess
                 {
                     SearchWindow nullWindow = window.GetNullWindow(color);
                     int nullScore = EvalPosition(child, depth - 1, nullWindow);
-                    if (nullWindow.Outside(nullScore, color))
+                    if (!nullWindow.Inside(nullScore, color))
                         continue;
                 }
 

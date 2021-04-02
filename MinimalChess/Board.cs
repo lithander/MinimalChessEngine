@@ -305,6 +305,13 @@ namespace MinimalChess
                     AddMoves(visitor, squareIndex);
         }
 
+        internal void CollectCaptures(IMovesVisitor moves)
+        {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                if (!moves.Done && IsActivePiece(_state[squareIndex]))
+                    AddCaptures(moves, squareIndex);
+        }
+
         private void AddMoves(IMovesVisitor moves, int squareIndex)
         {
             switch (_state[squareIndex])
@@ -340,6 +347,40 @@ namespace MinimalChess
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
                     AddQueenMoves(moves, squareIndex);
+                    break;
+            }
+        }
+
+        private void AddCaptures(IMovesVisitor moves, int squareIndex)
+        {
+            switch (_state[squareIndex])
+            {
+                case Piece.BlackPawn:
+                    AddBlackPawnAttacks(moves, squareIndex);
+                    break;
+                case Piece.WhitePawn:
+                    AddWhitePawnAttacks(moves, squareIndex);
+                    break;
+                case Piece.BlackKing:
+                case Piece.WhiteKing:
+                    AddKingCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackKnight:
+                case Piece.WhiteKnight:
+                    AddKnightCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackRook:
+                case Piece.WhiteRook:
+                    AddRookCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackBishop:
+                case Piece.WhiteBishop:
+                    AddBishopCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackQueen:
+                case Piece.WhiteQueen:
+                    AddRookCaptures(moves, squareIndex);
+                    AddBishopCaptures(moves, squareIndex);
                     break;
             }
         }
@@ -417,6 +458,108 @@ namespace MinimalChess
                     return true;
 
             return false; //not threatened by anyone!
+        }
+
+        public int GetLeastValuableAttacker(int index, Color attackedBy)
+        {
+            Piece color = Pieces.Color(attackedBy);
+            //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
+            var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
+            foreach (int target in pawnAttacks[index])
+                if (_state[target] == (Piece.Pawn | color))
+                    return target;
+
+            //2. Knight
+            foreach (int target in Attacks.Knight[index])
+                if (_state[target] == (Piece.Knight | color))
+                    return target;
+
+            //3. Bishops on diagonals lines
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Diagonal[index, dir])
+                {
+                    if (_state[target] == (Piece.Bishop | color))
+                        return target;
+                    if (_state[target] != Piece.None)
+                        break;
+                }
+
+            //4. Rook on straight lines
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Straight[index, dir])
+                {
+                    if (_state[target] == (Piece.Rook | color))
+                        return target;
+                    if (_state[target] != Piece.None)
+                        break;
+                }
+
+            //5. Queens on straight lines
+            for (int dir = 0; dir < 4; dir++)
+            {
+                //TODO: just use a Queen table
+                foreach (int target in Attacks.Diagonal[index, dir])
+                {
+                    if (_state[target] == (Piece.Queen | color))
+                        return target;
+                    if (_state[target] != Piece.None)
+                        break;
+                }
+                foreach (int target in Attacks.Straight[index, dir])
+                {
+                    if (_state[target] == (Piece.Queen | color))
+                        return target;
+                    if (_state[target] != Piece.None)
+                        break;
+                }
+            }
+
+            //5. King
+            foreach (int target in Attacks.King[index])
+                if (_state[target] == (Piece.King | color))
+                    return target;
+
+            return -1; //not threatened by anyone!
+        }
+
+        //****************
+        //** CAPTURES **
+        //****************
+
+        private void AddKingCaptures(IMovesVisitor moves, int index)
+        {
+            foreach (int target in Attacks.King[index])
+                if(_state[target] != Piece.None)
+                    TryAddMove(moves, index, target);
+        }
+
+        private void AddKnightCaptures(IMovesVisitor moves, int index)
+        {
+            foreach (int target in Attacks.Knight[index])
+                if (_state[target] != Piece.None)
+                    TryAddMove(moves, index, target);
+        }
+
+        private void AddBishopCaptures(IMovesVisitor moves, int index)
+        {
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Diagonal[index, dir])
+                    if (_state[target] != Piece.None)
+                    {
+                        TryAddMove(moves, index, target);
+                        break;
+                    }
+        }
+
+        private void AddRookCaptures(IMovesVisitor moves, int index)
+        {
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Straight[index, dir])
+                    if (_state[target] != Piece.None)
+                    {
+                        TryAddMove(moves, index, target);
+                        break;
+                    }
         }
 
         //****************

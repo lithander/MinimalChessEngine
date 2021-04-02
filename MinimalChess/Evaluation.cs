@@ -31,9 +31,41 @@ namespace MinimalChess
             -900,   //BlackQueen = 10,
             +900,   //WhiteQueen = 11,
 
-             0,   //BlackKing = 12,
-             0    //WhiteKing = 13,
+            -9999,   //BlackKing = 12,
+            +9999    //WhiteKing = 13,
         };
+
+        public static int PieceValue(Piece piece) => PieceValues[(int)piece >> 1];
+
+        public static int SEE(Board board, Move move)
+        {
+            //Iterative SEE with alpha-beta pruning
+            //Inspiration from: http://www.talkchess.com/forum3/viewtopic.php?topic_view=threads&p=310782&t=30905
+            Board position = new Board(board);
+            int square = move.ToIndex;
+            int eval = 0;
+            SearchWindow window = SearchWindow.Infinite;
+            while (true)
+            {
+                Piece attacker = position[move.FromIndex];
+                Piece victim = position[square];
+                eval -= PieceValue(victim);
+                if (window.Cut(eval, victim.GetColor()))
+                    break;
+                if (Pieces.Type(victim) == Piece.King)
+                    break;
+                position.Play(move);
+                int fromIndex = position.GetLeastValuableAttacker(square, victim.GetColor());
+                if (fromIndex == -1)
+                {
+                    window.Cut(eval, attacker.GetColor());
+                    break;
+                }
+                move.FromIndex = (byte)fromIndex;
+            }
+            int score = window.GetScore(board.ActiveColor);
+            return score;
+        }
 
         public static int Evaluate(Board board)
         {

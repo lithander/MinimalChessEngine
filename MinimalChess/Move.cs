@@ -290,9 +290,12 @@ namespace MinimalChess
             _includeNonCaptures = includeNonCaptures;
             _captures = new List<(int, Move)>(10);
             if (_includeNonCaptures)
+            {
                 _nonCaptures = new List<Move>(40);
-
-            _parentNode.CollectMoves(this);
+                _parentNode.CollectMoves(this);
+            }
+            else
+                _parentNode.CollectCaptures(this);
         }
 
         public MoveSequence(Board parent, List<Move> moves)
@@ -308,6 +311,7 @@ namespace MinimalChess
 
         internal MoveSequence Boost(Move move)
         {
+            //Debug.Assert(_position[move.ToIndex] == Piece.None || move.HasFlags(MoveFlags.Capture));
             int priorityScore = Pieces.MaxRank * Pieces.MaxRank;
             Piece victim = _parentNode[move.ToIndex];
             if (victim == Piece.None)
@@ -344,6 +348,11 @@ namespace MinimalChess
                 //-> scale the victim value by max rank and then offset it by the attacker value
                 int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
                 _captures.Add((score, move));
+
+                //int see = (int)_parentNode.ActiveColor * Evaluation.SEE(_parentNode, move);
+                //if(see >= 0 || _includeNonCaptures)
+                //    _captures.Add((see, move));
+
             }
             else if (_includeNonCaptures)
             {

@@ -90,6 +90,11 @@ namespace MinimalChessBoard
                     {
                         PrintMoves(board);
                     }
+                    else if(command == "see")
+                    {
+                        Move start = new Move(tokens[1]);
+                        Console.WriteLine(Evaluation.SEE(board, start));
+                    }
                     else if (command == "pst")
                     {
                         string file = $"pst/{tokens[1]}.pst";
