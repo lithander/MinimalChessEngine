@@ -298,123 +298,117 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        public void CollectMoves(Action<Move> moves)
+        public void CollectMoves(Action<Move> moveHandler)
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectMoves(moves, squareIndex);
+                CollectMoves(moveHandler, squareIndex);
         }
 
-        public void CollectQuiets(Action<Move> moves)
+        public void CollectQuiets(Action<Move> moveHandler)
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectQuiets(moves, squareIndex);
+                CollectQuiets(moveHandler, squareIndex);
         }
 
-        public void CollectCaptures(Action<Move> moves)
+        public void CollectCaptures(Action<Move> moveHandler)
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectCaptures(moves, squareIndex);
+                CollectCaptures(moveHandler, squareIndex);
         }
 
-        public void CollectMoves(Action<Move> moves, int squareIndex)
+        public void CollectMoves(Action<Move> moveHandler, int squareIndex)
         {
-            CollectQuiets(moves, squareIndex);
-            CollectCaptures(moves, squareIndex);
+            CollectQuiets(moveHandler, squareIndex);
+            CollectCaptures(moveHandler, squareIndex);
         }
 
-        public void CollectQuiets(Action<Move> moves, int squareIndex)
+        public void CollectQuiets(Action<Move> moveHandler, int squareIndex)
         {
             if (IsActivePiece(_state[squareIndex]))
-                AddQuiets(moves, squareIndex);
+                AddQuiets(moveHandler, squareIndex);
         }
 
-        public void CollectCaptures(Action<Move> moves, int squareIndex)
+        public void CollectCaptures(Action<Move> moveHandler, int squareIndex)
         {
             if (IsActivePiece(_state[squareIndex]))
-                AddCaptures(moves, squareIndex);
+                AddCaptures(moveHandler, squareIndex);
         }
 
-        private void AddQuiets(Action<Move> moves, int squareIndex)
+        private void AddQuiets(Action<Move> moveHandler, int squareIndex)
         {
             switch (_state[squareIndex])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnMoves(moves, squareIndex);
+                    AddBlackPawnMoves(moveHandler, squareIndex);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnMoves(moves, squareIndex);
+                    AddWhitePawnMoves(moveHandler, squareIndex);
                     break;
                 case Piece.BlackKing:
-                    AddBlackCastlingMoves(moves);
-                    AddKingMoves(moves, squareIndex);
+                    AddBlackCastlingMoves(moveHandler);
+                    AddKingMoves(moveHandler, squareIndex);
                     break;
                 case Piece.WhiteKing:
-                    AddWhiteCastlingMoves(moves);
-                    AddKingMoves(moves, squareIndex);
+                    AddWhiteCastlingMoves(moveHandler);
+                    AddKingMoves(moveHandler, squareIndex);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightMoves(moves, squareIndex);
+                    AddKnightMoves(moveHandler, squareIndex);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookMoves(moves, squareIndex);
+                    AddRookMoves(moveHandler, squareIndex);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopMoves(moves, squareIndex);
+                    AddBishopMoves(moveHandler, squareIndex);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookMoves(moves, squareIndex);
-                    AddBishopMoves(moves, squareIndex);
+                    AddRookMoves(moveHandler, squareIndex);
+                    AddBishopMoves(moveHandler, squareIndex);
                     break;
             }
         }
 
-        private void AddCaptures(Action<Move> moves, int squareIndex)
+        private void AddCaptures(Action<Move> moveHandler, int squareIndex)
         {
             switch (_state[squareIndex])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnAttacks(moves, squareIndex);
+                    AddBlackPawnAttacks(moveHandler, squareIndex);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnAttacks(moves, squareIndex);
+                    AddWhitePawnAttacks(moveHandler, squareIndex);
                     break;
                 case Piece.BlackKing:
                 case Piece.WhiteKing:
-                    AddKingCaptures(moves, squareIndex);
+                    AddKingCaptures(moveHandler, squareIndex);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightCaptures(moves, squareIndex);
+                    AddKnightCaptures(moveHandler, squareIndex);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookCaptures(moves, squareIndex);
+                    AddRookCaptures(moveHandler, squareIndex);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopCaptures(moves, squareIndex);
+                    AddBishopCaptures(moveHandler, squareIndex);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookCaptures(moves, squareIndex);
-                    AddBishopCaptures(moves, squareIndex);
+                    AddRookCaptures(moveHandler, squareIndex);
+                    AddBishopCaptures(moveHandler, squareIndex);
                     break;
             }
         }
 
-        public void AddMove(Action<Move> moves, int from, int to)
-        {
-            moves(new Move(from, to));
-        }
+        private void AddMove(Action<Move> moveHandler, int from, int to) => moveHandler(new Move(from, to));
 
-        public void AddPromotion(Action<Move> moves, int from, int to, Piece promotion)
-        {
-            moves(new Move(from, to, promotion));
-        }
+        private void AddPromotion(Action<Move> moveHandler, int from, int to, Piece promotion) => moveHandler(new Move(from, to, promotion));
 
         //*****************
         //** CHECK TEST ***
@@ -475,40 +469,40 @@ namespace MinimalChess
         //** CAPTURES **
         //****************
 
-        private void AddKingCaptures(Action<Move> moves, int index)
+        private void AddKingCaptures(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.King[index])
                 if (IsOpponentPiece(_state[target]))
-                    AddMove(moves, index, target);
+                    AddMove(moveHandler, index, target);
         }
 
-        private void AddKnightCaptures(Action<Move> moves, int index)
+        private void AddKnightCaptures(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.Knight[index])
                 if (IsOpponentPiece(_state[target]))
-                    AddMove(moves, index, target);
+                    AddMove(moveHandler, index, target);
         }
 
-        private void AddBishopCaptures(Action<Move> moves, int index)
+        private void AddBishopCaptures(Action<Move> moveHandler, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                     if (_state[target] != Piece.None)
                     {
                         if (IsOpponentPiece(_state[target]))
-                            AddMove(moves, index, target);
+                            AddMove(moveHandler, index, target);
                         break;
                     }
         }
 
-        private void AddRookCaptures(Action<Move> moves, int index)
+        private void AddRookCaptures(Action<Move> moveHandler, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                     if (_state[target] != Piece.None)
                     {
                         if (IsOpponentPiece(_state[target]))
-                            AddMove(moves, index, target);
+                            AddMove(moveHandler, index, target);
                         break;
                     }
         }
@@ -517,30 +511,30 @@ namespace MinimalChess
         //** KING MOVES **
         //****************
 
-        private void AddKingMoves(Action<Move> moves, int index)
+        private void AddKingMoves(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.King[index])
                 if (_state[target] == Piece.None)
-                    AddMove(moves, index, target);
+                    AddMove(moveHandler, index, target);
         }
-        private void AddWhiteCastlingMoves(Action<Move> moves)
+        private void AddWhiteCastlingMoves(Action<Move> moveHandler)
         {
             //Castling is only possible if it's associated CastlingRight flag is set? it get's cleared when either the king or the matching rook move and provide a cheap early out
             if (HasCastlingRight(CastlingRights.WhiteQueenside) && CanCastle(WhiteKingSquare, WhiteQueensideRookSquare, Color.White))
-                moves(Move.WhiteCastlingLong);
+                moveHandler(Move.WhiteCastlingLong);
 
             if (HasCastlingRight(CastlingRights.WhiteKingside) && CanCastle(WhiteKingSquare, WhiteKingsideRookSquare, Color.White))
-                moves(Move.WhiteCastlingShort);
+                moveHandler(Move.WhiteCastlingShort);
         }
 
 
-        private void AddBlackCastlingMoves(Action<Move> moves)
+        private void AddBlackCastlingMoves(Action<Move> moveHandler)
         {
             if (HasCastlingRight(CastlingRights.BlackQueenside) && CanCastle(BlackKingSquare, BlackQueensideRookSquare, Color.Black))
-                moves(Move.BlackCastlingLong);
+                moveHandler(Move.BlackCastlingLong);
 
             if (HasCastlingRight(CastlingRights.BlackKingside) && CanCastle(BlackKingSquare, BlackKingsideRookSquare, Color.Black))
-                moves(Move.BlackCastlingShort);
+                moveHandler(Move.BlackCastlingShort);
         }
 
         private bool CanCastle(int kingSquare, int rookSquare, Color color)
@@ -569,33 +563,33 @@ namespace MinimalChess
         //** KNIGHT MOVES ***
         //*******************
 
-        private void AddKnightMoves(Action<Move> moves, int index)
+        private void AddKnightMoves(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.Knight[index])
                 if (_state[target] == Piece.None)
-                    AddMove(moves, index, target);
+                    AddMove(moveHandler, index, target);
         }
 
         //********************************
         //** QUEEN, ROOK, BISHOP MOVES ***
         //********************************
 
-        private void AddBishopMoves(Action<Move> moves, int index)
+        private void AddBishopMoves(Action<Move> moveHandler, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                     if (_state[target] == Piece.None)
-                        AddMove(moves, index, target);
+                        AddMove(moveHandler, index, target);
                     else
                         break;
         }
 
-        private void AddRookMoves(Action<Move> moves, int index)
+        private void AddRookMoves(Action<Move> moveHandler, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                     if (_state[target] == Piece.None)
-                        AddMove(moves, index, target);
+                        AddMove(moveHandler, index, target);
                     else
                         break;
 
@@ -605,70 +599,70 @@ namespace MinimalChess
         //** PAWN MOVES ***
         //*****************
 
-        private void AddWhitePawnMoves(Action<Move> moves, int index)
+        private void AddWhitePawnMoves(Action<Move> moveHandler, int index)
         {
             //if the square above isn't free there are no legal moves
             if (_state[Up(index)] != Piece.None)
                 return;
 
-            AddWhitePawnMove(moves, index, Up(index));
+            AddWhitePawnMove(moveHandler, index, Up(index));
 
             //START POS? => consider double move
             if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
-                AddMove(moves, index, Up(index, 2));
+                AddMove(moveHandler, index, Up(index, 2));
         }
 
-        private void AddBlackPawnMoves(Action<Move> moves, int index)
+        private void AddBlackPawnMoves(Action<Move> moveHandler, int index)
         {
             //if the square below isn't free there are no legal moves
             if (_state[Down(index)] != Piece.None)
                 return;
 
-            AddBlackPawnMove(moves, index, Down(index));
+            AddBlackPawnMove(moveHandler, index, Down(index));
             //START POS? => consider double move
             if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
-                AddMove(moves, index, Down(index, 2));
+                AddMove(moveHandler, index, Down(index, 2));
         }
 
 
-        private void AddWhitePawnAttacks(Action<Move> moves, int index)
+        private void AddWhitePawnAttacks(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.WhitePawn[index])
                 if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
-                    AddWhitePawnMove(moves, index, target);
+                    AddWhitePawnMove(moveHandler, index, target);
         }
 
-        private void AddBlackPawnAttacks(Action<Move> moves, int index)
+        private void AddBlackPawnAttacks(Action<Move> moveHandler, int index)
         {
             foreach (int target in Attacks.BlackPawn[index])
                 if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
-                    AddBlackPawnMove(moves, index, target);
+                    AddBlackPawnMove(moveHandler, index, target);
         }
 
-        private void AddBlackPawnMove(Action<Move> moves, int from, int to)
+        private void AddBlackPawnMove(Action<Move> moveHandler, int from, int to)
         {
             if (Rank(to) == 0) //Promotion?
             {
-                AddPromotion(moves, from, to, Piece.BlackQueen);
-                AddPromotion(moves, from, to, Piece.BlackRook);
-                AddPromotion(moves, from, to, Piece.BlackBishop);
-                AddPromotion(moves, from, to, Piece.BlackKnight);
+                AddPromotion(moveHandler, from, to, Piece.BlackQueen);
+                AddPromotion(moveHandler, from, to, Piece.BlackRook);
+                AddPromotion(moveHandler, from, to, Piece.BlackBishop);
+                AddPromotion(moveHandler, from, to, Piece.BlackKnight);
             }
             else
-                AddMove(moves, from, to);
+                AddMove(moveHandler, from, to);
         }
 
-        private void AddWhitePawnMove(Action<Move> moves, int from, int to)
+        private void AddWhitePawnMove(Action<Move> moveHandler, int from, int to)
         {
             if (Rank(to) == 7) //Promotion?
             {
-                AddPromotion(moves, from, to, Piece.WhiteQueen);
-                AddPromotion(moves, from, to, Piece.WhiteRook);
-                AddPromotion(moves, from, to, Piece.WhiteBishop);
-                AddPromotion(moves, from, to, Piece.WhiteKnight);
+                AddPromotion(moveHandler, from, to, Piece.WhiteQueen);
+                AddPromotion(moveHandler, from, to, Piece.WhiteRook);
+                AddPromotion(moveHandler, from, to, Piece.WhiteBishop);
+                AddPromotion(moveHandler, from, to, Piece.WhiteKnight);
             }
             else
-                AddMove(moves, from, to);
+                AddMove(moveHandler, from, to);
         }
 
         //**************
