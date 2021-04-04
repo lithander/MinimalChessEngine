@@ -2,14 +2,7 @@
 
 namespace MinimalChess
 {
-    public interface IMovesVisitor
-    {
-        public bool Done { get; }
-        public void Consider(Move move);
-        void AddUnchecked(Move move);
-    }
-
-    public class LegalMoves : List<Move>, IMovesVisitor
+    public class LegalMoves : List<Move>
     {
         private static Board _tempBoard = new Board();
         private Board _reference;
@@ -17,11 +10,9 @@ namespace MinimalChess
         public LegalMoves(Board reference) : base(40)
         {
             _reference = reference;
-            _reference.CollectMoves(this);
+            _reference.CollectMoves(Consider);
             _reference = null;
         }
-
-        public bool Done => false;
 
         public void Consider(Move move)
         {
@@ -33,28 +24,23 @@ namespace MinimalChess
 
             Add(move);
         }
-
-        public void AddUnchecked(Move move)
-        {
-            Add(move);
-        }
     }
 
-    public class AnyLegalMoves : IMovesVisitor
+    public class AnyLegalMoves
     {
         private static Board _tempBoard = new Board();
         private Board _reference;
 
         public bool CanMove { get; private set; }
 
-        private AnyLegalMoves(Board reference)
+        public AnyLegalMoves(Board reference)
         {
             _reference = reference;
-            _reference.CollectMoves(this);
+            _reference.CollectQuiets(Consider);
+            if (!CanMove)
+                _reference.CollectCaptures(Consider);
             _reference = null;
         }
-
-        public bool Done => CanMove;
 
         public void Consider(Move move)
         {
@@ -70,11 +56,6 @@ namespace MinimalChess
             CanMove = true;
         }
 
-        public void AddUnchecked(Move move)
-        {
-            CanMove = true;
-        }
-
         public static bool HasMoves(Board position)
         {
             var moves = new AnyLegalMoves(position);
@@ -82,61 +63,29 @@ namespace MinimalChess
         }
     }
 
-    public class MoveProbe : IMovesVisitor
+    public class MoveProbe
     {
-        public bool Done { get; private set; }
-        private Move _move;
-
-        private MoveProbe(Move reference)
-        {
-            _move = reference;
-        }
-
         public static bool IsPseudoLegal(Board position, Move move)
         {
-            MoveProbe probe = new MoveProbe(move);
-            position.CollectMoves(probe, move.FromIndex);
-            return probe.Done;
-        }
-
-        public void Consider(Move move)
-        {
-            if (_move == move)
-                Done = true;
-        }
-
-        public void AddUnchecked(Move move)
-        {
-            if (_move == move)
-                Done = true;
+            bool found = false;
+            position.CollectMoves(m => found |= (m == move), move.FromIndex);
+            return found;
         }
     }
 
-    public class MoveList : List<Move>, IMovesVisitor
+    public class MoveList : List<Move>
     {
-        public bool Done => false;
-
-        public void Consider(Move move)
-        {
-            Add(move);
-        }
-
-        public void AddUnchecked(Move move)
-        {
-            Add(move);
-        }
-
         internal static MoveList CollectQuiets(Board position)
         {
             MoveList quietMoves = new MoveList();
-            position.CollectQuiets(quietMoves);
+            position.CollectQuiets(quietMoves.Add);
             return quietMoves;
         }
 
         internal static MoveList CollectCaptures(Board position)
         {
             MoveList captures = new MoveList();
-            position.CollectCaptures(captures);
+            position.CollectCaptures(captures.Add);
             return captures;
         }
     }

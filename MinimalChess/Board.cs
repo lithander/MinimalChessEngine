@@ -298,43 +298,43 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        public void CollectMoves(IMovesVisitor visitor)
+        public void CollectMoves(Action<Move> moves)
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (!visitor.Done && IsActivePiece(_state[squareIndex]))
-                {
-                    AddQuiets(visitor, squareIndex);
-                    if (visitor.Done) return;
-                    AddCaptures(visitor, squareIndex);
-                }
+                CollectMoves(moves, squareIndex);
         }
 
-        public void CollectMoves(IMovesVisitor visitor, int squareIndex)
+        public void CollectQuiets(Action<Move> moves)
+        {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                CollectQuiets(moves, squareIndex);
+        }
+
+        public void CollectCaptures(Action<Move> moves)
+        {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                CollectCaptures(moves, squareIndex);
+        }
+
+        public void CollectMoves(Action<Move> moves, int squareIndex)
+        {
+            CollectQuiets(moves, squareIndex);
+            CollectCaptures(moves, squareIndex);
+        }
+
+        public void CollectQuiets(Action<Move> moves, int squareIndex)
         {
             if (IsActivePiece(_state[squareIndex]))
-            {
-                AddQuiets(visitor, squareIndex);
-                if (visitor.Done) return;
-                AddCaptures(visitor, squareIndex);
-            }
+                AddQuiets(moves, squareIndex);
         }
 
-        public void CollectQuiets(IMovesVisitor moves)
+        public void CollectCaptures(Action<Move> moves, int squareIndex)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (!moves.Done && IsActivePiece(_state[squareIndex]))
-                    AddQuiets(moves, squareIndex);
+            if (IsActivePiece(_state[squareIndex]))
+                AddCaptures(moves, squareIndex);
         }
 
-
-        public void CollectCaptures(IMovesVisitor moves)
-        {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (!moves.Done && IsActivePiece(_state[squareIndex]))
-                    AddCaptures(moves, squareIndex);
-        }
-
-        private void AddQuiets(IMovesVisitor moves, int squareIndex)
+        private void AddQuiets(Action<Move> moves, int squareIndex)
         {
             switch (_state[squareIndex])
             {
@@ -372,7 +372,7 @@ namespace MinimalChess
             }
         }
 
-        private void AddCaptures(IMovesVisitor moves, int squareIndex)
+        private void AddCaptures(Action<Move> moves, int squareIndex)
         {
             switch (_state[squareIndex])
             {
@@ -406,14 +406,14 @@ namespace MinimalChess
             }
         }
 
-        public void AddMove(IMovesVisitor moves, int from, int to)
+        public void AddMove(Action<Move> moves, int from, int to)
         {
-            moves.Consider(new Move(from, to));
+            moves(new Move(from, to));
         }
 
-        public void AddPromotion(IMovesVisitor moves, int from, int to, Piece promotion)
+        public void AddPromotion(Action<Move> moves, int from, int to, Piece promotion)
         {
-            moves.Consider(new Move(from, to, promotion));
+            moves(new Move(from, to, promotion));
         }
 
         //*****************
@@ -475,21 +475,21 @@ namespace MinimalChess
         //** CAPTURES **
         //****************
 
-        private void AddKingCaptures(IMovesVisitor moves, int index)
+        private void AddKingCaptures(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.King[index])
                 if (IsOpponentPiece(_state[target]))
                     AddMove(moves, index, target);
         }
 
-        private void AddKnightCaptures(IMovesVisitor moves, int index)
+        private void AddKnightCaptures(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.Knight[index])
                 if (IsOpponentPiece(_state[target]))
                     AddMove(moves, index, target);
         }
 
-        private void AddBishopCaptures(IMovesVisitor moves, int index)
+        private void AddBishopCaptures(Action<Move> moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
@@ -501,7 +501,7 @@ namespace MinimalChess
                     }
         }
 
-        private void AddRookCaptures(IMovesVisitor moves, int index)
+        private void AddRookCaptures(Action<Move> moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
@@ -517,30 +517,30 @@ namespace MinimalChess
         //** KING MOVES **
         //****************
 
-        private void AddKingMoves(IMovesVisitor moves, int index)
+        private void AddKingMoves(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.King[index])
                 if (_state[target] == Piece.None)
                     AddMove(moves, index, target);
         }
-        private void AddWhiteCastlingMoves(IMovesVisitor moves)
+        private void AddWhiteCastlingMoves(Action<Move> moves)
         {
             //Castling is only possible if it's associated CastlingRight flag is set? it get's cleared when either the king or the matching rook move and provide a cheap early out
             if (HasCastlingRight(CastlingRights.WhiteQueenside) && CanCastle(WhiteKingSquare, WhiteQueensideRookSquare, Color.White))
-                moves.AddUnchecked(Move.WhiteCastlingLong);
+                moves(Move.WhiteCastlingLong);
 
             if (HasCastlingRight(CastlingRights.WhiteKingside) && CanCastle(WhiteKingSquare, WhiteKingsideRookSquare, Color.White))
-                moves.AddUnchecked(Move.WhiteCastlingShort);
+                moves(Move.WhiteCastlingShort);
         }
 
 
-        private void AddBlackCastlingMoves(IMovesVisitor moves)
+        private void AddBlackCastlingMoves(Action<Move> moves)
         {
             if (HasCastlingRight(CastlingRights.BlackQueenside) && CanCastle(BlackKingSquare, BlackQueensideRookSquare, Color.Black))
-                moves.AddUnchecked(Move.BlackCastlingLong);
+                moves(Move.BlackCastlingLong);
 
             if (HasCastlingRight(CastlingRights.BlackKingside) && CanCastle(BlackKingSquare, BlackKingsideRookSquare, Color.Black))
-                moves.AddUnchecked(Move.BlackCastlingShort);
+                moves(Move.BlackCastlingShort);
         }
 
         private bool CanCastle(int kingSquare, int rookSquare, Color color)
@@ -569,7 +569,7 @@ namespace MinimalChess
         //** KNIGHT MOVES ***
         //*******************
 
-        private void AddKnightMoves(IMovesVisitor moves, int index)
+        private void AddKnightMoves(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.Knight[index])
                 if (_state[target] == Piece.None)
@@ -580,7 +580,7 @@ namespace MinimalChess
         //** QUEEN, ROOK, BISHOP MOVES ***
         //********************************
 
-        private void AddBishopMoves(IMovesVisitor moves, int index)
+        private void AddBishopMoves(Action<Move> moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
@@ -590,7 +590,7 @@ namespace MinimalChess
                         break;
         }
 
-        private void AddRookMoves(IMovesVisitor moves, int index)
+        private void AddRookMoves(Action<Move> moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
@@ -605,7 +605,7 @@ namespace MinimalChess
         //** PAWN MOVES ***
         //*****************
 
-        private void AddWhitePawnMoves(IMovesVisitor moves, int index)
+        private void AddWhitePawnMoves(Action<Move> moves, int index)
         {
             //if the square above isn't free there are no legal moves
             if (_state[Up(index)] != Piece.None)
@@ -618,7 +618,7 @@ namespace MinimalChess
                 AddMove(moves, index, Up(index, 2));
         }
 
-        private void AddBlackPawnMoves(IMovesVisitor moves, int index)
+        private void AddBlackPawnMoves(Action<Move> moves, int index)
         {
             //if the square below isn't free there are no legal moves
             if (_state[Down(index)] != Piece.None)
@@ -631,21 +631,21 @@ namespace MinimalChess
         }
 
 
-        private void AddWhitePawnAttacks(IMovesVisitor moves, int index)
+        private void AddWhitePawnAttacks(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.WhitePawn[index])
                 if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
                     AddWhitePawnMove(moves, index, target);
         }
 
-        private void AddBlackPawnAttacks(IMovesVisitor moves, int index)
+        private void AddBlackPawnAttacks(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.BlackPawn[index])
                 if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
                     AddBlackPawnMove(moves, index, target);
         }
 
-        private void AddBlackPawnMove(IMovesVisitor moves, int from, int to)
+        private void AddBlackPawnMove(Action<Move> moves, int from, int to)
         {
             if (Rank(to) == 0) //Promotion?
             {
@@ -658,7 +658,7 @@ namespace MinimalChess
                 AddMove(moves, from, to);
         }
 
-        private void AddWhitePawnMove(IMovesVisitor moves, int from, int to)
+        private void AddWhitePawnMove(Action<Move> moves, int from, int to)
         {
             if (Rank(to) == 7) //Promotion?
             {
