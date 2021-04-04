@@ -4,7 +4,7 @@ namespace MinimalChessEngine
 {
     class TimeControl
     {
-        const int TIME_MARGIN = 10;
+        const int TIME_MARGIN = 15;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
         private int _movesToGo;
@@ -30,7 +30,7 @@ namespace MinimalChessEngine
         {
             _movesToGo = 1;
             _increment = 0;
-            _remaining = int.MaxValue;
+            _remaining = int.MaxValue / 3; //large but not too large to cause overlow issues
             _t0 = Now;
             _tN = _t0;
         }
@@ -69,7 +69,10 @@ namespace MinimalChessEngine
         public bool CanSearchDeeper()
         {
             int elapsed = Elapsed;
-            int estimate = BRANCHING_FACTOR_ESTIMATE * ElapsedInterval;
+
+            //estimate the branching factor, if only one move to go we yolo with a low estimate
+            int multi = (_movesToGo == 1) ? 3 : BRANCHING_FACTOR_ESTIMATE;
+            int estimate = multi * ElapsedInterval;
             int total = elapsed + estimate;
 
             //no increment... we need to stay within the per-move time budget

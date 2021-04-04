@@ -41,14 +41,6 @@
                 return score < Ceiling;
         }
 
-        public bool Outside(int score, Color color)
-        {
-            if (color == Color.White)
-                return score <= Floor;
-            else
-                return score >= Ceiling; //outside search window
-        }
-
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
 
         public SearchWindow GetNullWindow(Color color)

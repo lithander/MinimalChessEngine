@@ -48,6 +48,7 @@
     {
         public const int MaxRank = 6;
 
+        //Pawn = 1, Knight = 2, Bishop = 3; Rook = 4, Queen = 5, King = 6
         public static int Rank(Piece piece) => ((int)piece >> 2);
 
         public static Piece Type(Piece piece) => piece & Piece.TypeMask;
@@ -56,6 +57,8 @@
 
         //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
         public static Piece Color(Color color) => (Piece)(color + 2);
+
+        public static Piece OtherColor(Color color) => (Piece)(2 - color);
 
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
         public static Color GetColor(this Piece piece) => (Color)(Color(piece) - 2);

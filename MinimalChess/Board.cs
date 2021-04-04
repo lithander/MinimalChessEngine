@@ -302,20 +302,47 @@ namespace MinimalChess
         {
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
                 if (!visitor.Done && IsActivePiece(_state[squareIndex]))
-                    AddMoves(visitor, squareIndex);
+                {
+                    AddQuiets(visitor, squareIndex);
+                    if (visitor.Done) return;
+                    AddCaptures(visitor, squareIndex);
+                }
         }
 
-        private void AddMoves(IMovesVisitor moves, int squareIndex)
+        public void CollectMoves(IMovesVisitor visitor, int squareIndex)
+        {
+            if (IsActivePiece(_state[squareIndex]))
+            {
+                AddQuiets(visitor, squareIndex);
+                if (visitor.Done) return;
+                AddCaptures(visitor, squareIndex);
+            }
+        }
+
+        public void CollectQuiets(IMovesVisitor moves)
+        {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                if (!moves.Done && IsActivePiece(_state[squareIndex]))
+                    AddQuiets(moves, squareIndex);
+        }
+
+
+        public void CollectCaptures(IMovesVisitor moves)
+        {
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+                if (!moves.Done && IsActivePiece(_state[squareIndex]))
+                    AddCaptures(moves, squareIndex);
+        }
+
+        private void AddQuiets(IMovesVisitor moves, int squareIndex)
         {
             switch (_state[squareIndex])
             {
                 case Piece.BlackPawn:
                     AddBlackPawnMoves(moves, squareIndex);
-                    AddBlackPawnAttacks(moves, squareIndex);
                     break;
                 case Piece.WhitePawn:
                     AddWhitePawnMoves(moves, squareIndex);
-                    AddWhitePawnAttacks(moves, squareIndex);
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moves);
@@ -339,9 +366,54 @@ namespace MinimalChess
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddQueenMoves(moves, squareIndex);
+                    AddRookMoves(moves, squareIndex);
+                    AddBishopMoves(moves, squareIndex);
                     break;
             }
+        }
+
+        private void AddCaptures(IMovesVisitor moves, int squareIndex)
+        {
+            switch (_state[squareIndex])
+            {
+                case Piece.BlackPawn:
+                    AddBlackPawnAttacks(moves, squareIndex);
+                    break;
+                case Piece.WhitePawn:
+                    AddWhitePawnAttacks(moves, squareIndex);
+                    break;
+                case Piece.BlackKing:
+                case Piece.WhiteKing:
+                    AddKingCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackKnight:
+                case Piece.WhiteKnight:
+                    AddKnightCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackRook:
+                case Piece.WhiteRook:
+                    AddRookCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackBishop:
+                case Piece.WhiteBishop:
+                    AddBishopCaptures(moves, squareIndex);
+                    break;
+                case Piece.BlackQueen:
+                case Piece.WhiteQueen:
+                    AddRookCaptures(moves, squareIndex);
+                    AddBishopCaptures(moves, squareIndex);
+                    break;
+            }
+        }
+
+        public void AddMove(IMovesVisitor moves, int from, int to)
+        {
+            moves.Consider(new Move(from, to));
+        }
+
+        public void AddPromotion(IMovesVisitor moves, int from, int to, Piece promotion)
+        {
+            moves.Consider(new Move(from, to, promotion));
         }
 
         //*****************
@@ -398,17 +470,59 @@ namespace MinimalChess
             return false; //not threatened by anyone!
         }
 
+
         //****************
-        //** KING MOVES ***
+        //** CAPTURES **
+        //****************
+
+        private void AddKingCaptures(IMovesVisitor moves, int index)
+        {
+            foreach (int target in Attacks.King[index])
+                if (IsOpponentPiece(_state[target]))
+                    AddMove(moves, index, target);
+        }
+
+        private void AddKnightCaptures(IMovesVisitor moves, int index)
+        {
+            foreach (int target in Attacks.Knight[index])
+                if (IsOpponentPiece(_state[target]))
+                    AddMove(moves, index, target);
+        }
+
+        private void AddBishopCaptures(IMovesVisitor moves, int index)
+        {
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Diagonal[index, dir])
+                    if (_state[target] != Piece.None)
+                    {
+                        if (IsOpponentPiece(_state[target]))
+                            AddMove(moves, index, target);
+                        break;
+                    }
+        }
+
+        private void AddRookCaptures(IMovesVisitor moves, int index)
+        {
+            for (int dir = 0; dir < 4; dir++)
+                foreach (int target in Attacks.Straight[index, dir])
+                    if (_state[target] != Piece.None)
+                    {
+                        if (IsOpponentPiece(_state[target]))
+                            AddMove(moves, index, target);
+                        break;
+                    }
+        }
+
+        //****************
+        //** KING MOVES **
         //****************
 
         private void AddKingMoves(IMovesVisitor moves, int index)
         {
             foreach (int target in Attacks.King[index])
-                if (IsValidTarget(_state[target]))
-                    moves.Consider(index, target);
+                if (_state[target] == Piece.None)
+                    AddMove(moves, index, target);
         }
-
         private void AddWhiteCastlingMoves(IMovesVisitor moves)
         {
             //Castling is only possible if it's associated CastlingRight flag is set? it get's cleared when either the king or the matching rook move and provide a cheap early out
@@ -458,47 +572,33 @@ namespace MinimalChess
         private void AddKnightMoves(IMovesVisitor moves, int index)
         {
             foreach (int target in Attacks.Knight[index])
-                if (IsValidTarget(_state[target]))
-                    moves.Consider(index, target);
+                if (_state[target] == Piece.None)
+                    AddMove(moves, index, target);
         }
 
         //********************************
         //** QUEEN, ROOK, BISHOP MOVES ***
         //********************************
 
-        private void AddQueenMoves(IMovesVisitor moves, int index)
-        {
-            //Queen moves are the union of bishop & rook
-            AddBishopMoves(moves, index);
-            AddRookMoves(moves, index);
-        }
-
         private void AddBishopMoves(IMovesVisitor moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
-                {
-                    Piece piece = _state[target];
-                    if (IsValidTarget(piece))
-                        moves.Consider(index, target);
-
-                    if (piece != Piece.None)
+                    if (_state[target] == Piece.None)
+                        AddMove(moves, index, target);
+                    else
                         break;
-                }
         }
 
         private void AddRookMoves(IMovesVisitor moves, int index)
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
-                {
-                    Piece piece = _state[target];
-                    if (IsValidTarget(piece))
-                        moves.Consider(index, target);
-
-                    if (piece != Piece.None)
+                    if (_state[target] == Piece.None)
+                        AddMove(moves, index, target);
+                    else
                         break;
-                }
+
         }
 
         //*****************
@@ -515,7 +615,7 @@ namespace MinimalChess
 
             //START POS? => consider double move
             if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
-                moves.Consider(index, Up(index, 2));
+                AddMove(moves, index, Up(index, 2));
         }
 
         private void AddBlackPawnMoves(IMovesVisitor moves, int index)
@@ -527,7 +627,7 @@ namespace MinimalChess
             AddBlackPawnMove(moves, index, Down(index));
             //START POS? => consider double move
             if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
-                moves.Consider(index, Down(index, 2));
+                AddMove(moves, index, Down(index, 2));
         }
 
 
@@ -549,38 +649,39 @@ namespace MinimalChess
         {
             if (Rank(to) == 0) //Promotion?
             {
-                moves.Consider(from, to, Piece.BlackQueen);
-                moves.Consider(from, to, Piece.BlackRook);
-                moves.Consider(from, to, Piece.BlackBishop);
-                moves.Consider(from, to, Piece.BlackKnight);
+                AddPromotion(moves, from, to, Piece.BlackQueen);
+                AddPromotion(moves, from, to, Piece.BlackRook);
+                AddPromotion(moves, from, to, Piece.BlackBishop);
+                AddPromotion(moves, from, to, Piece.BlackKnight);
             }
             else
-                moves.Consider(from, to);
+                AddMove(moves, from, to);
         }
 
         private void AddWhitePawnMove(IMovesVisitor moves, int from, int to)
         {
             if (Rank(to) == 7) //Promotion?
             {
-                moves.Consider(from, to, Piece.WhiteQueen);
-                moves.Consider(from, to, Piece.WhiteRook);
-                moves.Consider(from, to, Piece.WhiteBishop);
-                moves.Consider(from, to, Piece.WhiteKnight);
+                AddPromotion(moves, from, to, Piece.WhiteQueen);
+                AddPromotion(moves, from, to, Piece.WhiteRook);
+                AddPromotion(moves, from, to, Piece.WhiteBishop);
+                AddPromotion(moves, from, to, Piece.WhiteKnight);
             }
             else
-                moves.Consider(from, to);
+                AddMove(moves, from, to);
         }
 
         //**************
         //** Utility ***
         //**************
+        public bool HasLegalMoves => AnyLegalMoves.HasMoves(this);
+        public bool CanPlay(Move move) => MoveProbe.IsPseudoLegal(this, move);
         private int Rank(int index) => index / 8;
         private int Up(int index, int steps = 1) => index + steps * 8;
         private int Down(int index, int steps = 1) => index - steps * 8;
-
-        private bool IsValidTarget(Piece piece) => Pieces.Color(piece) != Pieces.Color(_activeColor); //'None' will also be a valid target
-
         private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_activeColor);
+        private bool IsOpponentPiece(Piece piece) => Pieces.Color(piece) == Pieces.OtherColor(_activeColor);
+        private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {
@@ -590,12 +691,10 @@ namespace MinimalChess
                 _castlingRights &= ~flag;
         }
 
-        private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
-
         public override bool Equals(object obj)
         {
             if (obj is Board board)
-                return this.Equals(board);
+                return Equals(board);
 
             return false;
         }
