@@ -91,14 +91,7 @@ namespace MinimalChess
         public static Move WhiteCastlingLongRook = new Move("a1d1");        
     }
 
-    public interface IMovesVisitor
-    {
-        public bool Done { get; }
-        public void Consider(Move move);
-        void AddUnchecked(Move move);
-    }
-
-    public class LegalMoves : List<Move>, IMovesVisitor
+    public class LegalMoves : List<Move>
     {
         private static Board _tempBoard = new Board();
         private Board _reference;
@@ -106,7 +99,7 @@ namespace MinimalChess
         public LegalMoves(Board reference) : base(40)
         {
             _reference = reference;
-            _reference.CollectMoves(this);
+            _reference.CollectMoves(Consider);
             _reference = null;
         }
 
@@ -122,65 +115,21 @@ namespace MinimalChess
 
             Add(move);
         }
-
-        public void AddUnchecked(Move move)
-        {
-            Add(move);
-        }
-
-        public void Randomize()
-        {
-            Random rnd = new Random();
-            for(int i = 0; i < Count; i++)
-            {
-                int j = rnd.Next(0, Count);
-                //swap i with j
-                Move temp = this[i];
-                this[i] = this[j];
-                this[j] = temp;
-            }
-        }
     }
 
-    public class PseudoLegalMoves : List<Move>, IMovesVisitor
+    public class PseudoLegalMoves : List<Move>
     {
         private Board _reference;
 
         public PseudoLegalMoves(Board reference) : base(40)
         {
             _reference = reference;
-            _reference.CollectMoves(this);
+            _reference.CollectMoves(Add);
             _reference = null;
-        }
-
-        public bool Done => false;
-
-        public void Consider(Move move)
-        {
-            //only add if the move doesn't result in a check for active color
-            Add(move);
-        }
-
-        public void AddUnchecked(Move move)
-        {
-            Add(move);
-        }
-
-        public void Randomize()
-        {
-            Random rnd = new Random();
-            for (int i = 0; i < Count; i++)
-            {
-                int j = rnd.Next(0, Count);
-                //swap i with j
-                Move temp = this[i];
-                this[i] = this[j];
-                this[j] = temp;
-            }
         }
     }
 
-    public class AnyLegalMoves : IMovesVisitor
+    public class AnyLegalMoves
     {
         private static Board _tempBoard = new Board();
         private Board _reference;
@@ -190,11 +139,9 @@ namespace MinimalChess
         public AnyLegalMoves(Board reference)
         {
             _reference = reference;
-            _reference.CollectMoves(this);
+            _reference.CollectMoves(Consider);
             _reference = null;
         }
-
-        public bool Done => CanMove;
 
         public void Consider(Move move)
         {
@@ -207,11 +154,6 @@ namespace MinimalChess
             if (_tempBoard.IsChecked(_reference.ActiveColor))
                 return;
 
-            CanMove = true;
-        }
-
-        public void AddUnchecked(Move move)
-        {
             CanMove = true;
         }
 
@@ -244,7 +186,7 @@ namespace MinimalChess
         }
     }
 
-    public class MoveSequence : IMovesVisitor
+    public class MoveSequence
     {
         List<(int Score, Move Move)> _captures;
         List<Move> _nonCaptures = null;
@@ -274,10 +216,10 @@ namespace MinimalChess
             if (_includeNonCaptures)
             {
                 _nonCaptures = new List<Move>(40);
-                _parentNode.CollectMoves(this);
+                _parentNode.CollectMoves(Add);
             }
             else
-                _parentNode.CollectCaptures(this);
+                _parentNode.CollectCaptures(Add);
         }
 
         public MoveSequence(Board parent, List<Move> moves)
@@ -379,17 +321,11 @@ namespace MinimalChess
         }
 
         public int Count => _captures.Count + _nonCaptures?.Count ?? 0;
-
-        public bool Done => false;
-
-        public void Consider(Move move) => Add(move);
-
-        public void AddUnchecked(Move move) => Add(move);
     }
 
-    public class MoveProbe : IMovesVisitor
+    public class MoveProbe
     {
-        public bool Done { get; private set; }
+        public bool Found { get; private set; }
         private Move _move;
 
         private MoveProbe(Move reference)
@@ -400,48 +336,30 @@ namespace MinimalChess
         public static bool IsPseudoLegal(Board position, Move move)
         {
             MoveProbe probe = new MoveProbe(move);
-            position.CollectMoves(probe, move.FromIndex);
-            return probe.Done;
+            position.CollectMoves(probe.Consider, move.FromIndex);
+            return probe.Found;
         }
 
         public void Consider(Move move)
         {
             if (_move == move)
-                Done = true;
-        }
-
-        public void AddUnchecked(Move move)
-        {
-            if (_move == move)
-                Done = true;
+                Found = true;
         }
     }
 
-    public class MoveList : List<Move>, IMovesVisitor
+    public class MoveList : List<Move>
     {
-        public bool Done => false;
-
-        public void Consider(Move move)
-        {
-            Add(move);
-        }
-
-        public void AddUnchecked(Move move)
-        {
-            Add(move);
-        }
-
         internal static MoveList CollectQuiets(Board position)
         {
             MoveList quietMoves = new MoveList();
-            position.CollectQuiets(quietMoves);
+            position.CollectQuiets(quietMoves.Add);
             return quietMoves;
         }
 
         internal static MoveList CollectCaptures(Board position)
         {
             MoveList captures = new MoveList();
-            position.CollectCaptures(captures);
+            position.CollectCaptures(captures.Add);
             return captures;
         }
     }
