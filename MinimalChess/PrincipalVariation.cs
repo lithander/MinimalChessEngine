@@ -94,17 +94,6 @@ namespace MinimalChess
             }
         }
 
-        public bool Contains(Move move, int depth)
-        {
-            return Array.IndexOf(_moves, move) > -1;
-            for (int offset = 0; depth + offset <= _depth; offset += 2)
-                if (this[depth + offset, offset] == move)
-                    return true;
-
-            return false;
-        }
-
-
         public Move this[int depth]
         {
             get

@@ -7,26 +7,14 @@ using System.Text;
 
 namespace MinimalChess
 {
-    public enum MoveFlags
-    {
-        Empty = 0,
-        Capture = 1,
-        PV      = 2,
-        Killer  = 4,
-        History = 8
-    }
-
     public struct Move
     {
         public byte FromIndex;
         public byte ToIndex;
         public Piece Promotion;
-        public MoveFlags Flags;
-
 
         public Move(int fromIndex, int toIndex)
         {
-            Flags = MoveFlags.Empty;
             FromIndex = (byte)fromIndex;
             ToIndex = (byte)toIndex;
             Promotion = Piece.None;
@@ -34,7 +22,6 @@ namespace MinimalChess
 
         public Move(int fromIndex, int toIndex, Piece promotion)
         {
-            Flags = MoveFlags.Empty;
             FromIndex = (byte)fromIndex;
             ToIndex = (byte)toIndex;
             Promotion = promotion;
@@ -56,12 +43,6 @@ namespace MinimalChess
             ToIndex = Notation.ToSquareIndex(toSquare);
             //the presence of a 5th character should mean promotion
             Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
-            Flags = MoveFlags.Empty;
-        }
-
-        public bool HasFlags(MoveFlags mask)
-        {
-            return (Flags & mask) == mask;
         }
 
         public override bool Equals(object obj)
@@ -107,7 +88,7 @@ namespace MinimalChess
         public static Move BlackCastlingShortRook = new Move("h8f8");
         public static Move BlackCastlingLongRook = new Move("a8d8");
         public static Move WhiteCastlingShortRook = new Move("h1f1");
-        public static Move WhiteCastlingLongRook = new Move("a1d1");
+        public static Move WhiteCastlingLongRook = new Move("a1d1");        
     }
 
     public interface IMovesVisitor
@@ -233,21 +214,23 @@ namespace MinimalChess
         {
             CanMove = true;
         }
-    }
 
+        public static bool HasMoves(Board position)
+        {
+            var moves = new AnyLegalMoves(position);
+            return moves.CanMove;
+        }
+    }
 
     public static class MoveOrdering
     {
         public static void SortMvvLva(List<Move> moves, Board context)
         {
             int Score(Move move)
-            {
+            {    
                 Piece victim = context[move.ToIndex];
-                if (victim == Piece.None)
-                    return 0;//we don't sort those
                 Piece attacker = context[move.FromIndex];
-                //Rating: Victims value first - offset by the attackers value
-                return ((100 * (int)victim) - (int)attacker);
+                return Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
             }
             moves.Sort((a, b) => Score(b).CompareTo(Score(a)));
         }
@@ -260,8 +243,6 @@ namespace MinimalChess
             SortMvvLva(moves, context);
         }
     }
-
-
 
     public class MoveSequence : IMovesVisitor
     {
@@ -279,6 +260,7 @@ namespace MinimalChess
         {
             return new MoveSequence(position, true);
         }
+
         public static MoveSequence CapturesOnly(Board position)
         {
             return new MoveSequence(position, false);
@@ -343,15 +325,15 @@ namespace MinimalChess
             Piece victim = _parentNode[move.ToIndex];
             if (victim != Piece.None)
             {
+                Piece attacker = _parentNode[move.FromIndex];
                 //We can compute a rating that produces this order in one sorting pass:
                 //-> scale the victim value by max rank and then offset it by the attacker value
-                //Piece attacker = _parentNode[move.FromIndex];
-                //int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
-                //_captures.Add((score, move));
+                int score = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+                _captures.Add((score, move));
 
-                int see = (int)_parentNode.ActiveColor * Evaluation.SEE(_parentNode, move);
-                if(see >= 0 || _includeNonCaptures)
-                    _captures.Add((see, move));
+                //int see = (int)_parentNode.ActiveColor * Evaluation.SEE(_parentNode, move);
+                //if(see >= 0 || _includeNonCaptures)
+                //    _captures.Add((see, move));
 
             }
             else if (_includeNonCaptures)
@@ -405,6 +387,64 @@ namespace MinimalChess
         public void AddUnchecked(Move move) => Add(move);
     }
 
+    public class MoveProbe : IMovesVisitor
+    {
+        public bool Done { get; private set; }
+        private Move _move;
+
+        private MoveProbe(Move reference)
+        {
+            _move = reference;
+        }
+
+        public static bool IsPseudoLegal(Board position, Move move)
+        {
+            MoveProbe probe = new MoveProbe(move);
+            position.CollectMoves(probe, move.FromIndex);
+            return probe.Done;
+        }
+
+        public void Consider(Move move)
+        {
+            if (_move == move)
+                Done = true;
+        }
+
+        public void AddUnchecked(Move move)
+        {
+            if (_move == move)
+                Done = true;
+        }
+    }
+
+    public class MoveList : List<Move>, IMovesVisitor
+    {
+        public bool Done => false;
+
+        public void Consider(Move move)
+        {
+            Add(move);
+        }
+
+        public void AddUnchecked(Move move)
+        {
+            Add(move);
+        }
+
+        internal static MoveList CollectQuiets(Board position)
+        {
+            MoveList quietMoves = new MoveList();
+            position.CollectQuiets(quietMoves);
+            return quietMoves;
+        }
+
+        internal static MoveList CollectCaptures(Board position)
+        {
+            MoveList captures = new MoveList();
+            position.CollectCaptures(captures);
+            return captures;
+        }
+    }
 
     /*
     class QSearchSortedMoveSequence : IMovesVisitor

@@ -1,77 +1,55 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Text;
 
 namespace MinimalChess
 {
     public class Killers
     {
-        List<Move> _moves = new List<Move>();
-        List<Move> _backup = new List<Move>();
-        List<Move> _backup2 = new List<Move>();
-        int _depth = -1;
+        Move[] _moves;
+        int _depth = 0;
+        int _width = 0;
+        
+        public Killers(int width)
+        {
+            _moves = new Move[0];
+            _depth = 0;
+            _width = width;
+        }
 
         public void Grow(int depth)
         {
-            _depth = depth;
-            while (_moves.Count < _depth)
-                _moves.Add(default);
-
-            while (_backup.Count < _depth)
-                _backup.Add(default);
-
-            while (_backup2.Count < _depth)
-                _backup2.Add(default);
+            _depth = Math.Max(_depth, depth);
+            Array.Resize(ref _moves, _depth * _width);
         }
 
         public void Remember(Move move, int depth)
         {
-            if (move.HasFlags(MoveFlags.Capture))
-                return;
+            int index0 = _width * (_depth - depth);
+            //We shift all moves by one slot to make room but overwrite a potential dublicate of 'move' then store the new 'move' at [0] 
+            int last = index0;
+            for (; last < index0 + _width - 1; last++)
+                if (_moves[last] == move) //if 'move' is present we want to overwrite it instead of the the one at [_width-1]
+                    break;
+            //2. start with last slot and 'save' the previous values until the first slot got dublicated
+            for (int index = last; index >= index0; index--)
+                _moves[index] = _moves[index - 1];
+            //3. store new 'move' in the first slot
+            _moves[index0] = move;
 
-            int index = _depth - depth;
-            if (_moves[index] != move)
-            {
-                if (_backup[index] != move)
-                {
-                    _backup2[index] = _backup[index];
-                }
-
-                _backup[index] = _moves[index];
-                _moves[index] = move;
-
-                Debug.Assert(_backup2[index] == default || (_backup2[index] != _backup[index] && _backup2[index] != _moves[index]));
-            }
+            //make sure there are no dublicates other than 'default'
+            Debug.Assert(_moves.Skip(index0).Take(_width).Where(move => move != default).Distinct().Count() == _moves.Skip(index0).Take(_width).Where(move => move != default).Count());
         }
 
-        public bool Contains(Move move, int depth, out int order)
+        public Move[] Get(int depth)
         {
-            int index = _depth - depth;
-
-            if (_moves[index] == move)
-            {
-                order = 0;
-                return true;
-            }
-
-            if (_backup[index] == move)
-            {
-                order = -1;
-                return true;
-            }
-
-            if (_backup2[index] == move)
-            {
-                order = -2;
-                return true;
-            }
-            order = -3;
-            return false;
-            //return _moves[index] == move || _backup[index] == move || _backup2[index] == move);
+            Move[] line = new Move[_width];
+            int index0 = _width * (_depth - depth);
+            Array.Copy(_moves, index0, line, 0, _width);
+            return line;
         }
-
-        public int Index(int depth) => _depth - depth;
     }
 
     public class History
@@ -104,19 +82,19 @@ namespace MinimalChess
 
         internal void RememberCutoff(Move move, int depth)
         {
-            if (!move.HasFlags(MoveFlags.Capture))
-                _history[Index(move)] += depth * depth;
+            //if (!move.HasFlags(MoveFlags.Capture))
+            _history[Index(move)] += depth * depth;
         }
         internal void RememberBest(Move move, int depth)
         {
-            if (!move.HasFlags(MoveFlags.Capture))
-                _history[Index(move)] += depth * depth;
+            //if (!move.HasFlags(MoveFlags.Capture))
+            _history[Index(move)] += depth * depth;
         }
 
         internal void RememberWeak(Move move, int depth)
         {
-            if (!move.HasFlags(MoveFlags.Capture))
-                _history[Index(move)] -= depth;
+            //if (!move.HasFlags(MoveFlags.Capture))
+             _history[Index(move)] -= depth;
         }
 
         public void PrintStats()
@@ -142,136 +120,88 @@ namespace MinimalChess
         }
     }
 
-    class Playmaker
+    static class Playmaker
     {
-        PrincipalVariation _pv;
-        Killers _killers;
-        History _history;
-        int _depth = -1;
-        List<Move> _rootMoves = null;
-
-        public Playmaker(PrincipalVariation pv, Killers killers, History history, IEnumerable<Move> rootMoves)
+        public static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, PrincipalVariation pv, Killers killers)
         {
-            _pv = pv;
-            _killers = killers;
-            _history = history;
+            //1. PV if available
+            Move pvMove = pv[depth];
+            if (position.CanPlay(pvMove))
+            {
+                var nextPosition = new Board(position, pvMove);
+                if (!nextPosition.IsChecked(position.ActiveColor))
+                    yield return (pvMove, nextPosition);
+            }
 
-            if (rootMoves != null)
-                _rootMoves = new List<Move>(rootMoves);
+            //2. Captures Mvv-Lva
+            MoveList captures = MoveList.CollectCaptures(position);
+            captures.Remove(pvMove);
+            MoveOrdering.SortMvvLva(captures, position);
+
+//            foreach (var capture in captures
+//                .OrderByDescending(move => Pieces.Rank(position[move.ToIndex]))  //most valuabe victim first                                      
+//                .ThenBy(move => Pieces.Rank(position[move.FromIndex]))) //least valuable attacker first
+
+            foreach (var capture in captures)
+            {
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.ActiveColor))
+                    yield return (capture, nextPosition);
+            }
+
+            //3. Killers if available
+            Move[] killerMoves = killers.Get(depth);
+            foreach (Move killer in killerMoves)
+            {
+                if (killer != pvMove && position[killer.ToIndex] == Piece.None && position.CanPlay(killer))
+                {
+                    var nextPosition = new Board(position, killer);
+                    if (!nextPosition.IsChecked(position.ActiveColor))
+                        yield return (killer, nextPosition);
+                }
+            }
+
+            MoveList nonCaptures = MoveList.CollectQuiets(position);
+            foreach (var move in nonCaptures)
+                if (move != pvMove && Array.IndexOf(killerMoves, move) == -1)
+                {
+                    var nextPosition = new Board(position, move);
+                    if (!nextPosition.IsChecked(position.ActiveColor))
+                        yield return (move, nextPosition);
+                }
         }
 
-        public IEnumerable<(Move, Board)> Play(Board position, int depth)
+        internal static IEnumerable<Board> Play(Board position)
         {
-            _depth = Math.Max(_depth, depth);
-            bool isRoot = depth == _depth;
+            MoveList captures = MoveList.CollectCaptures(position);
+            MoveOrdering.SortMvvLva(captures, position);
+            foreach (var capture in captures)
+            {
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.ActiveColor))
+                    yield return nextPosition;
+            }
 
-            //there are multiple MoveSequence being played at the same time, so we create a MoveSequence instance to keep track
-            MoveSequence moves = new MoveSequence(_pv, _killers, _history, depth);
-            return moves.PlayMoves(position, isRoot ? _rootMoves : null);
+            MoveList nonCaptures = MoveList.CollectQuiets(position);
+            foreach (var move in nonCaptures)
+            {
+                var nextPosition = new Board(position, move);
+                if (!nextPosition.IsChecked(position.ActiveColor))
+                    yield return nextPosition;
+            }
         }
 
-        public class MoveSequence : IMovesVisitor
+        internal static IEnumerable<Board> PlayCaptures(Board position)
         {
-            List<(int Score, Move Move)> _priority;
-            List<(int Score, Move Move)> _later = null;
-            Board _position;
-            PrincipalVariation _pv;
-            Killers _killers;
-            History _history;
-            int _depth;
+            MoveList captures = MoveList.CollectCaptures(position);
+            MoveOrdering.SortMvvLva(captures, position);
 
-            const int PV_SCORE = int.MaxValue;
-
-            public MoveSequence(PrincipalVariation pv, Killers killer, History history, int depth)
+            foreach (var capture in captures)
             {
-                _depth = depth;
-                _pv = pv;
-                _killers = killer;
-                _history = history;
-
-                _priority = new List<(int, Move)>(10);
-                _later = new List<(int, Move)>(40);
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.ActiveColor))
+                    yield return nextPosition;
             }
-
-            internal IEnumerable<(Move, Board)> PlayMoves(Board position, List<Move> moves)
-            {
-                _position = position;
-
-                if (moves != null)
-                {
-                    foreach (var move in moves)
-                        Add(move);
-                }
-                else
-                {
-                    _position.CollectMoves(this);
-                }
-
-                _priority.Sort((a, b) => b.Score.CompareTo(a.Score));
-
-                //Return the best capture and remove it until captures are depleated
-                foreach (var capture in _priority)
-                    if (TryMove(capture.Move, out Board childNode))
-                    {
-                        //Console.WriteLine(_depth + new string(' ', _killers.Index(_depth)) + capture.Score + ": " + capture.Move);
-                        yield return (capture.Move, childNode);
-                    }
-
-                _later.Sort((a, b) => b.Score.CompareTo(a.Score));
-
-                foreach (var quiet in _later)
-                    if (TryMove(quiet.Move, out Board childNode))
-                        yield return (quiet.Move, childNode);
-            }
-
-            private bool TryMove(Move move, out Board childNode)
-            {
-                //because the move was 'pseudolegal' we make sure it doesnt result in a position 
-                //where our (color) king is in check - in that case we can't play it
-                childNode = new Board(_position, move);
-                return !childNode.IsChecked(_position.ActiveColor);
-            }
-
-            private void Add(Move move)
-            {
-                //Debug.Assert(_position[move.ToIndex] == Piece.None || move.HasFlags(MoveFlags.Capture));
-
-                Piece victim = _position[move.ToIndex];
-                if (victim != Piece.None)
-                    move.Flags |= MoveFlags.Capture;
-
-                if (move == _pv[_depth])
-                {
-                    _priority.Add((PV_SCORE, move));
-                }
-                else if (victim == Piece.None && _killers.Contains(move, _depth, out int order))
-                {
-                    _priority.Add((order, move));
-                }
-                else if (victim != Piece.None)
-                {
-                    //*** MVV-LVA ***
-                    //Sort by the value of the victim in descending order. Ties are broken by playing the highes valued attacker first.
-                    //We can compute a rating that produces this order in one sorting pass:
-                    Piece attacker = _position[move.FromIndex];
-                    int mvvlva = Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
-                    _priority.Add((mvvlva, move));
-
-                    //int see = (int)_position.ActiveColor * Evaluation.SEE(_position, move);
-                    //_priority.Add((see, move));
-                }
-                else
-                {
-                    long value = _history.GetValue(move);
-                    _later.Add(((int)value, move));
-                }
-            }
-
-            public bool Done => false;
-
-            public void Consider(Move move) => Add(move);
-
-            public void AddUnchecked(Move move) => Add(move);
         }
     }
 }

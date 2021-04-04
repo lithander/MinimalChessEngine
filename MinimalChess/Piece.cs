@@ -60,7 +60,8 @@ namespace MinimalChess
         //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
         public static Piece Color(Color color) => (Piece)(color + 2);
 
-        //Use Piece.ColorMask to clear all bits execept the ones for color, then convert from Piece to Color by subtracting 2
+        public static Piece OtherColor(Color color) => (Piece)(2 - color);
+
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
         public static Color GetColor(this Piece piece) => (Color)(Color(piece) - 2);
 

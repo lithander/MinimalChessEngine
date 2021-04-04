@@ -24,17 +24,16 @@ namespace MinimalChess
         Board _root = null;
         PrincipalVariation _pv;
         KillSwitch _killSwitch;
-        History _history;
+        //History _history;
         Killers _killers;
-        Playmaker _playmaker;
+        List<Move> _rootMoves;
 
         public DebugSearch(Board board, List<Move> rootMoves = null)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
-            _history = new History();
-            _killers = new Killers();
-            _playmaker = new Playmaker(_pv, _killers, _history, rootMoves);
+            _killers = new Killers(4);
+            _rootMoves = rootMoves;
         }
 
         public void Search(int maxDepth)
@@ -55,13 +54,24 @@ namespace MinimalChess
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
-            _history.PrintStats();
+            //_history.PrintStats();
         }
 
         private IEnumerable<Board> Expand(Board position, bool escapeCheck)
         {
-            MoveSequence nodes = escapeCheck ? MoveSequence.AllMoves(position) : MoveSequence.CapturesOnly(position);
-            return nodes.SortCaptures().Play();
+            if (escapeCheck)
+                return Playmaker.Play(position);
+            else
+                return Playmaker.PlayCaptures(position);
+        }
+
+        private IEnumerable<(Move, Board)> Expand(Board position, int depth)
+        {
+            var moveSequence = Playmaker.Play(position, depth, _pv, _killers);
+            if (_rootMoves != null && depth == Depth) //Filter moves that are not whitelisted via rootMoves
+                return moveSequence.Where(entry => _rootMoves.Contains(entry.Move));
+            else
+                return moveSequence;
         }
 
         private int EvalPosition(Board position, int depth, SearchWindow window)
@@ -79,9 +89,11 @@ namespace MinimalChess
             Color color = position.ActiveColor;
 
             int expandedNodes = 0;
-            foreach ((Move move, Board child) in _playmaker.Play(position, depth))
+            foreach ((Move move, Board child) in Expand(position, depth))
             {
                 expandedNodes++;
+                //moveCount++;
+                //Console.WriteLine($"{moveCount} {depth} {move}");
 
                 //For all rootmoves after the first search with "null window"
                 if (expandedNodes > 1 && depth == Depth)
@@ -96,16 +108,13 @@ namespace MinimalChess
                 if (window.Inside(score, color))
                 {
                     _pv[depth] = move;
-                    _history.RememberBest(move, depth);
                     if (window.Cut(score, color))
                     {
-                        _history.RememberCutoff(move, depth);
-                        _killers.Remember(move, depth);
+                        if(position[move.ToIndex] == Piece.None)
+                            _killers.Remember(move, depth);
                         return window.GetScore(color);
                     }
                 }
-                else
-                    _history.RememberWeak(move, depth);
             }
 
             if (expandedNodes == 0) //no expansion happened from this node!
@@ -151,17 +160,11 @@ namespace MinimalChess
                 return (int)color * PeSTO.LostValue;
 
             //stalemate?
-            if (expandedNodes == 0 && !AnyLegalMoves(position))
+            if (expandedNodes == 0 && !position.HasLegalMoves)
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"
             return window.GetScore(color);
-        }
-
-        public bool AnyLegalMoves(Board position)
-        {
-            var moves = new AnyLegalMoves(position);
-            return moves.CanMove;
         }
     }
 }
