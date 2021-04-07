@@ -88,5 +88,17 @@ namespace MinimalChess
             position.CollectCaptures(captures.Add);
             return captures;
         }
+
+        public MoveList SortMvvLva(Board context)
+        {
+            int Score(Move move)
+            {
+                Piece victim = context[move.ToIndex];
+                Piece attacker = context[move.FromIndex];
+                return Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+            }
+            Sort((a, b) => Score(b).CompareTo(Score(a)));
+            return this;
+        }
     }
 }

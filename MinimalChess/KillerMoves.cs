@@ -43,5 +43,11 @@ namespace MinimalChess
             Array.Copy(_moves, index0, line, 0, _width);
             return line;
         }
+
+        public bool Contains(int depth, Move move)
+        {
+            int index0 = _width * (_depth - depth);
+            return Array.IndexOf(_moves, move, index0, _width) >= 0;
+        }
     }
 }
