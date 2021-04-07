@@ -50,6 +50,12 @@ namespace MinimalChess
             Array.Copy(_moves, index0, line, 0, _width);
             return line;
         }
+
+        public bool Contains(int depth, Move move)
+        {
+            int index0 = _width * (_depth - depth);
+            return Array.IndexOf(_moves, move, index0, _width) >= 0;
+        }
     }
 
     public class History
@@ -134,15 +140,7 @@ namespace MinimalChess
             }
 
             //2. Captures Mvv-Lva
-            MoveList captures = MoveList.CollectCaptures(position);
-            captures.Remove(pvMove);
-            MoveOrdering.SortMvvLva(captures, position);
-
-//            foreach (var capture in captures
-//                .OrderByDescending(move => Pieces.Rank(position[move.ToIndex]))  //most valuabe victim first                                      
-//                .ThenBy(move => Pieces.Rank(position[move.FromIndex]))) //least valuable attacker first
-
-            foreach (var capture in captures)
+            foreach (var capture in MoveList.CollectCaptures(position, pvMove))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.ActiveColor))
@@ -150,8 +148,7 @@ namespace MinimalChess
             }
 
             //3. Killers if available
-            Move[] killerMoves = killers.Get(depth);
-            foreach (Move killer in killerMoves)
+            foreach (Move killer in killers.Get(depth))
             {
                 if (killer != pvMove && position[killer.ToIndex] == Piece.None && position.CanPlay(killer))
                 {
@@ -161,9 +158,8 @@ namespace MinimalChess
                 }
             }
 
-            MoveList nonCaptures = MoveList.CollectQuiets(position);
-            foreach (var move in nonCaptures)
-                if (move != pvMove && Array.IndexOf(killerMoves, move) == -1)
+            foreach (var move in MoveList.CollectQuiets(position))
+                if (move != pvMove && !killers.Contains(depth, move))
                 {
                     var nextPosition = new Board(position, move);
                     if (!nextPosition.IsChecked(position.ActiveColor))
@@ -173,17 +169,14 @@ namespace MinimalChess
 
         internal static IEnumerable<Board> Play(Board position)
         {
-            MoveList captures = MoveList.CollectCaptures(position);
-            MoveOrdering.SortMvvLva(captures, position);
-            foreach (var capture in captures)
+            foreach (var capture in MoveList.CollectCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.ActiveColor))
                     yield return nextPosition;
             }
 
-            MoveList nonCaptures = MoveList.CollectQuiets(position);
-            foreach (var move in nonCaptures)
+            foreach (var move in MoveList.CollectQuiets(position))
             {
                 var nextPosition = new Board(position, move);
                 if (!nextPosition.IsChecked(position.ActiveColor))
@@ -193,10 +186,7 @@ namespace MinimalChess
 
         internal static IEnumerable<Board> PlayCaptures(Board position)
         {
-            MoveList captures = MoveList.CollectCaptures(position);
-            MoveOrdering.SortMvvLva(captures, position);
-
-            foreach (var capture in captures)
+            foreach (var capture in MoveList.CollectCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.ActiveColor))

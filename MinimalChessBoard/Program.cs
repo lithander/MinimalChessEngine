@@ -176,7 +176,7 @@ namespace MinimalChessBoard
             Console.WriteLine(" '----------------'");
             Console.WriteLine($"  A B C D E F G H");
             Console.WriteLine();
-            Console.WriteLine($"  PSTs     {PeSTO.Evaluate(board):+0;-0}");
+            Console.WriteLine($"  PSTs     {board.Score:+0;-0}");
             Console.WriteLine($"  Quiet    {QEval(board):+0; -0}");
         }
 

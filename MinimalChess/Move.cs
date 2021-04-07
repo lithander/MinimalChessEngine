@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Text;
 
 namespace MinimalChess
@@ -103,8 +104,6 @@ namespace MinimalChess
             _reference = null;
         }
 
-        public bool Done => false;
-
         public void Consider(Move move)
         {
             //only add if the move doesn't result in a check for active color
@@ -139,7 +138,9 @@ namespace MinimalChess
         public AnyLegalMoves(Board reference)
         {
             _reference = reference;
-            _reference.CollectMoves(Consider);
+            _reference.CollectQuiets(Consider);
+            if(!CanMove)
+                _reference.CollectCaptures(Consider);
             _reference = null;
         }
 
@@ -184,6 +185,8 @@ namespace MinimalChess
             //and sort the rest
             SortMvvLva(moves, context);
         }
+
+
     }
 
     public class MoveSequence
@@ -325,42 +328,96 @@ namespace MinimalChess
 
     public class MoveProbe
     {
-        public bool Found { get; private set; }
-        private Move _move;
-
-        private MoveProbe(Move reference)
-        {
-            _move = reference;
-        }
-
         public static bool IsPseudoLegal(Board position, Move move)
         {
-            MoveProbe probe = new MoveProbe(move);
-            position.CollectMoves(probe.Consider, move.FromIndex);
-            return probe.Found;
-        }
-
-        public void Consider(Move move)
-        {
-            if (_move == move)
-                Found = true;
+            bool found = false;
+            position.CollectMoves(m => found |= (m == move), move.FromIndex);
+            return found;
         }
     }
 
     public class MoveList : List<Move>
     {
+        private MoveList(int capacity) : base(capacity) { }
+
         internal static MoveList CollectQuiets(Board position)
         {
-            MoveList quietMoves = new MoveList();
+            MoveList quietMoves = new MoveList(40);
             position.CollectQuiets(quietMoves.Add);
             return quietMoves;
         }
 
         internal static MoveList CollectCaptures(Board position)
         {
-            MoveList captures = new MoveList();
+            MoveList captures = new MoveList(10);
             position.CollectCaptures(captures.Add);
+            captures.SortMvvLva(position);
             return captures;
+        }
+
+        internal static MoveList CollectCaptures(Board position, Move excludeMove)
+        {
+            MoveList captures = new MoveList(10);
+            position.CollectCaptures(m =>
+            {
+                if (m != excludeMove)
+                    captures.Add(m);
+            });
+            captures.SortMvvLva(position);
+            return captures;
+        }
+
+        private void SortMvvLva(Board context)
+        {
+            int Score(Move move)
+            {
+                Piece victim = context[move.ToIndex];
+                Piece attacker = context[move.FromIndex];
+                return Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
+            }
+            Sort((a, b) => Score(b).CompareTo(Score(a)));
+        }
+
+        public IEnumerable<Move> OrderByMvvLva(Board position)
+        {
+            //MoveOrdering.SortMvvLva(this, position);
+            //return this;
+
+            //return this.OrderByDescending(move => Pieces.Rank(position[move.ToIndex]))  //most valuabe victim first                                      
+            //    .ThenBy(move => Pieces.Rank(position[move.FromIndex])); //least valuable attacker first
+            if (Count == 0)
+                yield break;
+
+            var moves = ToArray();
+
+            for(int last = Count - 1; last >= 1; last--)
+            {
+                //Find best in range [0..last]
+                int best = 0;
+                int bestVictim = (int)position[moves[0].ToIndex];
+                int bestAttacker = (int)position[moves[0].FromIndex];
+                for (int i = 1; i <= last; i++)
+                {
+                    int victim = (int)position[moves[i].ToIndex];
+                    if (victim < bestVictim)
+                        continue;
+
+                    int attacker = (int)position[moves[i].FromIndex];
+                    if (victim == bestVictim && attacker >= bestAttacker)
+                        continue;
+
+                    best = i;
+                    bestVictim = victim;
+                    bestAttacker = attacker;
+                }
+                yield return moves[best];
+                //swap @best with @last
+                Move temp = moves[last];
+                moves[last] = moves[best];
+                moves[best] = temp;
+                //shrink range
+            }
+            yield return moves[0];
         }
     }
 

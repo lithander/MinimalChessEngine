@@ -43,7 +43,10 @@ namespace MinimalChess
         private int _enPassantSquare = -1;
         private int _blackKingSquare = 0;
         private int _whiteKingSquare = 0;
+        private PeSTO.Evaluation _eval;
         /*** STATE DATA ***/
+
+        public int Score => _eval.Score;
 
         public Color ActiveColor => _activeColor;
 
@@ -52,6 +55,7 @@ namespace MinimalChess
         public Board(string fen)
         {
             SetupPosition(fen);
+            _eval = PeSTO.GetEvaluation(this);
         }
 
         public Board(Board board)
@@ -74,13 +78,19 @@ namespace MinimalChess
             _castlingRights = board._castlingRights;
             _blackKingSquare = board._blackKingSquare;
             _whiteKingSquare = board._whiteKingSquare;
+            _eval = board._eval;
             ValidateKingSquares();
         }
 
         public Piece this[int index]
         {
             get => _state[index];
-            set => _state[index] = value;
+            private set
+            {
+                PeSTO.UpdateEvaluation(ref _eval, this, index, value);
+                _state[index] = value;
+                Debug.Assert(_eval.Equals(PeSTO.GetEvaluation(this)));
+            }
         }
 
         //Rank - the eight horizontal rows of the chess board are called ranks.
@@ -88,7 +98,6 @@ namespace MinimalChess
         public Piece this[int rank, int file]
         {
             get => _state[rank * 8 + file];
-            set => _state[rank * 8 + file] = value;
         }
 
         public void SetupPosition(string fen)
@@ -114,7 +123,8 @@ namespace MinimalChess
                         file += emptySquares;
                         continue;
                     }
-                    this[rank, file++] = Notation.ToPiece(piece);
+                    this[rank * 8 + file] = Notation.ToPiece(piece);
+                    file++;
                 }
                 rank--;
             }
@@ -145,22 +155,24 @@ namespace MinimalChess
             _blackKingSquare = -1;
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
             {
-                if (_state[squareIndex] == Piece.BlackKing)
+                if (this[squareIndex] == Piece.BlackKing)
                     _blackKingSquare = squareIndex;
-                if (_state[squareIndex] == Piece.WhiteKing)
+                if (this[squareIndex] == Piece.WhiteKing)
                     _whiteKingSquare = squareIndex;
             }
 
             ValidateKingSquares();
+
+            _eval = PeSTO.GetEvaluation(this);
         }
 
         [Conditional("DEBUG")]
         private void ValidateKingSquares()
         {
-            if (_whiteKingSquare < 0 || _whiteKingSquare >= 64 || _state[_whiteKingSquare] != Piece.WhiteKing)
+            if (_whiteKingSquare < 0 || _whiteKingSquare >= 64 || this[_whiteKingSquare] != Piece.WhiteKing)
                 throw new Exception($"No WhiteKing found on square {_whiteKingSquare}!");
 
-            if (_blackKingSquare < 0 || _blackKingSquare >= 64 || _state[_blackKingSquare] != Piece.BlackKing)
+            if (_blackKingSquare < 0 || _blackKingSquare >= 64 || this[_blackKingSquare] != Piece.BlackKing)
                 throw new Exception($"No BlackKing found on squre {_blackKingSquare}!");
         }
 
@@ -172,29 +184,29 @@ namespace MinimalChess
         {
             ValidateKingSquares();
 
-            Piece capturedPiece = _state[move.ToIndex];
-            Piece movingPiece = _state[move.FromIndex];
+            Piece capturedPiece = this[move.ToIndex];
+            Piece movingPiece = this[move.FromIndex];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_activeColor);
 
             //move the correct piece to the target square
-            _state[move.ToIndex] = movingPiece;
+            this[move.ToIndex] = movingPiece;
             //...and clear the square it was previously located
-            _state[move.FromIndex] = Piece.None;
+            this[move.FromIndex] = Piece.None;
 
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
-                capturedPiece = _state[captureIndex];
-                _state[captureIndex] = Piece.None;
+                capturedPiece = this[captureIndex];
+                this[captureIndex] = Piece.None;
             }
 
             //handle castling special case
             if (IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
-                _state[rookMove.ToIndex] = _state[rookMove.FromIndex];
-                _state[rookMove.FromIndex] = Piece.None;
+                this[rookMove.ToIndex] = this[rookMove.FromIndex];
+                this[rookMove.FromIndex] = Piece.None;
             }
 
             //update board state
@@ -224,12 +236,9 @@ namespace MinimalChess
 
         private void UpdateKingSquares(Move move)
         {
-            int to = move.ToIndex;
-            Piece movingPiece = _state[move.ToIndex];
-
-            if (movingPiece == Piece.WhiteKing)
+            if (this[move.ToIndex] == Piece.WhiteKing)
                 _whiteKingSquare = move.ToIndex;
-            if (movingPiece == Piece.BlackKing)
+            else if (this[move.ToIndex] == Piece.BlackKing)
                 _blackKingSquare = move.ToIndex;
         }
 
@@ -237,7 +246,7 @@ namespace MinimalChess
         {
             int to = move.ToIndex;
             int from = move.FromIndex;
-            Piece movingPiece = _state[to];
+            Piece movingPiece = this[to];
 
             //movingPiece needs to be either a BlackPawn...
             if (movingPiece == Piece.BlackPawn && Rank(to) == Rank(from) - 2)
@@ -324,19 +333,19 @@ namespace MinimalChess
 
         public void CollectQuiets(Action<Move> moves, int squareIndex)
         {
-            if (IsActivePiece(_state[squareIndex]))
+            if (IsActivePiece(this[squareIndex]))
                 AddQuiets(moves, squareIndex);
         }
 
         public void CollectCaptures(Action<Move> moves, int squareIndex)
         {
-            if (IsActivePiece(_state[squareIndex]))
+            if (IsActivePiece(this[squareIndex]))
                 AddCaptures(moves, squareIndex);
         }
 
         private void AddQuiets(Action<Move> moves, int squareIndex)
         {
-            switch (_state[squareIndex])
+            switch (this[squareIndex])
             {
                 case Piece.BlackPawn:
                     AddBlackPawnMoves(moves, squareIndex);
@@ -374,7 +383,7 @@ namespace MinimalChess
 
         private void AddCaptures(Action<Move> moves, int squareIndex)
         {
-            switch (_state[squareIndex])
+            switch (this[squareIndex])
             {
                 case Piece.BlackPawn:
                     AddBlackPawnAttacks(moves, squareIndex);
@@ -434,21 +443,21 @@ namespace MinimalChess
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[index])
-                if (_state[target] == (Piece.Pawn | color))
+                if (this[target] == (Piece.Pawn | color))
                     return true;
 
             //2. Knight
             foreach (int target in Attacks.Knight[index])
-                if (_state[target] == (Piece.Knight | color))
+                if (this[target] == (Piece.Knight | color))
                     return true;
 
             //3. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
-                    if (_state[target] == (Piece.Bishop | color) || _state[target] == (Piece.Queen | color))
+                    if (this[target] == (Piece.Bishop | color) || this[target] == (Piece.Queen | color))
                         return true;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
 
@@ -456,15 +465,15 @@ namespace MinimalChess
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                 {
-                    if (_state[target] == (Piece.Rook | color) || _state[target] == (Piece.Queen | color))
+                    if (this[target] == (Piece.Rook | color) || this[target] == (Piece.Queen | color))
                         return true;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
 
             //5. King
             foreach (int target in Attacks.King[index])
-                if (_state[target] == (Piece.King | color))
+                if (this[target] == (Piece.King | color))
                     return true;
 
             return false; //not threatened by anyone!
@@ -476,21 +485,21 @@ namespace MinimalChess
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[index])
-                if (_state[target] == (Piece.Pawn | color))
+                if (this[target] == (Piece.Pawn | color))
                     return target;
 
             //2. Knight
             foreach (int target in Attacks.Knight[index])
-                if (_state[target] == (Piece.Knight | color))
+                if (this[target] == (Piece.Knight | color))
                     return target;
 
             //3. Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
-                    if (_state[target] == (Piece.Bishop | color))
+                    if (this[target] == (Piece.Bishop | color))
                         return target;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
 
@@ -498,9 +507,9 @@ namespace MinimalChess
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
                 {
-                    if (_state[target] == (Piece.Rook | color))
+                    if (this[target] == (Piece.Rook | color))
                         return target;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
 
@@ -510,23 +519,23 @@ namespace MinimalChess
                 //TODO: just use a Queen table
                 foreach (int target in Attacks.Diagonal[index, dir])
                 {
-                    if (_state[target] == (Piece.Queen | color))
+                    if (this[target] == (Piece.Queen | color))
                         return target;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
                 foreach (int target in Attacks.Straight[index, dir])
                 {
-                    if (_state[target] == (Piece.Queen | color))
+                    if (this[target] == (Piece.Queen | color))
                         return target;
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                         break;
                 }
             }
 
             //5. King
             foreach (int target in Attacks.King[index])
-                if (_state[target] == (Piece.King | color))
+                if (this[target] == (Piece.King | color))
                     return target;
 
             return -1; //not threatened by anyone!
@@ -539,14 +548,14 @@ namespace MinimalChess
         private void AddKingCaptures(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.King[index])
-                if (IsOpponentPiece(_state[target]))
+                if (IsOpponentPiece(this[target]))
                     AddMove(moves, index, target);
         }
 
         private void AddKnightCaptures(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.Knight[index])
-                if (IsOpponentPiece(_state[target]))
+                if (IsOpponentPiece(this[target]))
                     AddMove(moves, index, target);
         }
 
@@ -554,9 +563,9 @@ namespace MinimalChess
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                     {
-                        if (IsOpponentPiece(_state[target]))
+                        if (IsOpponentPiece(this[target]))
                             AddMove(moves, index, target);
                         break;
                     }
@@ -566,9 +575,9 @@ namespace MinimalChess
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
-                    if (_state[target] != Piece.None)
+                    if (this[target] != Piece.None)
                     {
-                        if (IsOpponentPiece(_state[target]))
+                        if (IsOpponentPiece(this[target]))
                             AddMove(moves, index, target);
                         break;
                     }
@@ -581,7 +590,7 @@ namespace MinimalChess
         private void AddKingMoves(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.King[index])
-                if (_state[target] == Piece.None)
+                if (this[target] == Piece.None)
                     AddMove(moves, index, target);
         }
         private void AddWhiteCastlingMoves(Action<Move> moves)
@@ -606,8 +615,8 @@ namespace MinimalChess
 
         private bool CanCastle(int kingSquare, int rookSquare, Color color)
         {
-            Debug.Assert(_state[kingSquare] == Piece.King.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
-            Debug.Assert(_state[rookSquare] == Piece.Rook.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
+            Debug.Assert(this[kingSquare] == Piece.King.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
+            Debug.Assert(this[rookSquare] == Piece.Rook.OfColor(color), "CanCastle shouldn't be called if castling right has been lost!");
 
             Color enemyColor = Pieces.Flip(color);
             int gap = Math.Abs(rookSquare - kingSquare) - 1;
@@ -615,7 +624,7 @@ namespace MinimalChess
 
             // the squares *between* the king and the rook need to be unoccupied
             for (int i = 1; i <= gap; i++)
-                if (_state[kingSquare + i * dir] != Piece.None)
+                if (this[kingSquare + i * dir] != Piece.None)
                     return false;
 
             //the king must not start, end or pass through a square that is attacked by an enemy piece. (but the rook and the square next to the rook on queenside may be attacked)
@@ -633,7 +642,7 @@ namespace MinimalChess
         private void AddKnightMoves(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.Knight[index])
-                if (_state[target] == Piece.None)
+                if (this[target] == Piece.None)
                     AddMove(moves, index, target);
         }
 
@@ -645,7 +654,7 @@ namespace MinimalChess
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Diagonal[index, dir])
-                    if (_state[target] == Piece.None)
+                    if (this[target] == Piece.None)
                         AddMove(moves, index, target);
                     else
                         break;
@@ -655,7 +664,7 @@ namespace MinimalChess
         {
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Straight[index, dir])
-                    if (_state[target] == Piece.None)
+                    if (this[target] == Piece.None)
                         AddMove(moves, index, target);
                     else
                         break;
@@ -669,25 +678,25 @@ namespace MinimalChess
         private void AddWhitePawnMoves(Action<Move> moves, int index)
         {
             //if the square above isn't free there are no legal moves
-            if (_state[Up(index)] != Piece.None)
+            if (this[Up(index)] != Piece.None)
                 return;
 
             AddWhitePawnMove(moves, index, Up(index));
 
             //START POS? => consider double move
-            if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
+            if (Rank(index) == 1 && this[Up(index, 2)] == Piece.None)
                 AddMove(moves, index, Up(index, 2));
         }
 
         private void AddBlackPawnMoves(Action<Move> moves, int index)
         {
             //if the square below isn't free there are no legal moves
-            if (_state[Down(index)] != Piece.None)
+            if (this[Down(index)] != Piece.None)
                 return;
 
             AddBlackPawnMove(moves, index, Down(index));
             //START POS? => consider double move
-            if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
+            if (Rank(index) == 6 && this[Down(index, 2)] == Piece.None)
                 AddMove(moves, index, Down(index, 2));
         }
 
@@ -695,14 +704,14 @@ namespace MinimalChess
         private void AddWhitePawnAttacks(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.WhitePawn[index])
-                if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
+                if (Pieces.IsBlack(this[target]) || target == _enPassantSquare)
                     AddWhitePawnMove(moves, index, target);
         }
 
         private void AddBlackPawnAttacks(Action<Move> moves, int index)
         {
             foreach (int target in Attacks.BlackPawn[index])
-                if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
+                if (Pieces.IsWhite(this[target]) || target == _enPassantSquare)
                     AddBlackPawnMove(moves, index, target);
         }
 
@@ -776,7 +785,7 @@ namespace MinimalChess
                 return false;
             //4.) the same types of pieces occupy the same squares
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (other._state[squareIndex] != _state[squareIndex])
+                if (other[squareIndex] != this[squareIndex])
                     return false;
 
             return true;
@@ -788,7 +797,7 @@ namespace MinimalChess
             uint hash = 0;
             for (int squareIndex = 0; squareIndex < 32; squareIndex++)
             {
-                if (_state[squareIndex] != Piece.None || _state[squareIndex + 32] != Piece.None)
+                if (this[squareIndex] != Piece.None || this[squareIndex + 32] != Piece.None)
                 {
                     uint bit = (uint)(1 << squareIndex);
                     hash |= bit;

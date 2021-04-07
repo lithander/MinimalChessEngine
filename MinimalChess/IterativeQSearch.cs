@@ -123,7 +123,7 @@ namespace MinimalChess
             bool inCheck = position.IsChecked(color);
             if (!inCheck)
             {
-                int standPatScore = PeSTO.Evaluate(position);
+                int standPatScore = PeSTO.GetEvaluation(position).Score;
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);

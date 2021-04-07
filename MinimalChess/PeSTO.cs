@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -11,35 +12,72 @@ namespace MinimalChess
         //strip the first bit and
         private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
 
-        private static int SquareIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
+        private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
 
-        public static int Evaluate(Board board)
+        public struct Evaluation
         {
-            int midGame = 0;
-            int endGame = 0;
-            int phase = 0;
+            public int MidGame;
+            public int EndGame;
+            public int Phase;
+            public int Score
+            {
+                get
+                {
+                    double factor = Linstep(518, 6192, Phase);
+                    double score = factor * MidGame + (1 - factor) * EndGame;
+                    return (int)score;
+                }
+            }
+        }
+
+        public static Evaluation GetEvaluation(Board board)
+        {
+            Evaluation state = new Evaluation();
             for (int i = 0; i < 64; i++)
             {
                 Piece piece = board[i];
-                if (piece == Piece.None)
-                    continue;
-                Color color = Pieces.GetColor(piece);
-                int pieceIndex = PieceTableIndex(piece);
-                int squareIndex = SquareIndex(i, piece);
-                phase += PhaseValues[pieceIndex];
-                midGame += (int)color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, squareIndex]);
-                endGame += (int)color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, squareIndex]);
+                if (piece != Piece.None)
+                    AddPiece(ref state, piece, i);
             }
+            return state;
+        }
 
-            double factor = Linstep(518, 6192, phase);
-            double score = factor * midGame + (1 - factor) * endGame;
-            return (int)score;
+        public static void UpdateEvaluation(ref Evaluation state, Board board, int squareIndex, Piece newPiece)
+        {
+            Piece oldPiece = board[squareIndex];
+            if (oldPiece != Piece.None)
+                RemovePiece(ref state, oldPiece, squareIndex);
+            if (newPiece != Piece.None)
+                AddPiece(ref state, newPiece, squareIndex);
+        }
+
+        private static void AddPiece(ref Evaluation state, Piece piece, int squareIndex)
+        {
+            int color = (int)Pieces.GetColor(piece);
+            int pieceIndex = PieceTableIndex(piece);
+            int tableIndex = SquareTableIndex(squareIndex, piece);
+
+            state.Phase += PhaseValues[pieceIndex];
+            state.MidGame += color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, tableIndex]);
+            state.EndGame += color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, tableIndex]);
+        }
+
+        private static void RemovePiece(ref Evaluation state, Piece piece, int squareIndex)
+        {
+            int color = (int)Pieces.GetColor(piece);
+            int pieceIndex = PieceTableIndex(piece);
+            int tableIndex = SquareTableIndex(squareIndex, piece);
+
+            state.Phase -= PhaseValues[pieceIndex];
+            state.MidGame -= color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, tableIndex]);
+            state.EndGame -= color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, tableIndex]);
         }
 
         public static double Saturate(double v)
         {
             return Math.Max(0, Math.Min(1, v));
         }
+
         public static double Linstep(double edge0, double edge1, double v)
         {
             return Saturate((v - edge0) / (edge1 - edge0));

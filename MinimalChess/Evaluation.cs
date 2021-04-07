@@ -69,7 +69,7 @@ namespace MinimalChess
 
         public static int Evaluate(Board board)
         {
-            return PeSTO.Evaluate(board);
+            return PeSTO.GetEvaluation(board).Score;
             //int score = 0;
             //for (int i = 0; i < 64; i++)
             //    score += PieceSquareTable.Value(board[i], i);
