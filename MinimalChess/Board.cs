@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace MinimalChess
 {
@@ -43,6 +44,8 @@ namespace MinimalChess
         private int _enPassantSquare = -1;
         private int _blackKingSquare = 0;
         private int _whiteKingSquare = 0;
+        private ulong _whiteMap = 0;
+        private ulong _blackMap = 0;
         private PeSTO.Evaluation _eval;
         /*** STATE DATA ***/
 
@@ -79,7 +82,10 @@ namespace MinimalChess
             _blackKingSquare = board._blackKingSquare;
             _whiteKingSquare = board._whiteKingSquare;
             _eval = board._eval;
+            _blackMap = board._blackMap;
+            _whiteMap = board._whiteMap;
             ValidateKingSquares();
+            ValidatePieceMap();
         }
 
         public Piece this[int index]
@@ -87,7 +93,8 @@ namespace MinimalChess
             get => _state[index];
             private set
             {
-                PeSTO.UpdateEvaluation(ref _eval, this, index, value);
+                PeSTO.UpdateEvaluation(ref _eval, _state[index], value, index);
+                UpdatePieceMaps(_state[index], value, index);
                 _state[index] = value;
                 Debug.Assert(_eval.Equals(PeSTO.GetEvaluation(this)));
             }
@@ -123,7 +130,7 @@ namespace MinimalChess
                         file += emptySquares;
                         continue;
                     }
-                    this[rank * 8 + file] = Notation.ToPiece(piece);
+                    _state[rank * 8 + file] = Notation.ToPiece(piece);
                     file++;
                 }
                 rank--;
@@ -155,13 +162,15 @@ namespace MinimalChess
             _blackKingSquare = -1;
             for (int squareIndex = 0; squareIndex < 64; squareIndex++)
             {
-                if (this[squareIndex] == Piece.BlackKing)
+                if (_state[squareIndex] == Piece.BlackKing)
                     _blackKingSquare = squareIndex;
-                if (this[squareIndex] == Piece.WhiteKing)
+                if (_state[squareIndex] == Piece.WhiteKing)
                     _whiteKingSquare = squareIndex;
             }
+            RebuildPieceMap();
 
             ValidateKingSquares();
+            ValidatePieceMap();
 
             _eval = PeSTO.GetEvaluation(this);
         }
@@ -183,6 +192,7 @@ namespace MinimalChess
         public Piece Play(Move move)
         {
             ValidateKingSquares();
+            ValidatePieceMap();
 
             Piece capturedPiece = this[move.ToIndex];
             Piece movingPiece = this[move.FromIndex];
@@ -307,22 +317,97 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
+        private ulong GetPieceMap(Color color)
+        {
+            ValidatePieceMap();
+            return (color == Color.Black) ? _blackMap : _whiteMap;
+        }
+
+        private void UpdatePieceMaps(Piece oldPiece, Piece newPiece, int index)
+        {
+            ulong bit = 1ul << index;
+            if (Pieces.IsBlack(oldPiece))
+                _blackMap ^= bit;
+            else if (Pieces.IsWhite(oldPiece))
+                _whiteMap ^= bit;
+
+            if (Pieces.IsBlack(newPiece))
+                _blackMap |= bit;
+            else if (Pieces.IsWhite(newPiece))
+                _whiteMap |= bit;
+        }
+
+
+        private void RebuildPieceMap()
+        {
+            _blackMap = 0;
+            _whiteMap = 0;
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+                Piece piece = this[squareIndex];
+                if (Pieces.IsBlack(piece))
+                    _blackMap |= 1ul << squareIndex;
+                else if (Pieces.IsWhite(piece))
+                    _whiteMap |= 1ul << squareIndex;
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidatePieceMap()
+        {
+            ulong blackMap = 0;
+            ulong whiteMap = 0;
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+                Piece piece = this[squareIndex];
+                if (Pieces.IsBlack(piece))
+                    blackMap |= 1ul << squareIndex;
+                else if (Pieces.IsWhite(piece))
+                    whiteMap |= 1ul << squareIndex;
+            }
+
+            if (blackMap != _blackMap)
+                throw new Exception($"Black piece map failed validation!");
+
+            if (whiteMap != _whiteMap)
+                throw new Exception($"White piece map failed validation!");
+        }
+
         public void CollectMoves(Action<Move> moves)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectMoves(moves, squareIndex);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while(pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddQuiets(moves, square);
+                AddCaptures(moves, square);
+                pieceMap ^= 1ul << square;
+            }
         }
 
         public void CollectQuiets(Action<Move> moves)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectQuiets(moves, squareIndex);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddQuiets(moves, square);
+                pieceMap ^= 1ul << square;
+            }              
         }
 
         public void CollectCaptures(Action<Move> moves)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectCaptures(moves, squareIndex);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddCaptures(moves, square);
+                pieceMap ^= 1ul << square;
+            }
         }
 
         public void CollectMoves(Action<Move> moves, int squareIndex)

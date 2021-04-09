@@ -14,6 +14,29 @@ namespace MinimalChess
 
         private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
 
+        public static int Evaluate(Board board)
+        {
+            int midGame = 0;
+            int endGame = 0;
+            int phase = 0;
+            for (int i = 0; i < 64; i++)
+            {
+                Piece piece = board[i];
+                if (piece == Piece.None)
+                    continue;
+                Color color = Pieces.GetColor(piece);
+                int pieceIndex = PieceTableIndex(piece);
+                int squareIndex = SquareTableIndex(i, piece);
+                phase += PhaseValues[pieceIndex];
+                midGame += (int)color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, squareIndex]);
+                endGame += (int)color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, squareIndex]);
+            }
+
+            double factor = Linstep(518, 6192, phase);
+            double score = factor * midGame + (1 - factor) * endGame;
+            return (int)score;
+        }
+
         public struct Evaluation
         {
             public int MidGame;
@@ -34,21 +57,19 @@ namespace MinimalChess
         {
             Evaluation state = new Evaluation();
             for (int i = 0; i < 64; i++)
-            {
-                Piece piece = board[i];
-                if (piece != Piece.None)
-                    AddPiece(ref state, piece, i);
-            }
+                if(board[i] != Piece.None)
+                    AddPiece(ref state, board[i], i);
+
             return state;
         }
 
-        public static void UpdateEvaluation(ref Evaluation state, Board board, int squareIndex, Piece newPiece)
+        public static void UpdateEvaluation(ref Evaluation eval, Piece oldPiece, Piece newPiece, int index)
         {
-            Piece oldPiece = board[squareIndex];
             if (oldPiece != Piece.None)
-                RemovePiece(ref state, oldPiece, squareIndex);
+                RemovePiece(ref eval, oldPiece, index);
+
             if (newPiece != Piece.None)
-                AddPiece(ref state, newPiece, squareIndex);
+                AddPiece(ref eval, newPiece, index);
         }
 
         private static void AddPiece(ref Evaluation state, Piece piece, int squareIndex)
