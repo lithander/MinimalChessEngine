@@ -137,6 +137,7 @@ namespace MinimalChess
             if (!inCheck)
             {
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
+                Debug.Assert(position.Score == PeSTO.Evaluate(position));
                 if (window.Cut(position.Score, color))
                     return window.GetScore(color);
             }

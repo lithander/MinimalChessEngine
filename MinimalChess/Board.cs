@@ -317,7 +317,7 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        private ulong GetPieceMap(Color color)
+        public ulong GetPieceMap(Color color)
         {
             ValidatePieceMap();
             return (color == Color.Black) ? _blackMap : _whiteMap;
@@ -869,9 +869,10 @@ namespace MinimalChess
             if (other._enPassantSquare != _enPassantSquare)
                 return false;
             //4.) the same types of pieces occupy the same squares
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (other[squareIndex] != this[squareIndex])
-                    return false;
+            if (other._blackMap != _blackMap)
+                return false;
+            if (other._whiteMap != _whiteMap)
+                return false;
 
             return true;
         }

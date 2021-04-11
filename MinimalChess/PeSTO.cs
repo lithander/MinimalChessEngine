@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace MinimalChess
 {
@@ -19,6 +20,43 @@ namespace MinimalChess
             int midGame = 0;
             int endGame = 0;
             int phase = 0;
+
+            //BLACK
+            ulong pieceMap = board.GetPieceMap(Color.Black);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                phase += PhaseValues[pieceIndex];
+                midGame -= (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, square]);
+                endGame -= (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, square]);
+
+                pieceMap ^= 1ul << square;
+            }
+            //WHITE
+            pieceMap = board.GetPieceMap(Color.White);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                int squareIndex = square ^ 56;
+                phase += PhaseValues[pieceIndex];
+                midGame += (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, squareIndex]);
+                endGame += (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, squareIndex]);
+
+                pieceMap ^= 1ul << square;
+            }
+
+            //GENERIC
+            /*
+            int midGame = 0;
+            int endGame = 0;
+            int phase = 0;
+
             for (int i = 0; i < 64; i++)
             {
                 Piece piece = board[i];
@@ -30,7 +68,7 @@ namespace MinimalChess
                 phase += PhaseValues[pieceIndex];
                 midGame += (int)color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, squareIndex]);
                 endGame += (int)color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, squareIndex]);
-            }
+            }*/
 
             double factor = Linstep(518, 6192, phase);
             double score = factor * midGame + (1 - factor) * endGame;
