@@ -1,17 +1,14 @@
 ﻿using MinimalChess;
 using System;
-using System.IO;
 using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.3.7 dev FullOptimizations";
-        const string UCI_DEFAULT_PST = "simple";
+        const string NAME_VERSION = "MinimalChess 0.3.8 dev";
 
         static Engine _engine = new Engine();
-        static string[] _pstFiles;
 
         static async Task Main(string[] args)
         {
@@ -26,8 +23,6 @@ namespace MinimalChessEngine
 
         private static void Start()
         {
-            //Scan for PSTs...
-            _pstFiles = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.pst", SearchOption.AllDirectories);
             _engine.Start();
         }
 
@@ -40,7 +35,6 @@ namespace MinimalChessEngine
                 case "uci":
                     Console.WriteLine($"id name {NAME_VERSION}");
                     Console.WriteLine($"id author Thomas Jahn");
-                    Uci.OptionPieceSquareTables(_pstFiles, UCI_DEFAULT_PST);
                     Console.WriteLine("uciok");
                     break;
                 case "isready":
@@ -71,17 +65,7 @@ namespace MinimalChessEngine
 
         private static void UciSetOption(string[] tokens)
         {
-            if (tokens[1] == "name" && tokens[2] == "PieceSquareTables" && tokens[3] == "value")
-            {
-                foreach (string pstFile in _pstFiles)
-                    if (Path.GetFileNameWithoutExtension(pstFile) == tokens[4])
-                    {
-                        var stream = File.OpenText(pstFile);
-                        PieceSquareTable.Load(stream);
-                        return;
-                    }
-            }
-            Console.WriteLine("setoption failed!");
+            //No options currently supported
         }
 
         private static void UciPosition(string[] tokens)
