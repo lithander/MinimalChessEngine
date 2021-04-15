@@ -16,12 +16,12 @@ namespace MinimalChess
 
     public class Board
     {
-        static readonly int BlackKingSquare = Notation.ToSquareIndex("e8");
-        static readonly int WhiteKingSquare = Notation.ToSquareIndex("e1");
-        static readonly int BlackQueensideRookSquare = Notation.ToSquareIndex("a8");
-        static readonly int BlackKingsideRookSquare = Notation.ToSquareIndex("h8");
-        static readonly int WhiteQueensideRookSquare = Notation.ToSquareIndex("a1");
-        static readonly int WhiteKingsideRookSquare = Notation.ToSquareIndex("h1");
+        static readonly int BlackKingSquare = Notation.ToSquare("e8");
+        static readonly int WhiteKingSquare = Notation.ToSquare("e1");
+        static readonly int BlackQueensideRookSquare = Notation.ToSquare("a8");
+        static readonly int BlackKingsideRookSquare = Notation.ToSquare("h8");
+        static readonly int WhiteQueensideRookSquare = Notation.ToSquare("a1");
+        static readonly int WhiteKingsideRookSquare = Notation.ToSquare("h1");
 
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
@@ -41,8 +41,6 @@ namespace MinimalChess
         private CastlingRights _castlingRights = CastlingRights.All;
         private Color _activeColor = Color.White;
         private int _enPassantSquare = -1;
-        private int _blackKingSquare = 0;
-        private int _whiteKingSquare = 0;
         /*** STATE DATA ***/
 
         public Color ActiveColor => _activeColor;
@@ -72,15 +70,11 @@ namespace MinimalChess
             _activeColor = board._activeColor;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
-            _blackKingSquare = board._blackKingSquare;
-            _whiteKingSquare = board._whiteKingSquare;
-            ValidateKingSquares();
         }
 
-        public Piece this[int index]
+        public Piece this[int square]
         {
-            get => _state[index];
-            set => _state[index] = value;
+            get => _state[square];
         }
 
         //Rank - the eight horizontal rows of the chess board are called ranks.
@@ -88,7 +82,6 @@ namespace MinimalChess
         public Piece this[int rank, int file]
         {
             get => _state[rank * 8 + file];
-            set => _state[rank * 8 + file] = value;
         }
 
         public void SetupPosition(string fen)
@@ -112,9 +105,12 @@ namespace MinimalChess
                     {
                         int emptySquares = (int)char.GetNumericValue(piece);
                         file += emptySquares;
-                        continue;
                     }
-                    this[rank, file++] = Notation.ToPiece(piece);
+                    else
+                    {
+                        _state[rank * 8 + file] = Notation.ToPiece(piece);
+                        file++;
+                    }
                 }
                 rank--;
             }
@@ -129,7 +125,7 @@ namespace MinimalChess
             SetCastlingRights(CastlingRights.BlackQueenside, fields[2].IndexOf("q") > -1);
 
             //Set en-passant square
-            _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquareIndex(fields[3]);
+            _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquare(fields[3]);
 
             //Move counts
             if (fields.Length == 6)
@@ -139,30 +135,8 @@ namespace MinimalChess
                 // Set full move number.
                 int fullMoveNumber = int.Parse(fields[5]);
             }
-
-            //Init king squares
-            _whiteKingSquare = -1;
-            _blackKingSquare = -1;
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-            {
-                if (_state[squareIndex] == Piece.BlackKing)
-                    _blackKingSquare = squareIndex;
-                if (_state[squareIndex] == Piece.WhiteKing)
-                    _whiteKingSquare = squareIndex;
-            }
-
-            ValidateKingSquares();
         }
 
-        [Conditional("DEBUG")]
-        private void ValidateKingSquares()
-        {
-            if (_whiteKingSquare < 0 || _whiteKingSquare >= 64 || _state[_whiteKingSquare] != Piece.WhiteKing)
-                throw new Exception($"No WhiteKing found on square {_whiteKingSquare}!");
-
-            if (_blackKingSquare < 0 || _blackKingSquare >= 64 || _state[_blackKingSquare] != Piece.BlackKing)
-                throw new Exception($"No BlackKing found on squre {_blackKingSquare}!");
-        }
 
         //*****************
         //** PLAY MOVES ***
@@ -170,17 +144,15 @@ namespace MinimalChess
 
         public Piece Play(Move move)
         {
-            ValidateKingSquares();
-
-            Piece capturedPiece = _state[move.ToIndex];
-            Piece movingPiece = _state[move.FromIndex];
+            Piece capturedPiece = _state[move.ToSquare];
+            Piece movingPiece = _state[move.FromSquare];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_activeColor);
 
             //move the correct piece to the target square
-            _state[move.ToIndex] = movingPiece;
+            _state[move.ToSquare] = movingPiece;
             //...and clear the square it was previously located
-            _state[move.FromIndex] = Piece.None;
+            _state[move.FromSquare] = Piece.None;
 
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
@@ -193,50 +165,38 @@ namespace MinimalChess
             if (IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
-                _state[rookMove.ToIndex] = _state[rookMove.FromIndex];
-                _state[rookMove.FromIndex] = Piece.None;
+                _state[rookMove.ToSquare] = _state[rookMove.FromSquare];
+                _state[rookMove.FromSquare] = Piece.None;
             }
 
             //update board state
             UpdateEnPassent(move);
-            UpdateKingSquares(move);
-            UpdateCastlingRights(move.FromIndex);
-            UpdateCastlingRights(move.ToIndex);
+            UpdateCastlingRights(move.FromSquare);
+            UpdateCastlingRights(move.ToSquare);
 
             //toggle active color!
             _activeColor = Pieces.Flip(_activeColor);
             return capturedPiece;
         }
 
-        private void UpdateCastlingRights(int squareIndex)
+        private void UpdateCastlingRights(int square)
         {
             //any move from or to king or rook squares will effect castling right
-            if (squareIndex == WhiteKingSquare || squareIndex == WhiteQueensideRookSquare)
+            if (square == WhiteKingSquare || square == WhiteQueensideRookSquare)
                 SetCastlingRights(CastlingRights.WhiteQueenside, false);
-            if (squareIndex == WhiteKingSquare || squareIndex == WhiteKingsideRookSquare)
+            if (square == WhiteKingSquare || square == WhiteKingsideRookSquare)
                 SetCastlingRights(CastlingRights.WhiteKingside, false);
 
-            if (squareIndex == BlackKingSquare || squareIndex == BlackQueensideRookSquare)
+            if (square == BlackKingSquare || square == BlackQueensideRookSquare)
                 SetCastlingRights(CastlingRights.BlackQueenside, false);
-            if (squareIndex == BlackKingSquare || squareIndex == BlackKingsideRookSquare)
+            if (square == BlackKingSquare || square == BlackKingsideRookSquare)
                 SetCastlingRights(CastlingRights.BlackKingside, false);
-        }
-
-        private void UpdateKingSquares(Move move)
-        {
-            int to = move.ToIndex;
-            Piece movingPiece = _state[move.ToIndex];
-
-            if (movingPiece == Piece.WhiteKing)
-                _whiteKingSquare = move.ToIndex;
-            if (movingPiece == Piece.BlackKing)
-                _blackKingSquare = move.ToIndex;
         }
 
         private void UpdateEnPassent(Move move)
         {
-            int to = move.ToIndex;
-            int from = move.FromIndex;
+            int to = move.ToSquare;
+            int from = move.FromSquare;
             Piece movingPiece = _state[to];
 
             //movingPiece needs to be either a BlackPawn...
@@ -250,12 +210,12 @@ namespace MinimalChess
 
         private bool IsEnPassant(Piece movingPiece, Move move, out int captureIndex)
         {
-            if (movingPiece == Piece.BlackPawn && move.ToIndex == _enPassantSquare)
+            if (movingPiece == Piece.BlackPawn && move.ToSquare == _enPassantSquare)
             {
                 captureIndex = Up(_enPassantSquare);
                 return true;
             }
-            else if (movingPiece == Piece.WhitePawn && move.ToIndex == _enPassantSquare)
+            else if (movingPiece == Piece.WhitePawn && move.ToSquare == _enPassantSquare)
             {
                 captureIndex = Down(_enPassantSquare);
                 return true;
@@ -298,110 +258,117 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
+        public bool CanPlay(Move move)
+        {
+            bool found = false;
+            CollectMoves(m => found |= (m == move), move.FromSquare);
+            return found;
+        }
+
         public void CollectMoves(Action<Move> moveHandler)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectMoves(moveHandler, squareIndex);
+            for (int square = 0; square < 64; square++)
+                CollectMoves(moveHandler, square);
         }
 
         public void CollectQuiets(Action<Move> moveHandler)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectQuiets(moveHandler, squareIndex);
+            for (int square = 0; square < 64; square++)
+                CollectQuiets(moveHandler, square);
         }
 
         public void CollectCaptures(Action<Move> moveHandler)
         {
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                CollectCaptures(moveHandler, squareIndex);
+            for (int square = 0; square < 64; square++)
+                CollectCaptures(moveHandler, square);
         }
 
-        public void CollectMoves(Action<Move> moveHandler, int squareIndex)
+        public void CollectMoves(Action<Move> moveHandler, int square)
         {
-            CollectQuiets(moveHandler, squareIndex);
-            CollectCaptures(moveHandler, squareIndex);
+            CollectQuiets(moveHandler, square);
+            CollectCaptures(moveHandler, square);
         }
 
-        public void CollectQuiets(Action<Move> moveHandler, int squareIndex)
+        public void CollectQuiets(Action<Move> moveHandler, int square)
         {
-            if (IsActivePiece(_state[squareIndex]))
-                AddQuiets(moveHandler, squareIndex);
+            if (IsActivePiece(_state[square]))
+                AddQuiets(moveHandler, square);
         }
 
-        public void CollectCaptures(Action<Move> moveHandler, int squareIndex)
+        public void CollectCaptures(Action<Move> moveHandler, int square)
         {
-            if (IsActivePiece(_state[squareIndex]))
-                AddCaptures(moveHandler, squareIndex);
+            if (IsActivePiece(_state[square]))
+                AddCaptures(moveHandler, square);
         }
 
-        private void AddQuiets(Action<Move> moveHandler, int squareIndex)
+        private void AddQuiets(Action<Move> moveHandler, int square)
         {
-            switch (_state[squareIndex])
+            switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnMoves(moveHandler, squareIndex);
+                    AddBlackPawnMoves(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnMoves(moveHandler, squareIndex);
+                    AddWhitePawnMoves(moveHandler, square);
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moveHandler);
-                    AddKingMoves(moveHandler, squareIndex);
+                    AddKingMoves(moveHandler, square);
                     break;
                 case Piece.WhiteKing:
                     AddWhiteCastlingMoves(moveHandler);
-                    AddKingMoves(moveHandler, squareIndex);
+                    AddKingMoves(moveHandler, square);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightMoves(moveHandler, squareIndex);
+                    AddKnightMoves(moveHandler, square);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookMoves(moveHandler, squareIndex);
+                    AddRookMoves(moveHandler, square);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopMoves(moveHandler, squareIndex);
+                    AddBishopMoves(moveHandler, square);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookMoves(moveHandler, squareIndex);
-                    AddBishopMoves(moveHandler, squareIndex);
+                    AddRookMoves(moveHandler, square);
+                    AddBishopMoves(moveHandler, square);
                     break;
             }
         }
 
-        private void AddCaptures(Action<Move> moveHandler, int squareIndex)
+        private void AddCaptures(Action<Move> moveHandler, int square)
         {
-            switch (_state[squareIndex])
+            switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnAttacks(moveHandler, squareIndex);
+                    AddBlackPawnAttacks(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnAttacks(moveHandler, squareIndex);
+                    AddWhitePawnAttacks(moveHandler, square);
                     break;
                 case Piece.BlackKing:
                 case Piece.WhiteKing:
-                    AddKingCaptures(moveHandler, squareIndex);
+                    AddKingCaptures(moveHandler, square);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightCaptures(moveHandler, squareIndex);
+                    AddKnightCaptures(moveHandler, square);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookCaptures(moveHandler, squareIndex);
+                    AddRookCaptures(moveHandler, square);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopCaptures(moveHandler, squareIndex);
+                    AddBishopCaptures(moveHandler, square);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookCaptures(moveHandler, squareIndex);
-                    AddBishopCaptures(moveHandler, squareIndex);
+                    AddRookCaptures(moveHandler, square);
+                    AddBishopCaptures(moveHandler, square);
                     break;
             }
         }
@@ -416,29 +383,31 @@ namespace MinimalChess
 
         public bool IsChecked(Color color)
         {
-            if (color == Color.White)
-                return IsSquareAttacked(_whiteKingSquare, Color.Black);
-            else
-                return IsSquareAttacked(_blackKingSquare, Color.White);
+            Piece king = color == Color.Black ? Piece.BlackKing : Piece.WhiteKing;
+            for (int square = 0; square < 64; square++)
+                if(_state[square] == king)
+                    return IsSquareAttacked(square, Pieces.Flip(color));
+
+            throw new Exception($"No {color} King found!");
         }
 
-        private bool IsSquareAttacked(int index, Color attackedBy)
+        private bool IsSquareAttacked(int square, Color attackedBy)
         {
             Piece color = Pieces.Color(attackedBy);
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
-            foreach (int target in pawnAttacks[index])
+            foreach (int target in pawnAttacks[square])
                 if (_state[target] == (Piece.Pawn | color))
                     return true;
 
             //2. Knight
-            foreach (int target in Attacks.Knight[index])
+            foreach (int target in Attacks.Knight[square])
                 if (_state[target] == (Piece.Knight | color))
                     return true;
 
             //3. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[index, dir])
+                foreach (int target in Attacks.Diagonal[square, dir])
                 {
                     if (_state[target] == (Piece.Bishop | color) || _state[target] == (Piece.Queen | color))
                         return true;
@@ -448,7 +417,7 @@ namespace MinimalChess
 
             //4. Queen or Rook on straight lines
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[index, dir])
+                foreach (int target in Attacks.Straight[square, dir])
                 {
                     if (_state[target] == (Piece.Rook | color) || _state[target] == (Piece.Queen | color))
                         return true;
@@ -457,7 +426,7 @@ namespace MinimalChess
                 }
 
             //5. King
-            foreach (int target in Attacks.King[index])
+            foreach (int target in Attacks.King[square])
                 if (_state[target] == (Piece.King | color))
                     return true;
 
@@ -469,40 +438,40 @@ namespace MinimalChess
         //** CAPTURES **
         //****************
 
-        private void AddKingCaptures(Action<Move> moveHandler, int index)
+        private void AddKingCaptures(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.King[index])
+            foreach (int target in Attacks.King[square])
                 if (IsOpponentPiece(_state[target]))
-                    AddMove(moveHandler, index, target);
+                    AddMove(moveHandler, square, target);
         }
 
-        private void AddKnightCaptures(Action<Move> moveHandler, int index)
+        private void AddKnightCaptures(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.Knight[index])
+            foreach (int target in Attacks.Knight[square])
                 if (IsOpponentPiece(_state[target]))
-                    AddMove(moveHandler, index, target);
+                    AddMove(moveHandler, square, target);
         }
 
-        private void AddBishopCaptures(Action<Move> moveHandler, int index)
+        private void AddBishopCaptures(Action<Move> moveHandler, int square)
         {
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[index, dir])
+                foreach (int target in Attacks.Diagonal[square, dir])
                     if (_state[target] != Piece.None)
                     {
                         if (IsOpponentPiece(_state[target]))
-                            AddMove(moveHandler, index, target);
+                            AddMove(moveHandler, square, target);
                         break;
                     }
         }
 
-        private void AddRookCaptures(Action<Move> moveHandler, int index)
+        private void AddRookCaptures(Action<Move> moveHandler, int square)
         {
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[index, dir])
+                foreach (int target in Attacks.Straight[square, dir])
                     if (_state[target] != Piece.None)
                     {
                         if (IsOpponentPiece(_state[target]))
-                            AddMove(moveHandler, index, target);
+                            AddMove(moveHandler, square, target);
                         break;
                     }
         }
@@ -511,12 +480,13 @@ namespace MinimalChess
         //** KING MOVES **
         //****************
 
-        private void AddKingMoves(Action<Move> moveHandler, int index)
+        private void AddKingMoves(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.King[index])
+            foreach (int target in Attacks.King[square])
                 if (_state[target] == Piece.None)
-                    AddMove(moveHandler, index, target);
+                    AddMove(moveHandler, square, target);
         }
+
         private void AddWhiteCastlingMoves(Action<Move> moveHandler)
         {
             //Castling is only possible if it's associated CastlingRight flag is set? it get's cleared when either the king or the matching rook move and provide a cheap early out
@@ -563,33 +533,33 @@ namespace MinimalChess
         //** KNIGHT MOVES ***
         //*******************
 
-        private void AddKnightMoves(Action<Move> moveHandler, int index)
+        private void AddKnightMoves(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.Knight[index])
+            foreach (int target in Attacks.Knight[square])
                 if (_state[target] == Piece.None)
-                    AddMove(moveHandler, index, target);
+                    AddMove(moveHandler, square, target);
         }
 
         //********************************
         //** QUEEN, ROOK, BISHOP MOVES ***
         //********************************
 
-        private void AddBishopMoves(Action<Move> moveHandler, int index)
+        private void AddBishopMoves(Action<Move> moveHandler, int square)
         {
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[index, dir])
+                foreach (int target in Attacks.Diagonal[square, dir])
                     if (_state[target] == Piece.None)
-                        AddMove(moveHandler, index, target);
+                        AddMove(moveHandler, square, target);
                     else
                         break;
         }
 
-        private void AddRookMoves(Action<Move> moveHandler, int index)
+        private void AddRookMoves(Action<Move> moveHandler, int square)
         {
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[index, dir])
+                foreach (int target in Attacks.Straight[square, dir])
                     if (_state[target] == Piece.None)
-                        AddMove(moveHandler, index, target);
+                        AddMove(moveHandler, square, target);
                     else
                         break;
 
@@ -599,44 +569,44 @@ namespace MinimalChess
         //** PAWN MOVES ***
         //*****************
 
-        private void AddWhitePawnMoves(Action<Move> moveHandler, int index)
+        private void AddWhitePawnMoves(Action<Move> moveHandler, int square)
         {
             //if the square above isn't free there are no legal moves
-            if (_state[Up(index)] != Piece.None)
+            if (_state[Up(square)] != Piece.None)
                 return;
 
-            AddWhitePawnMove(moveHandler, index, Up(index));
+            AddWhitePawnMove(moveHandler, square, Up(square));
 
             //START POS? => consider double move
-            if (Rank(index) == 1 && _state[Up(index, 2)] == Piece.None)
-                AddMove(moveHandler, index, Up(index, 2));
+            if (Rank(square) == 1 && _state[Up(square, 2)] == Piece.None)
+                AddMove(moveHandler, square, Up(square, 2));
         }
 
-        private void AddBlackPawnMoves(Action<Move> moveHandler, int index)
+        private void AddBlackPawnMoves(Action<Move> moveHandler, int square)
         {
             //if the square below isn't free there are no legal moves
-            if (_state[Down(index)] != Piece.None)
+            if (_state[Down(square)] != Piece.None)
                 return;
 
-            AddBlackPawnMove(moveHandler, index, Down(index));
+            AddBlackPawnMove(moveHandler, square, Down(square));
             //START POS? => consider double move
-            if (Rank(index) == 6 && _state[Down(index, 2)] == Piece.None)
-                AddMove(moveHandler, index, Down(index, 2));
+            if (Rank(square) == 6 && _state[Down(square, 2)] == Piece.None)
+                AddMove(moveHandler, square, Down(square, 2));
         }
 
 
-        private void AddWhitePawnAttacks(Action<Move> moveHandler, int index)
+        private void AddWhitePawnAttacks(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.WhitePawn[index])
+            foreach (int target in Attacks.WhitePawn[square])
                 if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
-                    AddWhitePawnMove(moveHandler, index, target);
+                    AddWhitePawnMove(moveHandler, square, target);
         }
 
-        private void AddBlackPawnAttacks(Action<Move> moveHandler, int index)
+        private void AddBlackPawnAttacks(Action<Move> moveHandler, int square)
         {
-            foreach (int target in Attacks.BlackPawn[index])
+            foreach (int target in Attacks.BlackPawn[square])
                 if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
-                    AddBlackPawnMove(moveHandler, index, target);
+                    AddBlackPawnMove(moveHandler, square, target);
         }
 
         private void AddBlackPawnMove(Action<Move> moveHandler, int from, int to)
@@ -668,11 +638,9 @@ namespace MinimalChess
         //**************
         //** Utility ***
         //**************
-        public bool HasLegalMoves => AnyLegalMoves.HasMoves(this);
-        public bool CanPlay(Move move) => MoveProbe.IsPseudoLegal(this, move);
-        private int Rank(int index) => index / 8;
-        private int Up(int index, int steps = 1) => index + steps * 8;
-        private int Down(int index, int steps = 1) => index - steps * 8;
+        private int Rank(int square) => square / 8;
+        private int Up(int square, int steps = 1) => square + steps * 8;
+        private int Down(int square, int steps = 1) => square - steps * 8;
         private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_activeColor);
         private bool IsOpponentPiece(Piece piece) => Pieces.Color(piece) == Pieces.OtherColor(_activeColor);
         private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
@@ -708,8 +676,8 @@ namespace MinimalChess
             if (other._enPassantSquare != _enPassantSquare)
                 return false;
             //4.) the same types of pieces occupy the same squares
-            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
-                if (other._state[squareIndex] != _state[squareIndex])
+            for (int square = 0; square < 64; square++)
+                if (other._state[square] != _state[square])
                     return false;
 
             return true;
@@ -719,11 +687,11 @@ namespace MinimalChess
         {
             //Boards that are equal should return the same hashcode!
             uint hash = 0;
-            for (int squareIndex = 0; squareIndex < 32; squareIndex++)
+            for (int square = 0; square < 32; square++)
             {
-                if (_state[squareIndex] != Piece.None || _state[squareIndex + 32] != Piece.None)
+                if (_state[square] != Piece.None || _state[square + 32] != Piece.None)
                 {
-                    uint bit = (uint)(1 << squareIndex);
+                    uint bit = (uint)(1 << square);
                     hash |= bit;
                 }
             }

@@ -1,5 +1,4 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -28,8 +27,6 @@ namespace MinimalChess
 
         static Attacks()
         {
-            long t0 = Stopwatch.GetTimestamp();
-
             for (int index = 0; index < 64; index++)
             {
                 int rank = index / 8;
@@ -51,17 +48,13 @@ namespace MinimalChess
                 BlackPawn[index] = PawnAttacks(rank, file, -1);
                 WhitePawn[index] = PawnAttacks(rank, file, +1);
             }
-
-            long t1 = Stopwatch.GetTimestamp();
-            double dt = 1000.0 * (t1 - t0) / Stopwatch.Frequency;
-            //Console.WriteLine($"Attack index buffers computed in {dt:0.####}ms");
         }
 
         private static byte[] PawnAttacks(int rank, int file, int dRank)
         {
             IndexBuffer.Clear();
-            TryAddIndex(rank + dRank, file - 1);
-            TryAddIndex(rank + dRank, file + 1);
+            IndexBuffer.TryAddSquare(rank + dRank, file - 1);
+            IndexBuffer.TryAddSquare(rank + dRank, file + 1);
             return IndexBuffer.ToArray();
         }
 
@@ -69,24 +62,33 @@ namespace MinimalChess
         {
             IndexBuffer.Clear();
             for (int i = 0; i < 8; i++)
-                TryAddIndex(rank + patternRank[i], file + patternFile[i]);
+                IndexBuffer.TryAddSquare(rank + patternRank[i], file + patternFile[i]);
             return IndexBuffer.ToArray();
         }
 
         private static byte[] WalkTheLine(int rank, int file, int dRank, int dFile)
         {
             IndexBuffer.Clear();
-            //inc i as long as the resulting index is still on the board
-            for (int i = 1; TryAddIndex(rank + i * dRank, file + i * dFile); i++) ;
+            while(true)
+            {
+                //inc i as long as the resulting index is still on the board
+                rank += dRank;
+                file += dFile;
+                if (!IsLegalSquare(rank, file))
+                    break;
+                IndexBuffer.AddSquare(rank, file);
+            }
             return IndexBuffer.ToArray();
         }
 
-        private static bool TryAddIndex(int rank, int file)
+        private static void TryAddSquare(this List<byte> buffer, int rank, int file)
         {
-            bool squareExists = rank >= 0 && rank <= 7 && file >= 0 && file <= 7;
-            if (squareExists)
-                IndexBuffer.Add((byte)(rank * 8 + file));
-            return squareExists;
+            if (IsLegalSquare(rank, file))
+                IndexBuffer.AddSquare(rank, file);
         }
+
+        private static void AddSquare(this List<byte> buffer, int rank, int file) => buffer.Add((byte)(rank * 8 + file));
+
+        private static bool IsLegalSquare(int rank, int file) => rank >= 0 && rank <= 7 && file >= 0 && file <= 7;
     }
 }

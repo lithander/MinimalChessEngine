@@ -154,7 +154,7 @@ namespace MinimalChessEngine
                 //aborted?
                 if (_search.Aborted)
                 {
-                    Uci.Log($"WASTED {_time.ElapsedInterval}ms on an aborted a search!");
+                    Uci.Log($"Wasted {_time.ElapsedInterval}ms partially searching ply {_search.Depth}!");
                     break;
                 }
 
@@ -162,11 +162,9 @@ namespace MinimalChessEngine
                 Collect();
             }
             //Done searching!
-            Uci.Log($"Searched {_search.Depth} plys in {_time.Elapsed}ms!");
             Uci.BestMove(_best);
             _search = null;
         }
-
 
         private bool CanSearchDeeper()
         {

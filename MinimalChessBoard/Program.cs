@@ -131,7 +131,7 @@ namespace MinimalChessBoard
             {
                 int index = rank * 8 + file;
                 //highlight squares if they belong to the move
-                if (move.FromIndex == index || move.ToIndex == index)
+                if (move.FromSquare == index || move.ToSquare == index)
                     Console.BackgroundColor = ConsoleColor.DarkCyan;
             }
 

@@ -95,8 +95,8 @@ namespace MinimalChess
                     _pv[depth] = move;
                     if (window.Cut(score, color))
                     {
-                        if (position[move.ToIndex] == Piece.None)
-                            _killers.Remember(move, depth);
+                        if (position[move.ToSquare] == Piece.None)
+                            _killers.Add(move, depth);
                         return window.GetScore(color);
                     }
                 }
@@ -106,7 +106,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv[depth] = default;
-                return position.IsChecked(position.ActiveColor) ? (int)color * PeSTO.LostValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.LostValue : 0;
             }
 
             return window.GetScore(color);
@@ -121,7 +121,7 @@ namespace MinimalChess
             bool inCheck = position.IsChecked(color);
             if (!inCheck)
             {
-                int standPatScore = PeSTO.Evaluate(position);
+                int standPatScore = Evaluation.Evaluate(position);
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);
@@ -142,10 +142,10 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * PeSTO.LostValue;
+                return (int)color * Evaluation.LostValue;
 
             //stalemate?
-            if (expandedNodes == 0 && !position.HasLegalMoves)
+            if (expandedNodes == 0 && !AnyLegalMoves.HasMoves(position))
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"

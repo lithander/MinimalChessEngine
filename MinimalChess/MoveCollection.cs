@@ -63,42 +63,39 @@ namespace MinimalChess
         }
     }
 
-    public class MoveProbe
-    {
-        public static bool IsPseudoLegal(Board position, Move move)
-        {
-            bool found = false;
-            position.CollectMoves(m => found |= (m == move), move.FromIndex);
-            return found;
-        }
-    }
-
     public class MoveList : List<Move>
     {
-        internal static MoveList CollectQuiets(Board position)
+        internal static MoveList Quiets(Board position)
         {
             MoveList quietMoves = new MoveList();
             position.CollectQuiets(quietMoves.Add);
             return quietMoves;
         }
 
-        internal static MoveList CollectCaptures(Board position)
+        internal static MoveList Captures(Board position)
         {
             MoveList captures = new MoveList();
             position.CollectCaptures(captures.Add);
             return captures;
         }
 
-        public MoveList SortMvvLva(Board context)
+        internal static MoveList SortedCaptures(Board position)
+        {
+            MoveList captures = new MoveList();
+            position.CollectCaptures(captures.Add);
+            captures.SortMvvLva(position);
+            return captures;
+        }
+
+        public void SortMvvLva(Board context)
         {
             int Score(Move move)
             {
-                Piece victim = context[move.ToIndex];
-                Piece attacker = context[move.FromIndex];
+                Piece victim = context[move.ToSquare];
+                Piece attacker = context[move.FromSquare];
                 return Pieces.MaxRank * Pieces.Rank(victim) - Pieces.Rank(attacker);
             }
             Sort((a, b) => Score(b).CompareTo(Score(a)));
-            return this;
         }
     }
 }

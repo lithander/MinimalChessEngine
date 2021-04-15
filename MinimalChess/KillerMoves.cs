@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MinimalChess
 {
@@ -21,7 +22,7 @@ namespace MinimalChess
             Array.Resize(ref _moves, _depth * _width);
         }
 
-        public void Remember(Move move, int depth)
+        public void Add(Move move, int depth)
         {
             int index0 = _width * (_depth - depth);
             //We shift all moves by one slot to make room but overwrite a potential dublicate of 'move' then store the new 'move' at [0] 

@@ -4,21 +4,21 @@ namespace MinimalChess
 {
     public struct Move
     {
-        public byte FromIndex;
-        public byte ToIndex;
+        public byte FromSquare;
+        public byte ToSquare;
         public Piece Promotion;
 
         public Move(int fromIndex, int toIndex)
         {
-            FromIndex = (byte)fromIndex;
-            ToIndex = (byte)toIndex;
+            FromSquare = (byte)fromIndex;
+            ToSquare = (byte)toIndex;
             Promotion = Piece.None;
         }
 
         public Move(int fromIndex, int toIndex, Piece promotion)
         {
-            FromIndex = (byte)fromIndex;
-            ToIndex = (byte)toIndex;
+            FromSquare = (byte)fromIndex;
+            ToSquare = (byte)toIndex;
             Promotion = promotion;
         }
 
@@ -34,8 +34,8 @@ namespace MinimalChess
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
             string fromSquare = uciMoveNotation.Substring(0, 2);
             string toSquare = uciMoveNotation.Substring(2, 2);
-            FromIndex = Notation.ToSquareIndex(fromSquare);
-            ToIndex = Notation.ToSquareIndex(toSquare);
+            FromSquare = Notation.ToSquare(fromSquare);
+            ToSquare = Notation.ToSquare(toSquare);
             //the presence of a 5th character should mean promotion
             Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
         }
@@ -50,13 +50,13 @@ namespace MinimalChess
 
         public bool Equals(Move other)
         {
-            return (FromIndex == other.FromIndex) && (ToIndex == other.ToIndex) && (Promotion == other.Promotion);
+            return (FromSquare == other.FromSquare) && (ToSquare == other.ToSquare) && (Promotion == other.Promotion);
         }
 
         public override int GetHashCode()
         {
             //int is big enough to represent move fully. maybe use that for optimization at some point
-            return FromIndex + (ToIndex << 8) + ((int)Promotion << 16);
+            return FromSquare + (ToSquare << 8) + ((int)Promotion << 16);
         }
 
         public static bool operator ==(Move lhs, Move rhs) => lhs.Equals(rhs);
@@ -66,8 +66,8 @@ namespace MinimalChess
         public override string ToString()
         {
             //result represents the move in the long algebraic notation (without piece names)
-            string result = Notation.ToSquareName(FromIndex);
-            result += Notation.ToSquareName(ToIndex);
+            string result = Notation.ToSquareName(FromSquare);
+            result += Notation.ToSquareName(ToSquare);
             //the presence of a 5th character should mean promotion
             if (Promotion != Piece.None)
                 result += Notation.ToChar(Promotion);
