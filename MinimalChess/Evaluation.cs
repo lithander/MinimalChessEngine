@@ -67,11 +67,6 @@ namespace MinimalChess
             return score;
         }
 
-        public static int Evaluate(Board board)
-        {
-            return PeSTO.GetEvaluation(board).Score;
-        }
-
         public static int Material(Board board)
         {
             int score = 0;
@@ -80,26 +75,10 @@ namespace MinimalChess
             return score;
         }
 
-        public static int EvaluateWithMate(Board board)
-        {
-            var moves = new AnyLegalMoves(board);
-            
-            //if the game is not yet over just look who leads in material
-            if (moves.CanMove)
-                return Evaluate(board);
-
-            //active color has lost the game?
-            if (board.IsChecked(board.ActiveColor))
-                return (int)board.ActiveColor * MinValue; 
-
-            //No moves but king isn't checked -> it's a draw
-            return 0;
-        }
-
         public static int QEval(Board position, SearchWindow window)
         {
             //Eval just counts material! If the active color would be in check or stalemated this doesn't affect the score
-            int standPatScore = Evaluate(position);
+            int standPatScore = position.Score;
 
             Color color = position.ActiveColor;
             //if inCheck we can't use standPat, need to escape check!

@@ -236,7 +236,7 @@ namespace MinimalChessBoard
                 }
                 else
                 {
-                    int score = qSearch ? QEval(next) : Evaluation.Evaluate(next);
+                    int score = qSearch ? QEval(next) : Eval.Evaluate(next);
                     Console.WriteLine($"{i++,4}. {move} = {score:+0.00;-0.00}");
                 }
             }

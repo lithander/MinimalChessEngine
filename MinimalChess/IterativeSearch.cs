@@ -65,7 +65,7 @@ namespace MinimalChess
             if (depth == 0)
             {
                 NodesVisited++;
-                return Evaluation.Evaluate(position);
+                return Eval.Evaluate(position);
             }
 
             if (_killSwitch.Triggered) return 0;

@@ -108,7 +108,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);
-                return position.IsChecked(position.ActiveColor) ? (int)color * PeSTO.LostValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Eval.LostValue : 0;
             }
 
             return window.GetScore(color);
@@ -123,7 +123,8 @@ namespace MinimalChess
             bool inCheck = position.IsChecked(color);
             if (!inCheck)
             {
-                int standPatScore = PeSTO.GetEvaluation(position).Score;
+                Debug.Assert(Eval.GetEvaluation(position).Score == position.Score);
+                int standPatScore = position.Score;
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);
@@ -144,7 +145,7 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * PeSTO.LostValue;
+                return (int)color * Eval.LostValue;
 
             //stalemate?
             if (expandedNodes == 0 && !AnyLegalMoves(position))

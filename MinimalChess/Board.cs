@@ -46,7 +46,7 @@ namespace MinimalChess
         private int _whiteKingSquare = 0;
         private ulong _whiteMap = 0;
         private ulong _blackMap = 0;
-        private PeSTO.Evaluation _eval;
+        private Eval.Evaluation _eval;
         /*** STATE DATA ***/
 
         public int Score => _eval.Score;
@@ -58,7 +58,7 @@ namespace MinimalChess
         public Board(string fen)
         {
             SetupPosition(fen);
-            _eval = PeSTO.GetEvaluation(this);
+            _eval = Eval.GetEvaluation(this);
         }
 
         public Board(Board board)
@@ -93,10 +93,10 @@ namespace MinimalChess
             get => _state[index];
             private set
             {
-                PeSTO.UpdateEvaluation(ref _eval, _state[index], value, index);
+                Eval.UpdateEvaluation(ref _eval, _state[index], value, index);
                 UpdatePieceMaps(_state[index], value, index);
                 _state[index] = value;
-                Debug.Assert(_eval.Equals(PeSTO.GetEvaluation(this)));
+                Debug.Assert(_eval.Equals(Eval.GetEvaluation(this)));
             }
         }
 
@@ -172,7 +172,7 @@ namespace MinimalChess
             ValidateKingSquares();
             ValidatePieceMap();
 
-            _eval = PeSTO.GetEvaluation(this);
+            _eval = Eval.GetEvaluation(this);
         }
 
         [Conditional("DEBUG")]

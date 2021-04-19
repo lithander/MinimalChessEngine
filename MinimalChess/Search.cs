@@ -68,7 +68,7 @@ namespace MinimalChess
             if (depth == 0)
             {
                 PositionsEvaluated++;
-                return Evaluation.Evaluate(board);
+                return Eval.Evaluate(board);
             }
 
             int color = (int)board.ActiveColor;
@@ -136,7 +136,7 @@ namespace MinimalChess
             if (depth == 0)
             {
                 PositionsEvaluated++;
-                return Evaluation.Evaluate(board);
+                return Eval.Evaluate(board);
             }
 
             Color color = board.ActiveColor;

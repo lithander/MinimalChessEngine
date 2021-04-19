@@ -53,7 +53,7 @@ namespace MinimalChess
             if (depth == 0)
             {
                 NodesVisited++;
-                return Evaluation.Evaluate(position);
+                return Eval.Evaluate(position);
             }
 
             Color color = position.ActiveColor;

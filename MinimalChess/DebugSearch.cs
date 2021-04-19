@@ -40,7 +40,6 @@ namespace MinimalChess
         {
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
-
         }
 
         public void SearchDeeper(Func<bool> killSwitch = null)
@@ -80,10 +79,7 @@ namespace MinimalChess
                 return 0;
 
             if (depth == 0)
-            {
-                //Console.WriteLine(depth + new string(' ', Depth - depth) + "QEval!");
                 return QEval(position, window);
-            }
 
             NodesVisited++;
             Color color = position.ActiveColor;
@@ -92,8 +88,6 @@ namespace MinimalChess
             foreach ((Move move, Board child) in Expand(position, depth))
             {
                 expandedNodes++;
-                //moveCount++;
-                //Console.WriteLine($"{moveCount} {depth} {move}");
 
                 //For all rootmoves after the first search with "null window"
                 if (expandedNodes > 1 && depth == Depth)
@@ -121,7 +115,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv.Clear(depth);
-                return position.IsChecked(position.ActiveColor) ? (int)color * PeSTO.LostValue : 0;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Eval.LostValue : 0;
             }
 
             return window.GetScore(color);
@@ -137,7 +131,7 @@ namespace MinimalChess
             if (!inCheck)
             {
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
-                Debug.Assert(position.Score == PeSTO.Evaluate(position));
+                Debug.Assert(position.Score == Eval.Evaluate(position));
                 if (window.Cut(position.Score, color))
                     return window.GetScore(color);
             }
@@ -157,7 +151,7 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * PeSTO.LostValue;
+                return (int)color * Eval.LostValue;
 
             //stalemate?
             if (expandedNodes == 0 && !position.HasLegalMoves)

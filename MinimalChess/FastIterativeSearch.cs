@@ -70,7 +70,7 @@ namespace MinimalChess
             if (depth == 0)
             {
                 NodesVisited++;
-                return Evaluation.Evaluate(position);
+                return Eval.Evaluate(position);
                 //return Evaluation.EvaluateWithMate(position);
             }
 

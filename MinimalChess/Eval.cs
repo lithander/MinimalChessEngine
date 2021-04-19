@@ -1,0 +1,272 @@
+﻿using System;
+using System.Diagnostics;
+using System.Numerics;
+
+namespace MinimalChess
+{
+    public class Eval
+    {
+        //PSTs and code based on a forum post by Ronald Friederich: 
+        //Source: http://talkchess.com/forum3/viewtopic.php?f=2&t=68311&start=10#p772515
+        public static int LostValue => -9999;
+
+        //strip the first bit and
+        private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
+
+        private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
+
+        public static int Evaluate(Board board)
+        {
+            int midGame = 0;
+            int endGame = 0;
+            int phase = 0;
+
+            //BLACK
+            ulong pieceMap = board.GetPieceMap(Color.Black);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                phase += PhaseValues[pieceIndex];
+                midGame -= MidgameTables[pieceIndex, square];
+                endGame -= EndgameTables[pieceIndex, square];
+
+                pieceMap ^= 1ul << square;
+            }
+            //WHITE
+            pieceMap = board.GetPieceMap(Color.White);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                int squareIndex = square ^ 56;
+                phase += PhaseValues[pieceIndex];
+                midGame += MidgameTables[pieceIndex, squareIndex];
+                endGame += EndgameTables[pieceIndex, squareIndex];
+
+                pieceMap ^= 1ul << square;
+            }
+
+            //GENERIC
+            /*
+            int midGame = 0;
+            int endGame = 0;
+            int phase = 0;
+
+            for (int i = 0; i < 64; i++)
+            {
+                Piece piece = board[i];
+                if (piece == Piece.None)
+                    continue;
+                Color color = Pieces.GetColor(piece);
+                int pieceIndex = PieceTableIndex(piece);
+                int squareIndex = SquareTableIndex(i, piece);
+                phase += PhaseValues[pieceIndex];
+                midGame += (int)color * (MidgameValues[pieceIndex] + MidgameTables[pieceIndex, squareIndex]);
+                endGame += (int)color * (EndgameValues[pieceIndex] + EndgameTables[pieceIndex, squareIndex]);
+            }*/
+
+            double factor = Linstep(Endgame, Midgame, phase);
+            double score = factor * midGame + (1 - factor) * endGame;
+            return (int)score;
+        }
+
+        public struct Evaluation
+        {
+            public int MidgameScore;
+            public int EndgameScore;
+            public int Phase;
+            public int Score
+            {
+                get
+                {
+                    double factor = Linstep(Endgame, Midgame, Phase);
+                    double score = factor * MidgameScore + (1 - factor) * EndgameScore;
+                    return (int)score;
+                }
+            }
+        }
+
+        public static Evaluation GetEvaluation(Board board)
+        {
+            Evaluation state = new Evaluation();
+            for (int i = 0; i < 64; i++)
+                if(board[i] != Piece.None)
+                    AddPiece(ref state, board[i], i);
+
+            return state;
+        }
+
+        public static void UpdateEvaluation(ref Evaluation eval, Piece oldPiece, Piece newPiece, int index)
+        {
+            if (oldPiece != Piece.None)
+                RemovePiece(ref eval, oldPiece, index);
+
+            if (newPiece != Piece.None)
+                AddPiece(ref eval, newPiece, index);
+        }
+
+        private static void AddPiece(ref Evaluation state, Piece piece, int squareIndex)
+        {
+            int color = (int)Pieces.GetColor(piece);
+            int pieceIndex = PieceTableIndex(piece);
+            int tableIndex = SquareTableIndex(squareIndex, piece);
+
+            state.Phase += PhaseValues[pieceIndex];
+            state.MidgameScore += color * MidgameTables[pieceIndex, tableIndex];
+            state.EndgameScore += color * EndgameTables[pieceIndex, tableIndex];
+        }
+
+        private static void RemovePiece(ref Evaluation state, Piece piece, int squareIndex)
+        {
+            int color = (int)Pieces.GetColor(piece);
+            int pieceIndex = PieceTableIndex(piece);
+            int tableIndex = SquareTableIndex(squareIndex, piece);
+
+            state.Phase -= PhaseValues[pieceIndex];
+            state.MidgameScore -= color * MidgameTables[pieceIndex, tableIndex];
+            state.EndgameScore -= color * EndgameTables[pieceIndex, tableIndex];
+        }
+
+        public static double Linstep(double edge0, double edge1, double v)
+        {
+            return Math.Min(1, Math.Max(0, (v - edge0) / (edge1 - edge0)));
+        }
+
+        /* PeSTO
+        */
+        static readonly int Midgame = 6192;
+        static readonly int Endgame = 518;
+
+        static readonly int[] PhaseValues = new int[6] { 0, 337, 365, 477, 1025, 0 };
+
+        static readonly int[,] MidgameTables = new int[6, 64]{
+        {  //PAWN
+            82,    82,    82,    82,    82,    82,    82,    82,
+           180,   216,   143,   177,   150,   208,   116,    71,
+            76,    89,   108,   113,   147,   138,   107,    62,
+            68,    95,    88,   103,   105,    94,    99,    59,
+            55,    80,    77,    94,    99,    88,    92,    57,
+            56,    78,    78,    72,    85,    85,   115,    70,
+            47,    81,    62,    59,    67,   106,   120,    60,
+            82,    82,    82,    82,    82,    82,    82,    82,
+        },
+        {  //KNIGHT MG
+           170,   248,   303,   288,   398,   240,   322,   230,
+           264,   296,   409,   373,   360,   399,   344,   320,
+           290,   397,   374,   402,   421,   466,   410,   381,
+           328,   354,   356,   390,   374,   406,   355,   359,
+           324,   341,   353,   350,   365,   356,   358,   329,
+           314,   328,   349,   347,   356,   354,   362,   321,
+           308,   284,   325,   334,   336,   355,   323,   318,
+           232,   316,   279,   304,   320,   309,   318,   314,
+        },
+        {  //BISHOP MG
+           336,   369,   283,   328,   340,   323,   372,   357,
+           339,   381,   347,   352,   395,   424,   383,   318,
+           349,   402,   408,   405,   400,   415,   402,   363,
+           361,   370,   384,   415,   402,   402,   372,   363,
+           359,   378,   378,   391,   399,   377,   375,   369,
+           365,   380,   380,   380,   379,   392,   383,   375,
+           369,   380,   381,   365,   372,   386,   398,   366,
+           332,   362,   351,   344,   352,   353,   326,   344,
+        },
+        {  //ROOK MG
+           509,   519,   509,   528,   540,   486,   508,   520,
+           504,   509,   535,   539,   557,   544,   503,   521,
+           472,   496,   503,   513,   494,   522,   538,   493,
+           453,   466,   484,   503,   501,   512,   469,   457,
+           441,   451,   465,   476,   486,   470,   483,   454,
+           432,   452,   461,   460,   480,   477,   472,   444,
+           433,   461,   457,   468,   476,   488,   471,   406,
+           458,   464,   478,   494,   493,   484,   440,   451,
+        },
+        {  //QUEEN MG
+           997,  1025,  1054,  1037,  1084,  1069,  1068,  1070,
+          1001,   986,  1020,  1026,  1009,  1082,  1053,  1079,
+          1012,  1008,  1032,  1033,  1054,  1081,  1072,  1082,
+           998,   998,  1009,  1009,  1024,  1042,  1023,  1026,
+          1016,   999,  1016,  1015,  1023,  1021,  1028,  1022,
+          1011,  1027,  1014,  1023,  1020,  1027,  1039,  1030,
+           990,  1017,  1036,  1027,  1033,  1040,  1022,  1026,
+          1024,  1007,  1016,  1035,  1010,  1000,   994,   975,
+        },
+        {  //KING MG
+           -65,    23,    16,   -15,   -56,   -34,     2,    13,
+            29,    -1,   -20,    -7,    -8,    -4,   -38,   -29,
+            -9,    24,     2,   -16,   -20,     6,    22,   -22,
+           -17,   -20,   -12,   -27,   -30,   -25,   -14,   -36,
+           -49,    -1,   -27,   -39,   -46,   -44,   -33,   -51,
+           -14,   -14,   -22,   -46,   -44,   -30,   -15,   -27,
+             1,     7,    -8,   -64,   -43,   -16,     9,     8,
+           -15,    36,    12,   -54,     8,   -28,    24,    14,
+        }
+        };
+
+        static int[,] EndgameTables = new int[6, 64]{
+        {  //PAWN EG
+            94,    94,    94,    94,    94,    94,    94,    94,
+           272,   267,   252,   228,   241,   226,   259,   281,
+           188,   194,   179,   161,   150,   147,   176,   178,
+           126,   118,   107,    99,    92,    98,   111,   111,
+           107,   103,    91,    87,    87,    86,    97,    93,
+            98,   101,    88,    95,    94,    89,    93,    86,
+           107,   102,   102,   104,   107,    94,    96,    87,
+            94,    94,    94,    94,    94,    94,    94,    94,
+        },
+        {  //KNIGHT EG
+           223,   243,   268,   253,   250,   254,   218,   182,
+           256,   273,   256,   279,   272,   256,   257,   229,
+           257,   261,   291,   290,   280,   272,   262,   240,
+           264,   284,   303,   303,   303,   292,   289,   263,
+           263,   275,   297,   306,   297,   298,   285,   263,
+           258,   278,   280,   296,   291,   278,   261,   259,
+           239,   261,   271,   276,   279,   261,   258,   237,
+           252,   230,   258,   266,   259,   263,   231,   217,
+        },
+        {  //BISHOP EG
+           283,   276,   286,   289,   290,   288,   280,   273,
+           289,   293,   304,   285,   294,   284,   293,   283,
+           299,   289,   297,   296,   295,   303,   297,   301,
+           294,   306,   309,   306,   311,   307,   300,   299,
+           291,   300,   310,   316,   304,   307,   294,   288,
+           285,   294,   305,   307,   310,   300,   290,   282,
+           283,   279,   290,   296,   301,   288,   282,   270,
+           274,   288,   274,   292,   288,   281,   292,   280,
+        },
+        {  //ROOK EG
+           525,   522,   530,   527,   524,   524,   520,   517,
+           523,   525,   525,   523,   509,   515,   520,   515,
+           519,   519,   519,   517,   516,   509,   507,   509,
+           516,   515,   525,   513,   514,   513,   511,   514,
+           515,   517,   520,   516,   507,   506,   504,   501,
+           508,   512,   507,   511,   505,   500,   504,   496,
+           506,   506,   512,   514,   503,   503,   501,   509,
+           503,   514,   515,   511,   507,   499,   516,   492,
+        },
+        {  //QUEEN EG
+           927,   958,   958,   963,   963,   955,   946,   956,
+           919,   956,   968,   977,   994,   961,   966,   936,
+           916,   942,   945,   985,   983,   971,   955,   945,
+           939,   958,   960,   981,   993,   976,   993,   972,
+           918,   964,   955,   983,   967,   970,   975,   959,
+           920,   909,   951,   942,   945,   953,   946,   941,
+           914,   913,   906,   920,   920,   913,   900,   904,
+           903,   908,   914,   893,   931,   904,   916,   895,
+        },
+        {  //KING EG
+           -74,   -35,   -18,   -18,   -11,    15,     4,   -17,
+           -12,    17,    14,    17,    17,    38,    23,    11,
+            10,    17,    23,    15,    20,    45,    44,    13,
+            -8,    22,    24,    27,    26,    33,    26,     3,
+           -18,    -4,    21,    24,    27,    23,     9,   -11,
+           -19,    -3,    11,    21,    23,    16,     7,    -9,
+           -27,   -11,     4,    13,    14,     4,    -5,   -17,
+           -53,   -34,   -21,   -11,   -28,   -14,   -24,   -43,
+        }};
+    }
+}

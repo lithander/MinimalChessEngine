@@ -8,13 +8,13 @@ namespace MinimalChessTuning
     class Evaluation
     {
         //strip the first bit and
-        private int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
+        private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
 
-        public int Evaluate(Board board)
+        public int Evaluate(Board board, out double phase)
         {
             int midGame = 0;
             int endGame = 0;
-            int phase = 0;
+            int phaseAccu = 0;
 
             //BLACK
             ulong pieceMap = board.GetPieceMap(Color.Black);
@@ -24,7 +24,7 @@ namespace MinimalChessTuning
 
                 Piece piece = board[square];
                 int pieceIndex = PieceTableIndex(piece);
-                phase += PhaseValues[pieceIndex];
+                phaseAccu += PhaseValues[pieceIndex];
                 midGame -= MidgameTables[pieceIndex, square];
                 endGame -= EndgameTables[pieceIndex, square];
 
@@ -39,16 +39,49 @@ namespace MinimalChessTuning
                 Piece piece = board[square];
                 int pieceIndex = PieceTableIndex(piece);
                 int squareIndex = square ^ 56;
-                phase += PhaseValues[pieceIndex];
+                phaseAccu += PhaseValues[pieceIndex];
                 midGame += MidgameTables[pieceIndex, squareIndex];
                 endGame += EndgameTables[pieceIndex, squareIndex];
 
                 pieceMap ^= 1ul << square;
             }
 
-            double factor = Linstep(Midgame, Endgame, phase);
-            double score = factor * midGame + (1 - factor) * endGame;
+            phase = Linstep(Midgame, Endgame, phaseAccu);
+            double score = (1 - phase) * midGame + phase * endGame;
             return (int)score;
+        }
+
+        public static int Evaluate(Board board, int[,] tables)
+        {
+            int score = 0;
+
+            //BLACK
+            ulong pieceMap = board.GetPieceMap(Color.Black);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                score -= tables[pieceIndex, square];
+
+                pieceMap ^= 1ul << square;
+            }
+            //WHITE
+            pieceMap = board.GetPieceMap(Color.White);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+
+                Piece piece = board[square];
+                int pieceIndex = PieceTableIndex(piece);
+                int squareIndex = square ^ 56;
+                score += tables[pieceIndex, squareIndex];
+
+                pieceMap ^= 1ul << square;
+            }
+
+            return score;
         }
 
         public static double Saturate(double v)
@@ -64,11 +97,11 @@ namespace MinimalChessTuning
         internal void Write(StreamWriter writer)
         {
             //PHASE
-            writer.WriteLine($"{Midgame,6} {Endgame,6}");
+            writer.WriteLine($"{Midgame,6}, {Endgame,6}");
             writer.WriteLine();
             //PHASE PIECE VALUES
             for (int i = 0; i < PhaseValues.Length; i++)
-                writer.Write($"{PhaseValues[i],6}");
+                writer.Write($"{PhaseValues[i],6},");
             writer.WriteLine();
             writer.WriteLine();
             //MIDGAME PSTs
@@ -84,7 +117,7 @@ namespace MinimalChessTuning
             for (int i = 0; i < 8; i++)
             {
                 for (int j = 0; j < 8; j++)
-                    writer.Write($"{tables[k, i * 8 + j],6}");
+                    writer.Write($"{tables[k, i * 8 + j],6},");
                 writer.WriteLine();
             }
             writer.WriteLine();
@@ -122,7 +155,7 @@ namespace MinimalChessTuning
         private int[] ReadRow(StreamReader reader)
         {
             string line = reader.ReadLine();
-            string[] tokens = line.Split(new char[] { ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] tokens = line.Split(',', StringSplitOptions.RemoveEmptyEntries);
             int count = tokens.Length;
             int[] result = new int[count];
             for (int i = 0; i < count; i++)
@@ -135,12 +168,12 @@ namespace MinimalChessTuning
         //*   D A T A   ***
         //*****************
 
-        int Midgame = 518;
-        int Endgame = 6192;
+        public int Endgame = 518;
+        public int Midgame = 6192;
 
-        int[] PhaseValues = new int[6] { 0, 337, 365, 477, 1025, 0 };
+        public int[] PhaseValues = new int[6] { 0, 337, 365, 477, 1025, 0 };
 
-        int[,] MidgameTables = new int[6, 64]{
+        public int[,] MidgameTables = new int[6, 64]{
         {
             //PAWN
             82,    82,    82,    82,    82,    82,    82,    82,
@@ -209,7 +242,7 @@ namespace MinimalChessTuning
         }
         };
 
-        int[,] EndgameTables = new int[6, 64]{
+        public int[,] EndgameTables = new int[6, 64]{
         {
             //PAWN EG
             94,    94,    94,    94,    94,    94,    94,    94,
