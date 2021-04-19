@@ -117,7 +117,7 @@ namespace MinimalChessBoard
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine(" '----------------'");
-            Console.WriteLine($"  A B C D E F G H {PeSTO.Evaluate(board):+0.00;-0.00}");
+            Console.WriteLine($"  A B C D E F G H {Evaluation.Evaluate(board):+0.00;-0.00}");
         }
 
         private static void SetColor(Piece piece, int rank, int file, Move move)
