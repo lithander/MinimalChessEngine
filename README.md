@@ -9,10 +9,10 @@ The didactic nature of the project is reinforced by it's open source license (MI
 ## Features
 
 * A simple 8x8 Board representation: Just an array to represent the 64 squares and keep track of the pieces.
-* A Triangular PV-Table to keep track of the Principal Variation of best moves.
+* A triangular PV-Table to keep track of the Principal Variation of best moves.
 * Staged move generation: PV move first, then MVV-LVA sorted captures, followed by known killer moves and finally the remaining quiet moves.
-* Iterative Deepening Search with Alpha-Beta pruning and Quiescence Search.
-* Evaluation based on tapered Piece-Square Tables. The values are tuned on a set of 725000 quiet, labeled positions.
+* Iterative deepening search with Alpha-Beta pruning and Quiescence Search.
+* Evaluation based on tapered Piece-Square tables. PST values tuned on a set of 725000 quiet, labeled positions.
 * No bitboards, hash tables, not even an undo-move method, just the essentials.
 
 ## How to play
@@ -37,7 +37,7 @@ Size:      625 LOC
 Strength:  1900 ELO
 ```
 [__Version 0.4__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I finally managed to find values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
-I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation that allows MinimalChess to avoid generating moves that will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. I also improved the time control logic which now allocates the given budget smarter, especially in modes where there's an increment per move. Together with a lot of refactorings these changes provide a considerable boost in playing strengthwhile while even shrinking the codebase by a few lines of code.
+I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation that helps MinimalChess avoid generating moves which will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. I also improved the time control logic which now allocates the given budget smarter, especially in modes where there's an increment each move. Together with a lot of refactorings these changes provide a considerable boost in playing strengthwhile while even shrinking the codebase by a few lines of (executable) code.
 
 ```
 Version:   0.3
@@ -102,20 +102,20 @@ I have documented important milestones of the development in a series of [Youtub
 
 ...if you enjoy the format let me know and I might make some more episodes. :)
 
-### MinimalChessBoard
+## MinimalChessBoard
 
 If you compile the *MinimalChessBoard* project you can get a console based Chess GUI that allows you to play chess against the engine. The UX is lacking, though. This part of the project is mainly used during development for analysis and debugging purposes!
 
 Command           | Description
 ----------------- | -------------
-[move]			      | You can play the game by typing in the move you want to make in the long algebraic notation e.g. "e2e4" to move white's King's Pawn.
-reset 			      | Reset the board to the start position.
+[move]			      | Play a move by typing in it's name in long algebraic notation e.g. "e2e4" to move white's King's Pawn.
 [fenstring]  		| Setup the board to represent the given position.
-perft [depth]	  	| Compute perft values of the given depth
-divide [depth]  	| Compute perft values of all available moves
-! [depth]		      | Play the best move, search it with the given depth
+! [depth]		      | The computer plays the next move, searched with the given depth.
 ? [depth]		      | List all available moves
 ??			          | Print the resulting board for each available move
+reset 			      | Reset the board to the start position.
+perft [depth]	  	| Compute perft values of the given depth
+divide [depth]  	| Compute perft values of all available moves
 
 ## Help & Support
 
