@@ -42,7 +42,7 @@ I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuris
 ```
 Version:   0.3
 Size:      641 LOC
-Strength:  1575
+Strength:  1575 ELO
 ```
 [__Version 0.3__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.3) adds MVV-LVA move ordering, Quiescence Search and replaces material-only evaluation with Piece-Square Tables.
 With these changes it gains about 500 ELO in playing strength over the previous version and achieved at [1571 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
