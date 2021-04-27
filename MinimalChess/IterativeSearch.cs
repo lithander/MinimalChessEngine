@@ -114,6 +114,9 @@ namespace MinimalChess
 
         private int QEval(Board position, SearchWindow window)
         {
+            if (_killSwitch.Triggered)
+                return 0;
+
             NodesVisited++;
             Color color = position.ActiveColor;
 
@@ -145,7 +148,7 @@ namespace MinimalChess
                 return (int)color * Evaluation.LostValue;
 
             //stalemate?
-            if (expandedNodes == 0 && !AnyLegalMoves.HasMoves(position))
+            if (expandedNodes == 0 && !LegalMoves.HasMoves(position))
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"

@@ -261,47 +261,47 @@ namespace MinimalChess
         public bool CanPlay(Move move)
         {
             bool found = false;
-            CollectMoves(m => found |= (m == move), move.FromSquare);
+            CollectMoves(move.FromSquare, m => found |= (m == move));
             return found;
         }
 
         public void CollectMoves(Action<Move> moveHandler)
         {
             for (int square = 0; square < 64; square++)
-                CollectMoves(moveHandler, square);
+                CollectMoves(square, moveHandler);
         }
 
         public void CollectQuiets(Action<Move> moveHandler)
         {
             for (int square = 0; square < 64; square++)
-                CollectQuiets(moveHandler, square);
+                CollectQuiets(square, moveHandler);
         }
 
         public void CollectCaptures(Action<Move> moveHandler)
         {
             for (int square = 0; square < 64; square++)
-                CollectCaptures(moveHandler, square);
+                CollectCaptures(square, moveHandler);
         }
 
-        public void CollectMoves(Action<Move> moveHandler, int square)
+        public void CollectMoves(int square, Action<Move> moveHandler)
         {
-            CollectQuiets(moveHandler, square);
-            CollectCaptures(moveHandler, square);
+            CollectQuiets(square, moveHandler);
+            CollectCaptures(square, moveHandler);
         }
 
-        public void CollectQuiets(Action<Move> moveHandler, int square)
-        {
-            if (IsActivePiece(_state[square]))
-                AddQuiets(moveHandler, square);
-        }
-
-        public void CollectCaptures(Action<Move> moveHandler, int square)
+        public void CollectQuiets(int square, Action<Move> moveHandler)
         {
             if (IsActivePiece(_state[square]))
-                AddCaptures(moveHandler, square);
+                AddQuiets(square, moveHandler);
         }
 
-        private void AddQuiets(Action<Move> moveHandler, int square)
+        public void CollectCaptures(int square, Action<Move> moveHandler)
+        {
+            if (IsActivePiece(_state[square]))
+                AddCaptures(square, moveHandler);
+        }
+
+        private void AddQuiets(int square, Action<Move> moveHandler)
         {
             switch (_state[square])
             {
@@ -339,7 +339,7 @@ namespace MinimalChess
             }
         }
 
-        private void AddCaptures(Action<Move> moveHandler, int square)
+        private void AddCaptures(int square, Action<Move> moveHandler)
         {
             switch (_state[square])
             {

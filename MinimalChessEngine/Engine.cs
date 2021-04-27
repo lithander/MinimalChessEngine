@@ -153,10 +153,7 @@ namespace MinimalChessEngine
 
                 //aborted?
                 if (_search.Aborted)
-                {
-                    Uci.Log($"Wasted {_time.ElapsedInterval}ms partially searching ply {_search.Depth}!");
                     break;
-                }
 
                 //collect PV
                 Collect();

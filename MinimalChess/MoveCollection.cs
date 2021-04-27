@@ -5,61 +5,34 @@ namespace MinimalChess
     public class LegalMoves : List<Move>
     {
         private static Board _tempBoard = new Board();
-        private Board _reference;
 
         public LegalMoves(Board reference) : base(40)
         {
-            _reference = reference;
-            _reference.CollectMoves(Consider);
-            _reference = null;
-        }
-
-        public void Consider(Move move)
-        {
-            //only add if the move doesn't result in a check for active color
-            _tempBoard.Copy(_reference);
-            _tempBoard.Play(move);
-            if (_tempBoard.IsChecked(_reference.ActiveColor))
-                return;
-
-            Add(move);
-        }
-    }
-
-    public class AnyLegalMoves
-    {
-        private static Board _tempBoard = new Board();
-        private Board _reference;
-
-        public bool CanMove { get; private set; }
-
-        public AnyLegalMoves(Board reference)
-        {
-            _reference = reference;
-            _reference.CollectQuiets(Consider);
-            if (!CanMove)
-                _reference.CollectCaptures(Consider);
-            _reference = null;
-        }
-
-        public void Consider(Move move)
-        {
-            if (CanMove)//no need to look at any more moves if we got our answer already!
-                return;
-
-            //only add if the move doesn't result in a check for active color
-            _tempBoard.Copy(_reference);
-            _tempBoard.Play(move);
-            if (_tempBoard.IsChecked(_reference.ActiveColor))
-                return;
-
-            CanMove = true;
+            reference.CollectMoves(move =>
+            {
+                //only add if the move doesn't result in a check for active color
+                _tempBoard.Copy(reference);
+                _tempBoard.Play(move);
+                if (!_tempBoard.IsChecked(reference.ActiveColor))
+                    Add(move);
+            });
         }
 
         public static bool HasMoves(Board position)
         {
-            var moves = new AnyLegalMoves(position);
-            return moves.CanMove;
+            bool canMove = false;
+            for (int i = 0; i < 64 && !canMove; i++)
+            {
+                position.CollectMoves(i, move =>
+                {
+                    if (canMove) return;
+
+                    _tempBoard.Copy(position);
+                    _tempBoard.Play(move);
+                    canMove = !_tempBoard.IsChecked(position.ActiveColor);
+                });
+            }
+            return canMove;
         }
     }
 

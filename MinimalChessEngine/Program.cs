@@ -1,12 +1,13 @@
 ﻿using MinimalChess;
 using System;
+using System.Runtime;
 using System.Threading.Tasks;
 
 namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.3.6.3 Chili [chilipepper003]";
+        const string NAME_VERSION = "MinimalChess 0.4";
 
         static Engine _engine = new Engine();
         static async Task Main(string[] args)
@@ -22,6 +23,7 @@ namespace MinimalChessEngine
 
         private static void Start()
         {
+            GCSettings.LatencyMode = GCLatencyMode.SustainedLowLatency;
             _engine.Start();
         }
 

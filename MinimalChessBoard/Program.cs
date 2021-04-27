@@ -193,7 +193,7 @@ namespace MinimalChessBoard
         private static long Perft(Board board, int depth)
         {
             if (depth <= 0)
-                return 1;
+                return 0;
 
             var moves = new LegalMoves(board);
             if (depth == 1) //no need to apply the moves before counting them

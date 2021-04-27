@@ -4,7 +4,7 @@ namespace MinimalChessEngine
 {
     class TimeControl
     {
-        const int TIME_MARGIN = 15;
+        const int TIME_MARGIN = 20;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
 
         private int _movesToGo;
