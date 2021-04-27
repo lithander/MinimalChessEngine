@@ -1,23 +1,19 @@
 # MinimalChess
 
-MinimalChess is a chess engine written in C#. It was developed from scratch in an attempt to learn more about chess programming. The result is a *minimal* chess engine with just the essential features and optimizations, oftentimes choosing simplicity and readability over peak runtime performance. I am also documenting my development journey with [Youtube](https://www.youtube.com/playlist?list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du) videos.
+MinimalChess is a UCI chess engine written in C#.
+
+It's focus on a *minimal* implementation of only the most important features and optimizations makes MinimalChess a good starting point for programmers with a working knowledge of C# but no prior experience in chess programming. MinimalChess is written in only a few hundred lines of idiomatic C# code where other engines (of comparable strength) often have thousands.
+
+The didactic nature of the project is reinforced by it's open source license (MIT) and a dedicated series of explanatory [Youtube](https://www.youtube.com/playlist?list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du) videos.
 
 ## Features
 
-* Implements the UCI protocol including the common time management options
-* Iterative Deepening with Alpha-Beta pruning and Quiescence Search.
-* Collects the Principal Variation (PV) of best moves in a Triangular PV-Table.
-* Plays the PV move first, followed by MVV-LVA sorted captures.
-* Positions are evaluated with Piece-Square Tables.
-
-...that's all. 
-Really! 
-Okay, I can list some *non-features* if you insist.
-
-* The board is represented as an array of 64 squares. 
-* The move generator is really straight forward. 
-* There is no hash table, no undo-move method, just the essentials.
-* The PSTs are defined in external files making it easy to tweak them or write your own. (Chose one them via UCI option)
+* A simple 8x8 Board representation: Just an array to represent the 64 squares and keep track of the pieces.
+* A triangular PV-Table to keep track of the Principal Variation of best moves.
+* Staged move generation: PV move first, then MVV-LVA sorted captures, followed by known killer moves and finally the remaining quiet moves.
+* Iterative deepening search with Alpha-Beta pruning and Quiescence Search.
+* Evaluation based on tapered Piece-Square tables. PST values tuned on a set of 725000 quiet, labeled positions.
+* No bitboards, hash tables, not even an undo-move method, just the essentials.
 
 ## How to play
 
@@ -35,12 +31,29 @@ As a final step you have to register the engine with the GUI. The details depend
 After this you should be ready to select MinimalChess as a player!
 
 ## Version History
+```
+Version:   0.4
+Size:      625 LOC
+Strength:  1900 ELO
+```
+[__Version 0.4__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I finally managed to find values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
+I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation that helps MinimalChess avoid generating moves which will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. I also improved the time control logic which now allocates the given budget smarter, especially in modes where there's an increment each move. Together with a lot of refactorings these changes provide a considerable boost in playing strengthwhile while even shrinking the codebase by a few lines of (executable) code.
 
-__Version 0.3__ adds MVV-LVA move ordering, Quiescence Search and replaces material-only evaluation with Piece-Square Tables.
-With these changes it gains about 500 ELO in playing strength over the previous version.
-This version also introduces a rather unique feature: Sets of PSTs are defined in separate files and can be selected via an UCI option. This allows the user to tweak the values or write their own tables from scratch and by this alter the playstyle of the engine considerably. No programming experience required! ;)
+```
+Version:   0.3
+Size:      641 LOC
+Strength:  1575 ELO
+```
+[__Version 0.3__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.3) adds MVV-LVA move ordering, Quiescence Search and replaces material-only evaluation with Piece-Square Tables.
+With these changes it gains about 500 ELO in playing strength over the previous version and achieved at [1571 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
+This version also introduces a rather unique feature: Sets of PSTs are defined in separate files and can be selected via an UCI option. This allows the user to tweak the values or write their own tables from scratch and by this alter the playstyle of the engine considerably. No programming experience required!
 
-__Version 0.2__ uses Iterative Deepening search with Alpha-Beta pruning. It collects the Principal Variation (PV) and when available plays PV moves first. Other than that there's no move ordering. Positions are evaluated by counting material only. This lack of sophistication causes it to play rather weak at only a little over [1000 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.2%2064-bit#MinimalChess_0_2_64-bit). Nothing to brag about but it makes it a good sparring partner for weak human players like myself and chess programmers who are just starting out. (Again - like myself) The engine is open source and I tried to write code that is as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than it currently is.
+```
+Version:   0.2
+Size:      502 LOC
+Strength:  1059 ELO 
+```
+[__Version 0.2__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.2) uses Iterative Deepening search with Alpha-Beta pruning. It collects the Principal Variation (PV) and when available plays PV moves first. Other than that there's no move ordering. Positions are evaluated by counting material only. This lack of sophistication causes it to play rather weak at [1059 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.2%2064-bit#MinimalChess_0_2_64-bit) on the CCRL. I tried to the write code to be as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than this version.
 
 ## Compiling the engine
 
@@ -78,33 +91,33 @@ $ cd MinimalChessEngine/
 $ dotnet build -c Release
 ```
 
-## Making-Of Videos // Chess Programming Tutorial
+## Chess Programming Tutorial
 
-I have documented important milestones of the development in an accompanying [Youtube](https://www.youtube.com/playlist?list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du) video.
+I have documented important milestones of the development in a series of [Youtube](https://www.youtube.com/playlist?list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du) videos.
 
 1. [Making of MinimalChessEngine - Episode 1: Hello World](https://www.youtube.com/watch?v=hnedjeTApfY&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 1. [Making of MinimalChessEngine - Episode 2: Let's Play](https://www.youtube.com/watch?v=pKB51c9WUrk&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 1. [Making of MinimalChessEngine - Episode 3: Move Generation](https://www.youtube.com/watch?v=j6bNdkQnL0Q&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 1. [Making of MinimalChessEngine - Episode 4: Search & Eval](https://www.youtube.com/watch?v=b3DMIhmPSvE&list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du)
 
-...if you enjoy the format let me know and I might make some more episodes. ;)
+...if you enjoy the format let me know and I might make some more episodes. :)
 
-### MinimalChessBoard
+## MinimalChessBoard
 
-If you compile the MinimalChessBoard project you can get a console based Chess GUI that allows you to play chess against the engine. The UX is lacking, though. This part of the project is mainly used during development for analysis and debugging purposes!
+If you compile the *MinimalChessBoard* project you can get a console based Chess GUI that allows you to play chess against the engine. The UX is lacking, though. This part of the project is mainly used during development for analysis and debugging purposes!
 
 Command           | Description
 ----------------- | -------------
-[move]			      | You can play the game by typing in the move you want to make in the long algebraic notation e.g. "e2e4" to move white's King's Pawn.
-reset 			      | Reset the board to the start position.
-fen [fenstring]		| Setup the board to represent the given position.
-perft [depth]	  	| Compute perft values of the given depth
-divide [depth]  	| Compute perft values of all available moves
-! [depth]		      | Play the best move, search it with the given depth
+[move]			      | Play a move by typing in it's name in long algebraic notation e.g. "e2e4" to move white's King's Pawn.
+[fenstring]  		| Setup the board to represent the given position.
+! [depth]		      | The computer plays the next move, searched with the given depth.
 ? [depth]		      | List all available moves
 ??			          | Print the resulting board for each available move
+reset 			      | Reset the board to the start position.
+perft [depth]	  	| Compute perft values of the given depth
+divide [depth]  	| Compute perft values of all available moves
 
 ## Help & Support
 
-Please let me know of any bugs or stability issues and must-have features you feel even the most barebones engine should support but MinimalChess is lacking.
-Don't hesitate to contact me via email or open an issue or engage in the discussions section of this repository. 
+Please let me know of any bugs or stability issues and must-have features you feel MinimalChess is still lacking.
+Don't hesitate to contact me via email, open an issue or engage in the discussions section of this repository. 
