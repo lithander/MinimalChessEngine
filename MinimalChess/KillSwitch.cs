@@ -13,14 +13,11 @@ namespace MinimalChess
             _aborted = _killSwitch == null ? false : _killSwitch();
         }
 
-        public bool Triggered
+        public bool Get(bool update)
         {
-            get
-            {
-                if (!_aborted && _killSwitch != null)
-                    _aborted = _killSwitch();
-                return _aborted;
-            }
+            if (!_aborted && update && _killSwitch != null)
+                _aborted = _killSwitch();
+            return _aborted;
         }
     }
 }

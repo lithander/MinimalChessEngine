@@ -16,11 +16,11 @@ namespace MinimalChessEngine
         int _maxSearchDepth;
         TimeControl _time = new TimeControl();
         Board _board = new Board(Board.STARTING_POS_FEN);
-        List<Move> _moves = new List<Move>();
         List<Move> _repetitions = new List<Move>();
         List<Board> _history = new List<Board>();
 
         public bool Running { get; private set; }
+        public Color ColorToPlay => _board.ActiveColor;
 
         public Engine()
         {
@@ -64,39 +64,18 @@ namespace MinimalChessEngine
         //*** Search ***
         //**************
 
-        internal void Go()
+        internal void Go(int maxDepth, int maxTime, int maxNodes)
         {
             Stop();
-            _maxSearchDepth = int.MaxValue;
-            _time.Go();
-            StartSearch();
+            _time.Go(maxTime);
+            StartSearch(maxDepth, maxNodes);
         }
 
-        internal void Go(int maxSearchDepth)
+        internal void Go(int maxTime, int increment, int movesToGo, int maxDepth, int maxNodes)
         {
             Stop();
-            _maxSearchDepth = maxSearchDepth;
-            _time.Go(maxSearchDepth);
-            StartSearch();
-        }
-
-        internal void Go(int timePerMove, int maxSearchDepth)
-        {
-            Stop();
-            _maxSearchDepth = maxSearchDepth;
-            _time.Go(timePerMove);
-            StartSearch();
-        }
-
-        internal void Go(int blackTime, int whiteTime, int blackIncrement, int whiteIncrement, int movesToGo, int maxSearchDepth)
-        {
-            Stop();
-            _maxSearchDepth = maxSearchDepth;
-            bool isBlack = _board.ActiveColor == Color.Black;
-            int time = isBlack ? blackTime : whiteTime;
-            int increment = isBlack ? blackIncrement : whiteIncrement;
-            _time.Go(time, increment, movesToGo);
-            StartSearch();
+            _time.Go(maxTime, increment, movesToGo);
+            StartSearch(maxDepth, maxNodes);
         }
 
         public void Stop()
@@ -110,38 +89,25 @@ namespace MinimalChessEngine
             }
         }
 
-
         //*****************
         //*** INTERNALS ***
         //*****************
 
-        private void StartSearch()
+        private void StartSearch(int maxDepth, int maxNodes)
         {
-            InitSearch();
-
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
+
+            _search = new IterativeSearch(_board, maxNodes, GetRootMoves());
             _time.StartInterval();
             _search.SearchDeeper();
             Collect();
 
             //start the search thread
+            _maxSearchDepth = maxDepth;
             _searching = new Thread(Search);
             _searching.Priority = ThreadPriority.Highest;
             _searching.Start();
-        }
-
-        private void InitSearch()
-        {
-            //find the root moves
-            _moves = new LegalMoves(_board);
-            //find root moves that would result in a previous position
-            _repetitions = _moves.Where(move => _history.Contains(new Board(_board, move))).ToList();
-            //if we don't have enough moves don't consider repetitions
-            if (_repetitions.Count < _moves.Count)
-                _moves.RemoveAll(move => _repetitions.Contains(move));
-
-            _search = new IterativeSearch(_board, _moves);
         }
 
         private void Search()
@@ -183,6 +149,19 @@ namespace MinimalChessEngine
                 _best = _repetitions[0];
             else
                 _best = _search.PrincipalVariation[0];
+        }
+
+        private List<Move> GetRootMoves()
+        {
+            //find the root moves
+            var moves = new LegalMoves(_board);
+            //find root moves that would result in a previous position
+            _repetitions = moves.Where(move => _history.Contains(new Board(_board, move))).ToList();
+            //if we don't have enough moves also play repetitions
+            if (_repetitions.Count < moves.Count)
+                moves.RemoveAll(move => _repetitions.Contains(move));
+
+            return moves;
         }
     }
 }

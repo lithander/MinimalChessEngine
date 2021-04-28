@@ -7,26 +7,30 @@ namespace MinimalChess
 
     public class IterativeSearch
     {
+        const int QUERY_TC_FREQUENCY = 25;
+
         public long NodesVisited { get; private set; }
         public int Depth { get; private set; }
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => _pv.GetLine(Depth);
-        public bool Aborted => _killSwitch.Triggered;
+        public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
         public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
         List<Move> _rootMoves = null;
         PrincipalVariation _pv;
-        KillSwitch _killSwitch;
         KillerMoves _killers;
+        KillSwitch _killSwitch;
+        long _maxNodes;
 
-        public IterativeSearch(Board board, List<Move> rootMoves = null)
+        public IterativeSearch(Board board, long maxNodes = long.MaxValue, List<Move> rootMoves = null)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
             _killers = new KillerMoves(4);
             _rootMoves = rootMoves;
+            _maxNodes = maxNodes;
         }
 
         public void Search(int maxDepth)
@@ -67,15 +71,14 @@ namespace MinimalChess
 
         private int EvalPosition(Board position, int depth, SearchWindow window)
         {
-            if (_killSwitch.Triggered)
-                return 0;
-
             if (depth == 0)
                 return QEval(position, window);
 
             NodesVisited++;
-            Color color = position.ActiveColor;
+            if (Aborted)
+                return 0;
 
+            Color color = position.ActiveColor;
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Expand(position, depth))
             {
@@ -114,14 +117,13 @@ namespace MinimalChess
 
         private int QEval(Board position, SearchWindow window)
         {
-            if (_killSwitch.Triggered)
+            NodesVisited++;
+            if (Aborted)
                 return 0;
 
-            NodesVisited++;
             Color color = position.ActiveColor;
-
-            //if inCheck we can't use standPat, need to escape check!
             bool inCheck = position.IsChecked(color);
+            //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
             {
                 int standPatScore = Evaluation.Evaluate(position);

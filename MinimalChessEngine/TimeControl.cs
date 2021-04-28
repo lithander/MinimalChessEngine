@@ -1,4 +1,5 @@
-﻿using System.Diagnostics;
+﻿using System;
+using System.Diagnostics;
 
 namespace MinimalChessEngine
 {
@@ -6,6 +7,7 @@ namespace MinimalChessEngine
     {
         const int TIME_MARGIN = 20;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
+        const int MAX_TIME_REMAINING = int.MaxValue / 3; //large but not too large to cause overlow issues
 
         private int _movesToGo;
         private int _increment;
@@ -30,7 +32,7 @@ namespace MinimalChessEngine
         {
             _movesToGo = 1;
             _increment = 0;
-            _remaining = int.MaxValue / 3; //large but not too large to cause overlow issues
+            _remaining = MAX_TIME_REMAINING; 
             _t0 = Now;
             _tN = _t0;
         }
@@ -46,22 +48,16 @@ namespace MinimalChessEngine
             _remaining = 0;
         }
 
-        internal void Go()
-        {
-            Reset();
-        }
-
         internal void Go(int timePerMove)
         {
             Reset();
-            _remaining = timePerMove;
-            _movesToGo = 1;
+            _remaining = Math.Min(timePerMove, MAX_TIME_REMAINING);
         }
 
         internal void Go(int time, int increment, int movesToGo)
         {
             Reset();
-            _remaining = time;
+            _remaining = Math.Min(time, MAX_TIME_REMAINING);
             _increment = increment;
             _movesToGo = movesToGo;
         }

@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.4";
+        const string NAME_VERSION = "MinimalChess 0.4.1";
 
         static Engine _engine = new Engine();
         static async Task Main(string[] args)
@@ -98,43 +98,31 @@ namespace MinimalChessEngine
 
         private static void UciGo(string[] tokens)
         {
-            if (TryParse(tokens, "movetime", out int timePerMove))
+            //Searching on a budget that may increase at certain intervals
+            //40 Moves in 5 Minutes = go wtime 300000 btime 300000 movestogo 40
+            //40 Moves in 5 Minutes, 1 second increment per Move =  go wtime 300000 btime 300000 movestogo 40 winc 1000 binc 1000 movestogo 40
+            //5 Minutes total, no increment (sudden death) = go wtime 300000 btime 300000
+
+            TryParse(tokens, "depth", out int maxDepth, int.MaxValue);
+            TryParse(tokens, "movetime", out int maxTime, int.MaxValue);
+            TryParse(tokens, "nodes", out int maxNodes, int.MaxValue);
+            TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move
+
+            if (_engine.ColorToPlay == Color.White && TryParse(tokens, "wtime", out int whiteTime))
             {
-                //Fixed move time e.g. 5 Minutes per Move = go movetime 300000
-                TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
-                _engine.Go(timePerMove, searchDepth);
-            }
-            else if (TryParse(tokens, "btime", out int blackTime) && TryParse(tokens, "wtime", out int whiteTime))
-            {
-                //Searching on a budget that may increase at certain intervals
-                //40 Moves in 5 Minutes = go wtime 300000 btime 300000 movestogo 40
-                //40 Moves in 5 Minutes, 1 second increment per Move =  go wtime 300000 btime 300000 movestogo 40 winc 1000 binc 1000 movestogo 40
-                //5 Minutes total, no increment (sudden death) = go wtime 300000 btime 300000
-                TryParse(tokens, "binc", out int blackIncrement);
                 TryParse(tokens, "winc", out int whiteIncrement);
-                TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move
-                TryParse(tokens, "depth", out int searchDepth, int.MaxValue);
-                _engine.Go(blackTime, whiteTime, blackIncrement, whiteIncrement, movesToGo, searchDepth);
+                _engine.Go(whiteTime, whiteIncrement, movesToGo, maxDepth, maxNodes);
             }
-            else if (TryParse(tokens, "depth", out int searchDepth))
+            else if (_engine.ColorToPlay == Color.Black && TryParse(tokens, "btime", out int blackTime))
             {
-                _engine.Go(searchDepth);
-            }
-            else if (IsDefined(tokens, "infinite"))
-            {
-                //Infinite = go infinite
-                _engine.Go();
+                TryParse(tokens, "binc", out int blackIncrement);
+                _engine.Go(blackTime, blackIncrement, movesToGo, maxDepth, maxNodes);
             }
             else
             {
-                Uci.Log("'go' parameters missing or not understood. Stop the search using 'stop'.");
-                _engine.Go();
+                //Searching infinite within optional constraints
+                _engine.Go(maxDepth, maxTime, maxNodes);
             }
-        }
-
-        private static bool IsDefined(string[] tokens, string name)
-        {
-            return Array.IndexOf(tokens, name) >= 0;
         }
 
         private static bool TryParse(string[] tokens, string name, out int value, int defaultValue = 0)
