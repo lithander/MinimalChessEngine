@@ -24,7 +24,7 @@ MinimalChess, just like most other chess programs, does not provide its own user
 * [Nibbler](https://github.com/fohristiwhirl/nibbler/releases) (free)
 * [Chessbase](https://chessbase.com/) (paid).
 
-Once you have a chess GUI installed you can download the prebuild [binaries for Mac, Linux and Windows](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4.1) and extract the contents of the zip file into a location of your choice.
+Once you have a chess GUI installed you can download the prebuild [binaries for Mac, Linux and Windows](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) and extract the contents of the zip file into a location of your choice.
 
 As a final step you have to register the engine with the GUI. The details depend on the GUI you chose but there should be something like "Add Engine..." somewhere in the settings.
 
@@ -32,11 +32,11 @@ After this you should be ready to select MinimalChess as a player!
 
 ## Version History
 ```
-Version:   0.4.1
+Version:   0.4
 Size:      610 LOC
 Strength:  1900 ELO
 ```
-[__Version 0.4.1__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4.1) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I found values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
+[__Version 0.4__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I found values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
 I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation so that MinimalChess does not generate moves which will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. 
 A new time control logic now allocates the given time budget smarter, especially in modes where there's an increment each move, and the 'nodes' and 'depth' constraints are now supported in all modes.
 
