@@ -41,8 +41,9 @@ namespace MinimalChessTuning
             "mse",
             "tune mse",
             "tune mg|eg 'step'[1..N] 'minPhase'[0..1] 'maxPhase'[0..1] 'thresholdScale'[0..N] 'passes'[0..N]",
-            "tune tables 'step'[1..N] 'thresholdScale'[0..N] 'passes'[0..N]",
-            "tune phase 'step'[1..N] 'passes'[0..N]"
+            "tune tables 'step'[1..N] 'thresholdScale'[0..N] 'suppression'[0..4] 'passes'[0..N]",
+            "tune phase 'step'[1..N] 'suppression'[0..4] 'passes'[0..N]",
+            "mix 'file' 'suppression'[0..4]"
         };
 
         private static void PrintHeader()
@@ -145,18 +146,26 @@ namespace MinimalChessTuning
                     else if (mode == "phase")
                     {
                         int step = int.Parse(tokens[2]);
-                        int passCount = int.Parse(tokens[3]);
-                        TunePhase(step, passCount, "temp_phase");
+                        double suppression = double.Parse(tokens[3]);
+                        int passCount = int.Parse(tokens[4]);
+                        TunePhase(step, suppression, passCount, "temp_phase");
                     }
                     else if(mode=="tables")
                     {
                         int step = int.Parse(tokens[2]);
                         double thresholdScale = double.Parse(tokens[3]);
-                        int passCount = int.Parse(tokens[4]);
-                        TuneTables(step, thresholdScale, passCount, "temp_tables");
+                        double suppression = double.Parse(tokens[4]);
+                        int passCount = int.Parse(tokens[5]);
+                        TuneTables(step, thresholdScale, suppression, passCount, "temp_tables");
                     }
                     else
                         Console.WriteLine($"Unknown mode {mode}!");
+                }
+                else if(command == "mix")
+                {
+                    string fileA = tokens[1];
+                    double suppression = double.Parse(tokens[2]);
+                    MixWeights(fileA, suppression);
                 }
 
                 PrintTime(t0);
@@ -164,15 +173,15 @@ namespace MinimalChessTuning
             }
         }
 
-        private static void TunePhase(int step, int passCount, string tempFileName)
+        private static void TunePhase(int step, double suppression, int passCount, string tempFileName)
         {
-            double startError = MeanSquareError();
-            Console.WriteLine($"Tuning step={step} passCap={passCount} on {DATA.Count} positions");
+            double startError = MeanSuppressedSquareError(suppression);
+            Console.WriteLine($"Tuning step={step}, suppression={suppression}, passCap={passCount} on {DATA.Count} positions");
             Console.WriteLine($"#0: {startError} MSE, MG {EVAL.Midgame}..{EVAL.Endgame} EG");
 
             //Tunable are the phase values and the phase thresholds
             int pass = 0;
-            TunePhaseThreshold(step);
+            TunePhaseThreshold(step, suppression);
             Console.WriteLine($"MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
             while (true)
             {
@@ -185,35 +194,38 @@ namespace MinimalChessTuning
                     Console.WriteLine($"PhaseValue[{piece}] = {EVAL.PhaseValues[piece]}, MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
                     int oldMidgame = EVAL.Midgame;
                     int oldEndgame = EVAL.Endgame;
+                    double baseError = MeanSuppressedSquareError(suppression);
 
-                    double baseError = MeanSquareError();
                     //try raising value
                     EVAL.PhaseValues[piece] += step;
-                    TunePhaseThreshold(step);
-                    if (MeanSquareError() < baseError)
+                    TunePhaseThreshold(step, suppression);
+                    if (MeanSuppressedSquareError(suppression) < baseError)
                     {
-                        Console.WriteLine($"PhaseValue[{piece}] += {step}, MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
+                        Console.WriteLine($"PhaseValue[{piece}] = {EVAL.PhaseValues[piece]}, MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
                         up++;
                         continue;
                     }
 
                     //try lowering value
+                    EVAL.Midgame = oldMidgame;
+                    EVAL.Endgame = oldEndgame;
                     EVAL.PhaseValues[piece] -= 2 * step;
-                    TunePhaseThreshold(step);
-                    if (MeanSquareError() < baseError)
+                    TunePhaseThreshold(step, suppression);
+                    if (MeanSuppressedSquareError(suppression) < baseError)
                     {
-                        Console.WriteLine($"PhaseValue[{piece}] -= {step}, MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
+                        Console.WriteLine($"PhaseValue[{piece}] = {EVAL.PhaseValues[piece]}, MG {EVAL.Midgame}..{EVAL.Endgame} EG!");
                         down++;
                         continue;
                     }
 
                     //restore current
-                    EVAL.PhaseValues[piece] += step;
                     EVAL.Midgame = oldMidgame;
                     EVAL.Endgame = oldEndgame;
+                    EVAL.PhaseValues[piece] += step;
                 }
-                double currentError = MeanSquareError();
-                Console.WriteLine($"#{pass}: {MeanSquareError()} MSE, {up} inc, {down} dec!");
+
+                double currentError = MeanSuppressedSquareError(suppression);
+                Console.WriteLine($"#{pass}: {currentError} MSE, {startError - currentError} delta, {up} inc, {down} dec!");
                 SaveWeights(tempFileName);
 
                 //DONE?
@@ -225,26 +237,26 @@ namespace MinimalChessTuning
             }
         }
 
-        private static void TunePhaseThreshold(int step)
+        private static void TunePhaseThreshold(int step, double suppression)
         {
             while (true)
             {
-                Console.Write('|');
-                double baseError = MeanSquareError();
+                Console.Write('.');
+                double baseError = MeanSuppressedSquareError(suppression);
                 EVAL.Midgame += step;
-                if (MeanSquareError() < baseError)
+                if (MeanSuppressedSquareError(suppression) < baseError)
                     continue;
                 EVAL.Midgame -= 2 * step;
-                if (MeanSquareError() < baseError)
+                if (MeanSuppressedSquareError(suppression) < baseError)
                     continue;
                 EVAL.Midgame += step;
 
                 //try changing endgame
                 EVAL.Endgame += step;
-                if (MeanSquareError() < baseError)
+                if (MeanSuppressedSquareError(suppression) < baseError)
                     continue;
                 EVAL.Endgame -= 2 * step;
-                if (MeanSquareError() < baseError)
+                if (MeanSuppressedSquareError(suppression) < baseError)
                     continue;
                 EVAL.Endgame += step;
                 //both midgame and endgame have stabilized
@@ -326,10 +338,10 @@ namespace MinimalChessTuning
         }
 
 
-        private static void TuneTables(int step, double thresholdScale, int passCap, string tempFileName)
+        private static void TuneTables(int step, double thresholdScale, double suppression, int passCap, string tempFileName)
         {
             double startError = MeanSquareError();
-            Console.WriteLine($"Tuning step={step} thresholdScale={thresholdScale} on {DATA.Count} positions");
+            Console.WriteLine($"Tuning step={step}, thresholdScale={thresholdScale}, suppression={suppression} on {DATA.Count} positions");
             Console.WriteLine($"#0: {startError} MSE");
 
             int pass = 0;
@@ -347,17 +359,17 @@ namespace MinimalChessTuning
                         Console.Write('.');
                         for (int i = 0; i < 64; i++)
                         {
-                            double baseError = MeanSquareError();
+                            double baseError = MeanSuppressedSquareError(suppression);
                             //try raising value
                             tables[table, i] += step;
-                            if (MeanSquareError() - baseError < -threshold)
+                            if (MeanSuppressedSquareError(suppression) - baseError < -threshold)
                             {
                                 up++;
                                 continue;
                             }
                             //try lowering value
                             tables[table, i] -= 2 * step;
-                            if (MeanSquareError() - baseError < -threshold)
+                            if (MeanSuppressedSquareError(suppression) - baseError < -threshold)
                             {
                                 down++;
                                 continue;
@@ -368,7 +380,7 @@ namespace MinimalChessTuning
                     }
                 }
 
-                double currentError = MeanSquareError();
+                double currentError = MeanSuppressedSquareError(suppression);
                 Console.WriteLine($"#{pass}: {currentError} MSE, {up} inc, {down} dec!");
                 SaveWeights(tempFileName);
 
@@ -433,13 +445,28 @@ namespace MinimalChessTuning
             Console.WriteLine($"{whiteWin} - {blackWin} - {draw} [{winRate:0.###}] {DATA.Count}");
         }
 
+        private static double MeanSuppressedSquareError(double suppression)
+        {
+            double squaredErrorSum = 0;
+            foreach (Data entry in DATA)
+            {
+                int score = EVAL.Evaluate(entry.Position, out double phase);
+                //phase is expected to be between 0 and 1, then with a suppresson of 1
+                //only 75% of the error at phase 1 is counted. Suppression=2 -> 50%. Suppression=4 -> 0%
+                double scale = Math.Max(0, 1 - suppression * (phase * (1 - phase)));
+                squaredErrorSum += scale * SquareError(entry.Result, score, MSE_SCALING);
+            }
+            double result = squaredErrorSum / DATA.Count;
+            return result;
+        }
+
         private static double MeanSquareError(double scalingConstant = MSE_SCALING)
         {
             double squaredErrorSum = 0;
             foreach (Data entry in DATA)
             {
                 int score = EVAL.Evaluate(entry.Position, out _);
-                squaredErrorSum += SquareError(entry.Result, score);
+                squaredErrorSum += SquareError(entry.Result, score, scalingConstant);
             }
             double result = squaredErrorSum / DATA.Count;
             return result;
@@ -462,9 +489,9 @@ namespace MinimalChessTuning
             return result;
         }
 
-        private static double SquareError(int reference, int value)
+        private static double SquareError(int reference, int value, double scalingConstant = MSE_SCALING)
         {
-            double sigmoid = 2 / (1 + Math.Exp(-(value / MSE_SCALING))) - 1;
+            double sigmoid = 2 / (1 + Math.Exp(-(value / scalingConstant))) - 1;
             double error = reference - sigmoid;
             return (error * error);
         }
@@ -542,17 +569,77 @@ namespace MinimalChessTuning
                     totalMseB += squaredErrorSumsB[i];
 
                     double delta = mseA - mseB;
-                    Console.WriteLine($"{entryCountsA[i],10}| {mseA:+0.000000;-0.000000} | {delta:+0.000000;-0.000000} | {mseB:+0.00000;-0.0000000} | {entryCountsB[i]}");
+                    Console.WriteLine($"{entryCountsA[i],10}| {mseA:+0.000000;-0.000000} | {delta:+0.000000;-0.000000} | {mseB:+0.000000;-0.000000} | {entryCountsB[i]}");
                 }
                 totalMseA /= DATA.Count;
                 totalMseB /= DATA.Count;
                 Console.WriteLine("------------------------------------------------------");
-                Console.WriteLine($"            {totalMseA:+0.000000;-0.000000} | {(totalMseA- totalMseB):+0.000000;-0.000000} | {totalMseB:+0.00000;-0.0000000}");
+                Console.WriteLine($"            {totalMseA:+0.000000;-0.000000} | {(totalMseA- totalMseB):+0.000000;-0.000000} | {totalMseB:+0.000000;-0.000000}");
             }
             catch (Exception error)
             {
                 Console.WriteLine("ERROR: " + error.Message);
             }
+        }
+
+        private static void MixWeights(string fileA, double suppression)
+        {
+            Evaluation eval = new Evaluation();
+            var reader = File.OpenText(fileA);
+            eval.Read(reader);
+            reader.Close();
+
+            for (int table = 0; table < 6; table++)
+            {
+                Console.Write($"[{Notation.ToChar((Piece)((table + 1) << 2) + 3)}] ");
+                for (int i = 0; i < 64; i++)
+                    TrySwap(table, i, eval, suppression);
+                Console.WriteLine();
+            }
+        }
+
+        private static bool TrySwap(int table, int i, Evaluation eval, double suppression)
+        {
+            double baseError = MeanSuppressedSquareError(suppression);
+            int oldMid = EVAL.MidgameTables[table, i];
+            int oldEndgame = EVAL.EndgameTables[table, i];
+
+            EVAL.MidgameTables[table, i] = eval.MidgameTables[table, i];
+            double midOnlyError = MeanSuppressedSquareError(suppression);
+            EVAL.EndgameTables[table, i] = eval.EndgameTables[table, i];
+            double bothError = MeanSuppressedSquareError(suppression);
+            EVAL.MidgameTables[table, i] = oldMid;
+            double endOnlyError = MeanSuppressedSquareError(suppression);
+
+            double best = Math.Min(Math.Min(endOnlyError, baseError),  Math.Min(midOnlyError, bothError));
+            
+            if (endOnlyError == best)
+            {
+                Console.Write("E");
+                return true;
+            }
+
+            if (bothError == best)
+            {
+                Console.Write("X");
+                EVAL.MidgameTables[table, i] = eval.MidgameTables[table, i];
+                Debug.Assert(MeanSuppressedSquareError(suppression) == best);
+                return true;
+            }
+
+            if(midOnlyError == best)
+            {
+                Console.Write("M");
+                EVAL.MidgameTables[table, i] = eval.MidgameTables[table, i];
+                EVAL.EndgameTables[table, i] = oldEndgame;
+                Debug.Assert(MeanSuppressedSquareError(suppression) == best);
+                return true;
+            }
+
+            Console.Write(".");
+            Debug.Assert(baseError == best);
+            EVAL.EndgameTables[table, i] = oldEndgame;
+            return false;
         }
 
         private static void MseBuckets(string fileA, double[] squaredErrorSums, int[] entryCounts)
