@@ -7,33 +7,32 @@ using System.Text;
 namespace MinimalChess
 {   
 
-    public class DebugSearch : ISearch
+    public class DebugSearch
     {
+        const int QUERY_TC_FREQUENCY = 25;
+
         public long NodesVisited { get; private set; }
-
-        public long MovesGenerated => 0;
-        public long MovesPlayed => 0;
-
         public int Depth { get; private set; }
         public int Score { get; private set; }
         public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => _pv.GetLine(Depth);
-        public bool Aborted => _killSwitch.Triggered;
+        public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
         public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
+        List<Move> _rootMoves = null;
         PrincipalVariation _pv;
+        KillerMoves _killers;
         KillSwitch _killSwitch;
-        //History _history;
-        Killers _killers;
-        List<Move> _rootMoves;
+        long _maxNodes;
 
-        public DebugSearch(Board board, List<Move> rootMoves = null)
+        public DebugSearch(Board board, long maxNodes = long.MaxValue, List<Move> rootMoves = null)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
-            _killers = new Killers(4);
+            _killers = new KillerMoves(4);
             _rootMoves = rootMoves;
+            _maxNodes = maxNodes;
         }
 
         public void Search(int maxDepth)
@@ -53,7 +52,6 @@ namespace MinimalChess
             _killSwitch = new KillSwitch(killSwitch);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
-            //_history.PrintStats();
         }
 
         private IEnumerable<Board> Expand(Board position, bool escapeCheck)
@@ -75,20 +73,18 @@ namespace MinimalChess
 
         private int EvalPosition(Board position, int depth, SearchWindow window)
         {
-            if (_killSwitch.Triggered)
-                return 0;
-
             if (depth == 0)
                 return QEval(position, window);
 
             NodesVisited++;
-            Color color = position.ActiveColor;
+            if (Aborted)
+                return 0;
 
+            Color color = position.ActiveColor;
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Expand(position, depth))
             {
                 expandedNodes++;
-
                 //For all rootmoves after the first search with "null window"
                 if (expandedNodes > 1 && depth == Depth)
                 {
@@ -104,8 +100,8 @@ namespace MinimalChess
                     _pv[depth] = move;
                     if (window.Cut(score, color))
                     {
-                        if(position[move.ToIndex] == Piece.None)
-                            _killers.Remember(move, depth);
+                        if (position[move.ToSquare] == Piece.None)
+                            _killers.Add(move, depth);
                         return window.GetScore(color);
                     }
                 }
@@ -114,8 +110,8 @@ namespace MinimalChess
             if (expandedNodes == 0) //no expansion happened from this node!
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
-                _pv.Clear(depth);
-                return position.IsChecked(position.ActiveColor) ? (int)color * Eval.LostValue : 0;
+                _pv[depth] = default;
+                return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.LostValue : 0;
             }
 
             return window.GetScore(color);
@@ -124,15 +120,17 @@ namespace MinimalChess
         private int QEval(Board position, SearchWindow window)
         {
             NodesVisited++;
-            Color color = position.ActiveColor;
+            if (Aborted)
+                return 0;
 
-            //if inCheck we can't use standPat, need to escape check!
+            Color color = position.ActiveColor;
             bool inCheck = position.IsChecked(color);
+            //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
             {
+                int standPatScore = Evaluation.Evaluate(position);
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
-                Debug.Assert(position.Score == Eval.Evaluate(position));
-                if (window.Cut(position.Score, color))
+                if (window.Cut(standPatScore, color))
                     return window.GetScore(color);
             }
 
@@ -151,10 +149,10 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * Eval.LostValue;
+                return (int)color * Evaluation.LostValue;
 
             //stalemate?
-            if (expandedNodes == 0 && !position.HasLegalMoves)
+            if (expandedNodes == 0 && !LegalMoves.HasMoves(position))
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"

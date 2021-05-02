@@ -70,23 +70,18 @@ namespace MinimalChessBoard
                     else if (command == "!")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 4;
-                        move = Search.GetBestMoveMinMax(board, depth);
+                        IterativeSearch search = new IterativeSearch(board);
+                        search.Search(depth);
+                        move = search.PrincipalVariation[0];
                         Console.WriteLine($"{board.ActiveColor} >> {move}");
                         board.Play(move);
                     }
                     else if (command == "?")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        bool quiesce = tokens.Length > 2 ? tokens[2] == "q" : false;
-                        ListBestMove(board, depth, quiesce);
+                        ListMoves(board, depth);
                     }
-                    else if (command == "??")
-                    {
-                        int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
-                        bool quiesce = tokens.Length > 2 ? tokens[2] == "q" : false;
-                        ListMoves(board, depth, quiesce);
-                    }
-                    else if (command == "#")
+                    else if (command == "??" || command == "#")
                     {
                         PrintMoves(board);
                     }
@@ -95,38 +90,12 @@ namespace MinimalChessBoard
                         Move start = new Move(tokens[1]);
                         Console.WriteLine(Evaluation.SEE(board, start));
                     }
-                    else if (command == "pst")
-                    {
-                        string file = $"pst/{tokens[1]}.pst";
-                        PieceSquareTable.Load(File.OpenText(file));
-                    }
                     else if (command == "bench")
-                    {
-                        string mode = tokens[1];                       
-                        string file = $"test/{tokens[2]}.txt";
-                        switch(mode)
-                        {
-                            case "mm":
-                                RunBenchmark(file, BenchMode.MinMax);
-                                break;
-                            case "ab":
-                                RunBenchmark(file, BenchMode.AlphaBeta);
-                                break;
-                            case "it":
-                                RunBenchmark(file, BenchMode.Iterative);
-                                break;
-                            case "q":
-                                RunBenchmark(file, BenchMode.QSearch);
-                                break;
-                            case "debug":
-                                RunBenchmark(file, BenchMode.Debug);
-                                break;
-                            default:
-                                Console.WriteLine($"Mode {mode} not supported!");
-                                break;
-                        }
+                    {                 
+                        string file = tokens[1];
+                        RunBenchmark(file);
                     }
-                    else if (command == "make_bench")
+                    else if (command == "make")
                     {
                         //make_bench 4 benchmark.epd benchMinMaxD4.txt
                         int depth = int.Parse(tokens[1]);
@@ -176,7 +145,7 @@ namespace MinimalChessBoard
             Console.WriteLine(" '----------------'");
             Console.WriteLine($"  A B C D E F G H");
             Console.WriteLine();
-            Console.WriteLine($"  PSTs     {board.Score:+0;-0}");
+            Console.WriteLine($"  PSTs     {Evaluation.Evaluate(board):+0;-0}");
             Console.WriteLine($"  Quiet    {QEval(board):+0; -0}");
         }
 
@@ -191,7 +160,7 @@ namespace MinimalChessBoard
             {
                 int index = rank * 8 + file;
                 //highlight squares if they belong to the move
-                if (move.FromIndex == index || move.ToIndex == index)
+                if (move.FromSquare == index || move.ToSquare == index)
                     Console.BackgroundColor = ConsoleColor.DarkCyan;
             }
 
@@ -204,9 +173,7 @@ namespace MinimalChessBoard
         private static void PrintMoves(Board board)
         {
             int i = 1;
-            var moves = new LegalMoves(board);
-            MoveOrdering.SortMvvLva(moves, board);
-            foreach (var move in moves)
+            foreach (var move in new LegalMoves(board))
             {
                 Console.WriteLine($"{i++}. {board.ActiveColor} >> {move}");
                 var copy = new Board(board, move);
@@ -215,18 +182,13 @@ namespace MinimalChessBoard
             }
         }
 
-        private static void ListMoves(Board board, int depth, bool qSearch)
+        private static void ListMoves(Board board, int depth)
         {
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
                 Board next = new Board(board, move);
-                ISearch search;
-                if (qSearch)
-                    search = new IterativeQSearch(next);
-                else
-                    search = new FastIterativeSearch(next);
-
+                IterativeSearch search = new IterativeSearch(next);
                 search.Search(depth-1);
                 Move[] line = search.PrincipalVariation;
                 if (line != null)
@@ -236,33 +198,8 @@ namespace MinimalChessBoard
                 }
                 else
                 {
-                    int score = qSearch ? QEval(next) : Eval.Evaluate(next);
-                    Console.WriteLine($"{i++,4}. {move} = {score:+0.00;-0.00}");
+                    Console.WriteLine($"{i++,4}. {move}, PST={Evaluation.Evaluate(board):+0.00;-0.00}, Quiet={QEval(board):+0; -0}");
                 }
-            }
-        }
-
-        private static void ListBestMove(Board board, int depth, bool qSearch)
-        {
-            ISearch search;
-            if (qSearch)
-                search = new DebugSearch(board);
-            else
-                search = new FastIterativeSearch(board);
-            
-            search.Search(depth);
-            Move[] line = search.PrincipalVariation;
-
-            int i = 1;
-            foreach (var move in new LegalMoves(board))
-            {
-                if (line != null && line[0] == move)
-                {
-                    string pvString = string.Join(' ', line);
-                    Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
-                }
-                else
-                    Console.WriteLine($"{i++,4}. {move}");
             }
         }
 
@@ -369,29 +306,16 @@ namespace MinimalChessBoard
             Console.WriteLine($"Test finished with {error} wrong results after {dt:0.###} seconds!");
         }
 
-        enum BenchMode
-        {
-            AlphaBeta,
-            MinMax,
-            Iterative,
-            QSearch,
-            Debug
-        }
-
-        private static void RunBenchmark(string filePath, BenchMode mode)
+        private static void RunBenchmark(string filePath)
         {
             var file = File.OpenText(filePath);
             int error = 0;
             int success = 0;
             int line = 1;
             double timeRatioSum = 0;
-            double evalRatioSum = 0;
-            double moveRatioSum = 0;
-            double posRatioSum = 0;
-            long moveGenSum = 0;
-            long movePlayedSum = 0;
+            double nodesRatioSum = 0;
             long tStart = Stopwatch.GetTimestamp();
-            long totalEvals = 0;
+            long totalNodes = 0;
             while (!file.EndOfStream)
             {
                 //The parser expects a fen-string followed by
@@ -413,7 +337,7 @@ namespace MinimalChessBoard
                     string value = prop.Substring(split);
                     props[key] = value;
                 }
-                if (props.Count != 7)
+                if (props.Count != 5)
                 {
                     Console.WriteLine($"{line++} SKIPPED! Properties missing. Line: {entry}");
                     continue;
@@ -421,105 +345,42 @@ namespace MinimalChessBoard
 
                 int depth = int.Parse(props["acd"]);
                 int refScore = int.Parse(props["ce"]);
-                long refEvalCount = long.Parse(props["evals"]);
-                long refMoveCount = long.Parse(props["moves"]);
-                long refPosCount = long.Parse(props["positions"]);
+                long refNodes = long.Parse(props["acn"]);
                 float refTime = Math.Max(0.001f, float.Parse(props["acs"], CultureInfo.InvariantCulture));
                 List<Move> refMoves = props["bm"].Split()[1..^0].Select(s => new Move(s)).ToList();
-
-                Move[] moves = null;
-                int score = 0;
-                long evals = 0;
-                long movegens = 0;
-                long positions = 0;
-
+                
+                //search the position to given depth, measure search time
                 long t0 = Stopwatch.GetTimestamp();
                 Board board = new Board(fen);
-                switch (mode)
-                {
-                    case BenchMode.MinMax:
-                        BenchMinMax(board, depth, out moves, out score, out evals);
-                        break;
-                    case BenchMode.AlphaBeta:
-                        BenchSearch(new AlphaBetaSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
-                        break;
-                    case BenchMode.Iterative:
-                        BenchSearch(new FastIterativeSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
-                        break;
-                    case BenchMode.QSearch:
-                        BenchSearch(new IterativeQSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
-                        break;
-                    case BenchMode.Debug:
-                        BenchSearch(new DebugSearch(board), depth, out moves, out score, out evals, out movegens, out positions);
-                        break;
-                    default:
-                        return; //Unsupported mode!
-                }
+                var search = new DebugSearch(board);
+                search.Search(depth);
                 long t1 = Stopwatch.GetTimestamp();
-                double dt = (t1 - t0) / (double)Stopwatch.Frequency;
 
-                totalEvals += evals;
+                double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                Move[] moves = search.PrincipalVariation;
+                int score = search.Score;
+                long nodes = search.NodesVisited;
+                totalNodes += nodes;
 
                 if (!ValidatePV(board, score, moves))
-                {
-                    error++;
-                    Console.WriteLine($"{line++} ERROR! PV validation failed. FEN: {fen}");
-                }                
+                    Console.WriteLine($"{line++} ERROR#{++error}: PV validation failed. FEN: {fen}");
                 else if (score != refScore)
-                {
-                    error++;
-                    Console.WriteLine($"{line++} ERROR! ce={score}, expected {refScore}. ");
-                }                
-                else if(!refMoves.Contains(moves[0]))
-                {
-                    error++;
-                    Console.WriteLine($"{line++} WARNING! bm={string.Join(' ', moves[0])}, expected {string.Join(' ', refMoves)}. FEN: {fen}");
-                }
+                    Console.WriteLine($"{line++} ERROR#{++error}! ce={score}, expected {refScore}. ");
                 else //GOOD! but how good?
                 {
                     success++;
-
-                    moveGenSum = movegens;
-                    movePlayedSum = positions;
-
                     double timeRatio = dt / refTime;
                     timeRatioSum += timeRatio;
-
-                    double evalRatio = evals / (double)refEvalCount;
-                    evalRatioSum += evalRatio;
-
-                    double moveRatio = movegens / (double)refMoveCount;
-                    moveRatioSum += moveRatio;
-
-                    double posRatio = positions / (double)refPosCount; 
-                    posRatioSum += posRatio;
-                    Console.WriteLine($"{line++} OK! eval {evalRatio:0.###}, moves {moveRatio:0.###}, positions {posRatio:0.###} acs {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
+                    double nodesRatio = nodes / (double)refNodes;
+                    nodesRatioSum += nodesRatio;
+                    Console.WriteLine($"{line++} OK! nodes {nodesRatio:0.###}, time {dt:0.###} / {refTime:0.###} = {timeRatio:0.###}.");
                 }
                 Console.WriteLine();
             }
             double elapsed = (Stopwatch.GetTimestamp() - tStart) / (double)Stopwatch.Frequency;
-            moveGenSum = Math.Max(moveGenSum, 1);
-
-            int knps = (int)(totalEvals / elapsed / 1000);
-            Console.WriteLine($"Test finished with {error} wrong results! Time: {timeRatioSum/success:0.###}, Eval: {evalRatioSum/success:0.###}, Moves generated: {moveRatioSum / success:0.###}, Moves played: {posRatioSum / success:0.###}, Performance: {knps}kN/sec");
-            Console.WriteLine($"A total of {moveGenSum} moves were generated. {movePlayedSum} were played. {(movePlayedSum * 100) / moveGenSum}%");
-        }
-
-        private static void BenchMinMax(Board board, int depth, out Move[] moves, out int score, out long nodes)
-        {
-            Search.ClearStats();
-            moves = Search.GetBestMovesMinMax(board, depth, out score).ToArray();
-            nodes = Search.PositionsEvaluated;
-        }
-
-        private static void BenchSearch(ISearch search, int depth, out Move[] moves, out int score, out long evals, out long movegen, out long positions)
-        {
-            search.Search(depth);
-            moves = search.PrincipalVariation;
-            score = search.Score;
-            evals = search.NodesVisited;
-            positions = search.MovesPlayed;
-            movegen = search.MovesGenerated;
+            int knps = (int)(totalNodes / elapsed / 1000);
+            Console.WriteLine($"Test finished with {error} wrong results! Nodes: {nodesRatioSum / success:0.###}, Time: {timeRatioSum / success:0.###}, Performance: {knps}kN/sec");
+            Console.WriteLine($"A total of {totalNodes} nodes were visited.");
         }
 
         private static bool ValidatePV(Board board, int score, Move[] line)
@@ -556,17 +417,16 @@ namespace MinimalChessBoard
                 string fen = string.Join(' ', entry.Split()[0..4]);
                 Console.WriteLine($"{line++}. {fen}");
                 Board board = new Board(fen);
-                int color = (int)board.ActiveColor;
 
                 long t0 = Stopwatch.GetTimestamp();
-                IterativeQSearch search = new IterativeQSearch(board);
+                IterativeSearch search = new IterativeSearch(board);
                 search.Search(depth);
                 Move bestMove = search.PrincipalVariation[0];
    
                 long pvEval = search.Score;
                 long t1 = Stopwatch.GetTimestamp();
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
-                string result = $"ce {pvEval};bm {bestMove};acd {depth};evals {search.NodesVisited};moves {search.MovesGenerated};positions {search.MovesPlayed};acs {dt:0.###}";
+                string result = $"ce {pvEval};bm {bestMove};acd {depth};acn {search.NodesVisited};acs {dt:0.###}";
                 target.WriteLine($"{fen};{result}");
                 target.Flush();
 

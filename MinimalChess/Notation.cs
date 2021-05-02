@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace MinimalChess
 {
@@ -57,7 +55,7 @@ namespace MinimalChess
             return squareNotation;
         }
 
-        public static byte ToSquareIndex(string squareNotation)
+        public static byte ToSquare(string squareNotation)
         {
             //Each square has a unique identification of file letter followed by rank number.
             https://en.wikipedia.org/wiki/Algebraic_notation_(chess)

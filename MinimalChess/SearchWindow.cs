@@ -1,8 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace MinimalChess
+﻿namespace MinimalChess
 {
     public struct SearchWindow
     {
@@ -15,23 +11,6 @@ namespace MinimalChess
         {
             Floor = floor;
             Ceiling = ceiling;
-        }
-
-        public bool Limit(int score, Color color)
-        {
-            if (color == Color.White && score - 1 > Floor) //Cut floor
-            {
-                Floor = score - 1;
-                return true;
-            }
-
-            if (color == Color.Black && score + 1 < Ceiling) //Cut ceiling
-            {
-                Ceiling = score + 1;
-                return true;
-            }
-
-            return false;
         }
 
         public bool Cut(int score, Color color)

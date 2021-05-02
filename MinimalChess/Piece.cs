@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace MinimalChess
+﻿namespace MinimalChess
 {
     public enum Color
     {
