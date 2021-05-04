@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.4.1";
+        const string NAME_VERSION = "MinimalChess 0.4.2";
 
         static Engine _engine = new Engine();
         static async Task Main(string[] args)
@@ -29,7 +29,7 @@ namespace MinimalChessEngine
 
         private static void ParseUciCommand(string input)
         {
-            //remove leading & trailing whitecases, convert to lower case characters and split using ' ' as delimiter
+            //remove leading & trailing whitecases and split using ' ' as delimiter
             string[] tokens = input.Trim().Split();
             switch (tokens[0])
             {

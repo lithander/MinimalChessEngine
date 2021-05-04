@@ -18,18 +18,18 @@ namespace MinimalChess
         public bool GameOver => PrincipalVariation?.Length < Depth;
 
         Board _root = null;
-        List<Move> _rootMoves = null;
+        HashSet<Board> _history = null;
         PrincipalVariation _pv;
         KillerMoves _killers;
         KillSwitch _killSwitch;
         long _maxNodes;
 
-        public IterativeSearch(Board board, long maxNodes = long.MaxValue, List<Move> rootMoves = null)
+        public IterativeSearch(Board board, long maxNodes = long.MaxValue, HashSet<Board> history = null)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
             _killers = new KillerMoves(4);
-            _rootMoves = rootMoves;
+            _history = history ?? new HashSet<Board>();
             _maxNodes = maxNodes;
         }
 
@@ -52,23 +52,6 @@ namespace MinimalChess
             Score = EvalPosition(_root, Depth, window);
         }
 
-        private IEnumerable<Board> Expand(Board position, bool escapeCheck)
-        {
-            if (escapeCheck)
-                return Playmaker.Play(position);
-            else
-                return Playmaker.PlayCaptures(position);
-        }
-
-        private IEnumerable<(Move, Board)> Expand(Board position, int depth)
-        {
-            var moveSequence = Playmaker.Play(position, depth, _pv, _killers);
-            if (_rootMoves != null && depth == Depth) //Filter moves that are not whitelisted via rootMoves
-                return moveSequence.Where(entry => _rootMoves.Contains(entry.Move));
-            else
-                return moveSequence;
-        }
-
         private int EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth == 0)
@@ -78,11 +61,18 @@ namespace MinimalChess
             if (Aborted)
                 return 0;
 
+            if (depth < Depth && _history.Contains(position))
+            {
+                _pv[depth] = default;
+                return 0; //draw through 3-fold repetition
+            }
+
             Color color = position.ActiveColor;
             int expandedNodes = 0;
-            foreach ((Move move, Board child) in Expand(position, depth))
+            foreach ((Move move, Board child) in Playmaker.Play(position, depth, _pv, _killers))
             {
                 expandedNodes++;
+
                 //For all rootmoves after the first search with "null window"
                 if (expandedNodes > 1 && depth == Depth)
                 {
@@ -134,7 +124,7 @@ namespace MinimalChess
 
             int expandedNodes = 0;
             //play remaining captures (or any moves if king is in check)
-            foreach (Board child in Expand(position, inCheck))
+            foreach (Board child in inCheck ? Playmaker.Play(position) : Playmaker.PlayCaptures(position))
             {
                 expandedNodes++;
                 //recursively evaluate the resulting position (after the capture) with QEval

@@ -8,16 +8,13 @@ namespace MinimalChessEngine
 {
     class Engine
     {
-        const int CONTEMPT = 0;
-
         IterativeSearch _search = null;
         Thread _searching = null;
         Move _best = default;
         int _maxSearchDepth;
         TimeControl _time = new TimeControl();
         Board _board = new Board(Board.STARTING_POS_FEN);
-        List<Move> _repetitions = new List<Move>();
-        List<Board> _history = new List<Board>();
+        HashSet<Board> _history = new HashSet<Board>();
 
         public bool Running { get; private set; }
         public Color ColorToPlay => _board.ActiveColor;
@@ -98,7 +95,7 @@ namespace MinimalChessEngine
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
 
-            _search = new IterativeSearch(_board, maxNodes, GetRootMoves());
+            _search = new IterativeSearch(_board, maxNodes, _history);
             _time.StartInterval();
             _search.SearchDeeper();
             Collect();
@@ -143,25 +140,7 @@ namespace MinimalChessEngine
         {
             int score = (int)_search.Position.ActiveColor * _search.Score;
             Uci.Info(_search.Depth, score, _search.NodesVisited, _time.Elapsed, _search.PrincipalVariation);
-
-            //Go for a draw?
-            if (_repetitions.Count > 0 && score < CONTEMPT)
-                _best = _repetitions[0];
-            else
-                _best = _search.PrincipalVariation[0];
-        }
-
-        private List<Move> GetRootMoves()
-        {
-            //find the root moves
-            var moves = new LegalMoves(_board);
-            //find root moves that would result in a previous position
-            _repetitions = moves.Where(move => _history.Contains(new Board(_board, move))).ToList();
-            //if we don't have enough moves also play repetitions
-            if (_repetitions.Count < moves.Count)
-                moves.RemoveAll(move => _repetitions.Contains(move));
-
-            return moves;
+            _best = _search.PrincipalVariation[0];
         }
     }
 }

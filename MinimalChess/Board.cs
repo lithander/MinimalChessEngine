@@ -685,17 +685,18 @@ namespace MinimalChess
 
         public override int GetHashCode()
         {
-            //Boards that are equal should return the same hashcode!
-            uint hash = 0;
+            //perft 4 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
+            //Moves:                4,085,603       Previous:
+            //Unique Positions:     1,443,541       1,443,541
+            //Unique HashCodes:     1,123,246       32,128
+            //HashCollisions:       320,295         1,411,413
+            //Collision Rate:       22 %            98%
+			//Duration:             2.79s           299.5s
+            int hash = (int)_activeColor;
             for (int square = 0; square < 32; square++)
-            {
-                if (_state[square] != Piece.None || _state[square + 32] != Piece.None)
-                {
-                    uint bit = (uint)(1 << square);
-                    hash |= bit;
-                }
-            }
-            return (int)hash;
+                hash ^= (int)(_state[square] ^ _state[square + 32]) << square;
+
+            return hash;
         }
     }
 }
