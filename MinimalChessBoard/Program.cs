@@ -1,6 +1,5 @@
 ﻿using MinimalChess;
 using System;
-using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -191,36 +190,28 @@ namespace MinimalChessBoard
             }
         }
 
-        private static HashSet<Board> _uniquePositions = new HashSet<Board>();
-        private static HashSet<int> _uniqueHashKeys = new HashSet<int>();
-        private static int _hashCollisionCount = 0;
-
         private static long Perft(Board board, int depth)
         {
-            if(_uniquePositions.Add(board))
-            {
-                //new position, ideally it had it's own unique hashcode, too
-                int hashCode = board.GetHashCode();
-                if (!_uniqueHashKeys.Add(hashCode))
-                    _hashCollisionCount++;
-            }
-
-            if (depth == 0)
-                return 1;
+            if (depth <= 0)
+                return 0;
 
             var moves = new LegalMoves(board);
-            long sum = 0;
-            foreach (var move in moves)
-                sum += Perft(new Board(board, move), depth - 1);
+            if (depth == 1) //no need to apply the moves before counting them
+                return moves.Count;
 
+            long sum = 0;
+            Board next = new Board(board);
+            foreach (var move in moves)
+            {
+                next.Copy(board);
+                next.Play(move);
+                sum += Perft(next, depth - 1);
+            }
             return sum;
         }
 
         private static void RunPerft(Board board, int depth)
         {
-            _hashCollisionCount = 0;
-            _uniquePositions.Clear();
-            _uniqueHashKeys.Clear();
             long t0 = Stopwatch.GetTimestamp();
             long result = Perft(board, depth);
             long t1 = Stopwatch.GetTimestamp();
@@ -228,10 +219,6 @@ namespace MinimalChessBoard
             Console.WriteLine($"  Moves:    {result:N0}");
             Console.WriteLine($"  Seconds:  {dt:0.####}");
             Console.WriteLine($"  Moves/s:  {(result / dt):N0}");
-            Console.WriteLine($"  Unique Positions:  {_uniquePositions.Count:N0}");
-            Console.WriteLine($"  Unique HashCodes:  {_uniqueHashKeys.Count:N0}");
-            Console.WriteLine($"  HashCollisions:  {_hashCollisionCount:N0}");
-            Console.WriteLine($"  Collision Rate: {(100 * _hashCollisionCount / (double)_uniquePositions.Count):N0}%");
         }
 
         private static void RunDivide(Board board, int depth)
