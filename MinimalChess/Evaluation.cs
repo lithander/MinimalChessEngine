@@ -119,7 +119,7 @@ namespace MinimalChess
 
         private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
 
-        public static int Evaluate(Board board)
+        public static int _Evaluate(Board board)
         {
             int midGame = 0;
             int endGame = 0;
@@ -142,7 +142,7 @@ namespace MinimalChess
             double score = factor * midGame + (1 - factor) * endGame;
             return (int)score;
         }
-        /*
+
         public static int Evaluate(Board board)
         {
             int midGame = 0;
@@ -154,9 +154,8 @@ namespace MinimalChess
             while (pieceMap > 0)
             {
                 int square = BitOperations.TrailingZeroCount(pieceMap);
+                int pieceIndex = PieceTableIndex(board[square]);
 
-                Piece piece = board[square];
-                int pieceIndex = PieceTableIndex(piece);
                 phase += PhaseValues[pieceIndex];
                 midGame -= MidgameTables[pieceIndex, square];
                 endGame -= EndgameTables[pieceIndex, square];
@@ -168,13 +167,11 @@ namespace MinimalChess
             while (pieceMap > 0)
             {
                 int square = BitOperations.TrailingZeroCount(pieceMap);
+                int pieceIndex = PieceTableIndex(board[square]);
 
-                Piece piece = board[square];
-                int pieceIndex = PieceTableIndex(piece);
-                int squareIndex = square ^ 56;
                 phase += PhaseValues[pieceIndex];
-                midGame += MidgameTables[pieceIndex, squareIndex];
-                endGame += EndgameTables[pieceIndex, squareIndex];
+                midGame += MidgameTables[pieceIndex, square ^ 56];
+                endGame += EndgameTables[pieceIndex, square ^ 56];
 
                 pieceMap ^= 1ul << square;
             }
@@ -184,6 +181,7 @@ namespace MinimalChess
             return (int)score;
         }
 
+        /*
         public struct Eval
         {
             public int MidgameScore;

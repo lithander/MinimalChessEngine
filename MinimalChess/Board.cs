@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Numerics;
 
 namespace MinimalChess
 {
@@ -41,6 +42,8 @@ namespace MinimalChess
         private CastlingRights _castlingRights = CastlingRights.All;
         private Color _activeColor = Color.White;
         private int _enPassantSquare = -1;
+        private ulong _whiteMap = 0;
+        private ulong _blackMap = 0;
         /*** STATE DATA ***/
 
         public Color ActiveColor => _activeColor;
@@ -70,11 +73,19 @@ namespace MinimalChess
             _activeColor = board._activeColor;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
+            _blackMap = board._blackMap;
+            _whiteMap = board._whiteMap;
+            ValidatePieceMap();
         }
 
         public Piece this[int square]
         {
             get => _state[square];
+            private set
+            {
+                UpdatePieceMaps(_state[square], value, square);
+                _state[square] = value;
+            }
         }
 
         //Rank - the eight horizontal rows of the chess board are called ranks.
@@ -135,6 +146,7 @@ namespace MinimalChess
                 // Set full move number.
                 int fullMoveNumber = int.Parse(fields[5]);
             }
+            RebuildPieceMap();
         }
 
 
@@ -144,29 +156,32 @@ namespace MinimalChess
 
         public Piece Play(Move move)
         {
-            Piece capturedPiece = _state[move.ToSquare];
-            Piece movingPiece = _state[move.FromSquare];
+            ValidatePieceMap();
+
+            Piece capturedPiece = this[move.ToSquare];
+            Piece movingPiece = this[move.FromSquare];
+
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_activeColor);
 
             //move the correct piece to the target square
-            _state[move.ToSquare] = movingPiece;
+            this[move.ToSquare] = movingPiece;
             //...and clear the square it was previously located
-            _state[move.FromSquare] = Piece.None;
+            this[move.FromSquare] = Piece.None;
 
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
-                capturedPiece = _state[captureIndex];
-                _state[captureIndex] = Piece.None;
+                capturedPiece = this[captureIndex];
+                this[captureIndex] = Piece.None;
             }
 
             //handle castling special case
             if (IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
-                _state[rookMove.ToSquare] = _state[rookMove.FromSquare];
-                _state[rookMove.FromSquare] = Piece.None;
+                this[rookMove.ToSquare] = this[rookMove.FromSquare];
+                this[rookMove.FromSquare] = Piece.None;
             }
 
             //update board state
@@ -258,6 +273,61 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
+        public ulong GetPieceMap(Color color)
+        {
+            ValidatePieceMap();
+            return (color == Color.Black) ? _blackMap : _whiteMap;
+        }
+
+        private void UpdatePieceMaps(Piece oldPiece, Piece newPiece, int index)
+        {
+            ulong bit = 1ul << index;
+            if (Pieces.IsBlack(oldPiece))
+                _blackMap ^= bit;
+            else if (Pieces.IsWhite(oldPiece))
+                _whiteMap ^= bit;
+
+            if (Pieces.IsBlack(newPiece))
+                _blackMap |= bit;
+            else if (Pieces.IsWhite(newPiece))
+                _whiteMap |= bit;
+        }
+
+
+        private void RebuildPieceMap()
+        {
+            _blackMap = 0;
+            _whiteMap = 0;
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+                Piece piece = this[squareIndex];
+                if (Pieces.IsBlack(piece))
+                    _blackMap |= 1ul << squareIndex;
+                else if (Pieces.IsWhite(piece))
+                    _whiteMap |= 1ul << squareIndex;
+            }
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidatePieceMap()
+        {
+            ulong blackMap = 0;
+            ulong whiteMap = 0;
+            for (int squareIndex = 0; squareIndex < 64; squareIndex++)
+            {
+                Piece piece = this[squareIndex];
+                if (Pieces.IsBlack(piece))
+                    blackMap |= 1ul << squareIndex;
+                else if (Pieces.IsWhite(piece))
+                    whiteMap |= 1ul << squareIndex;
+            }
+
+            if (blackMap != _blackMap)
+                throw new Exception($"Black piece map failed validation!");
+
+            if (whiteMap != _whiteMap)
+                throw new Exception($"White piece map failed validation!");
+        }
         public bool CanPlay(Move move)
         {
             bool found = false;
@@ -265,22 +335,41 @@ namespace MinimalChess
             return found;
         }
 
-        public void CollectMoves(Action<Move> moveHandler)
+        public void CollectMoves(Action<Move> moves)
         {
-            for (int square = 0; square < 64; square++)
-                CollectMoves(square, moveHandler);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while(pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddQuiets(square, moves);
+                AddCaptures(square, moves);
+                pieceMap ^= 1ul << square;
+            }
         }
 
-        public void CollectQuiets(Action<Move> moveHandler)
+        public void CollectQuiets(Action<Move> moves)
         {
-            for (int square = 0; square < 64; square++)
-                CollectQuiets(square, moveHandler);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddQuiets(square, moves);
+                pieceMap ^= 1ul << square;
+            }              
         }
 
-        public void CollectCaptures(Action<Move> moveHandler)
+        public void CollectCaptures(Action<Move> moves)
         {
-            for (int square = 0; square < 64; square++)
-                CollectCaptures(square, moveHandler);
+            ulong pieceMap = GetPieceMap(ActiveColor);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                Debug.Assert(IsActivePiece(this[square]));
+                AddCaptures(square, moves);
+                pieceMap ^= 1ul << square;
+            }
         }
 
         public void CollectMoves(int square, Action<Move> moveHandler)
@@ -384,9 +473,14 @@ namespace MinimalChess
         public bool IsChecked(Color color)
         {
             Piece king = color == Color.Black ? Piece.BlackKing : Piece.WhiteKing;
-            for (int square = 0; square < 64; square++)
-                if (_state[square] == king)
+            ulong pieceMap = GetPieceMap(color);
+            while (pieceMap > 0)
+            {
+                int square = BitOperations.TrailingZeroCount(pieceMap);
+                if(this[square] == king)
                     return IsSquareAttacked(square, Pieces.Flip(color));
+                pieceMap ^= 1ul << square;
+            }
 
             throw new Exception($"No {color} King found!");
         }
@@ -737,6 +831,10 @@ namespace MinimalChess
             if (other._enPassantSquare != _enPassantSquare)
                 return false;
             //4.) the same types of pieces occupy the same squares
+            if (other._blackMap != _blackMap)
+                return false;
+            if (other._whiteMap != _whiteMap)
+                return false;
             for (int square = 0; square < 64; square++)
                 if (other._state[square] != _state[square])
                     return false;
@@ -744,19 +842,30 @@ namespace MinimalChess
             return true;
         }
 
+        /*
+        public bool Equals3(Board other)
+        {
+            //Used for detecting repetition
+            //From: https://en.wikipedia.org/wiki/Threefold_repetition
+            //Two positions are by definition "the same" if... 
+            //1.) the same player has the move 
+            if (other._activeColor != _activeColor)
+                return false;
+
+            //2.) the remaining castling rights are the same and 
+            if (other._castlingRights != _castlingRights)
+                return false;
+            //3.) the possibility to capture en passant is the same. 
+            if (other._enPassantSquare != _enPassantSquare)
+                return false;
+            //4.) the same types of pieces occupy the same squares
+            return _state.AsSpan<byte>().SequenceEqual(other._state.AsSpan<byte>());
+        }*/
+
         public override int GetHashCode()
         {
             //Boards that are equal should return the same hashcode!
-            uint hash = 0;
-            for (int square = 0; square < 32; square++)
-            {
-                if (_state[square] != Piece.None || _state[square + 32] != Piece.None)
-                {
-                    uint bit = (uint)(1 << square);
-                    hash |= bit;
-                }
-            }
-            return (int)hash;
+            return (_blackMap ^ _whiteMap).GetHashCode();
         }
     }
 }
