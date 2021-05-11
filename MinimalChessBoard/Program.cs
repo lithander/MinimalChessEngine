@@ -33,7 +33,7 @@ namespace MinimalChessBoard
                 }
 
                 Console.WriteLine();
-                Console.Write($"{board.ActiveColor} >> ");
+                Console.Write($"{board.SideToMove} >> ");
                 string input = Console.ReadLine();
                 string[] tokens = input.Split();
                 string command = tokens[0];
@@ -70,7 +70,7 @@ namespace MinimalChessBoard
                         IterativeSearch search = new IterativeSearch(board);
                         search.Search(depth);
                         move = search.PrincipalVariation[0];
-                        Console.WriteLine($"{board.ActiveColor} >> {move}");
+                        Console.WriteLine($"{board.SideToMove} >> {move}");
                         board.Play(move);
                     }
                     else if (command == "?")
@@ -146,7 +146,7 @@ namespace MinimalChessBoard
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
-                Console.WriteLine($"{i++}. {board.ActiveColor} >> {move}");
+                Console.WriteLine($"{i++}. {board.SideToMove} >> {move}");
                 var copy = new Board(board, move);
                 Print(copy, move);
                 Console.WriteLine();
@@ -183,7 +183,7 @@ namespace MinimalChessBoard
                 Debug.Assert(move.ToString() == moves[i]);
                 if (i > 0)
                 {
-                    Console.Write($"{i + 1}. {board.ActiveColor} >> {move}");
+                    Console.Write($"{i + 1}. {board.SideToMove} >> {move}");
                     Console.WriteLine();
                 }
                 board.Play(move);

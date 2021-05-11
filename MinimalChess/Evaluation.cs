@@ -4,7 +4,7 @@ namespace MinimalChess
 {
     public class Evaluation
     {
-        public static int LostValue => -9999;
+        public const int Checkmate = -9999;
 
         private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
 
@@ -15,7 +15,7 @@ namespace MinimalChess
         {
             int midGame = 0;
             int endGame = 0;
-            int phase = 0;
+            int phaseValue = 0;
             for (int i = 0; i < 64; i++)
             {
                 Piece piece = board[i];
@@ -25,19 +25,21 @@ namespace MinimalChess
                 Color color = Pieces.GetColor(piece);
                 int pieceIndex = PieceTableIndex(piece);
                 int squareIndex = SquareTableIndex(i, piece);
-                phase += PhaseValues[pieceIndex];
+                phaseValue += PhaseValues[pieceIndex];
                 midGame += (int)color * MidgameTables[pieceIndex, squareIndex];
                 endGame += (int)color * EndgameTables[pieceIndex, squareIndex];
             }
 
-            double factor = Linstep(Endgame, Midgame, phase);
-            double score = factor * midGame + (1 - factor) * endGame;
+            //linearily interpolate between midGame and endGame score based on current phase (tapered eval)
+            double phase = Linstep(Midgame, Endgame, phaseValue);
+            double score = midGame + phase * (endGame - midGame);
+
             return (int)score;
         }
 
-        public static double Linstep(double edge0, double edge1, double v)
+        public static double Linstep(double edge0, double edge1, double value)
         {
-            return Math.Min(1, Math.Max(0, (v - edge0) / (edge1 - edge0)));
+            return Math.Min(1, Math.Max(0, (value - edge0) / (edge1 - edge0)));
         }
 
         /*
@@ -55,8 +57,9 @@ namespace MinimalChess
         ------------------------
                   | +0.246433  
         */
-        static readonly int Midgame = 5255;
-        static readonly int Endgame = 435;
+
+        const int Midgame = 5255;
+        const int Endgame = 435;
 
         static readonly int[] PhaseValues = new int[6] { 0, 155, 305, 405, 1050, 0 };
 

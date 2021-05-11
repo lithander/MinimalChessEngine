@@ -39,11 +39,11 @@ namespace MinimalChess
         /*** STATE DATA ***/
         private Piece[] _state = new Piece[64];
         private CastlingRights _castlingRights = CastlingRights.All;
-        private Color _activeColor = Color.White;
+        private Color _sideToMove = Color.White;
         private int _enPassantSquare = -1;
         /*** STATE DATA ***/
 
-        public Color ActiveColor => _activeColor;
+        public Color SideToMove => _sideToMove;
 
         public Board() { }
 
@@ -67,7 +67,7 @@ namespace MinimalChess
         {
             //Array.Copy(board._state, _state, 64);
             board._state.AsSpan().CopyTo(_state.AsSpan());
-            _activeColor = board._activeColor;
+            _sideToMove = board._sideToMove;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
         }
@@ -116,7 +116,7 @@ namespace MinimalChess
             }
 
             //Set side to move
-            _activeColor = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase) ? Color.White : Color.Black;
+            _sideToMove = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase) ? Color.White : Color.Black;
 
             //Set castling rights
             SetCastlingRights(CastlingRights.WhiteKingside, fields[2].IndexOf("K") > -1);
@@ -147,7 +147,7 @@ namespace MinimalChess
             Piece capturedPiece = _state[move.ToSquare];
             Piece movingPiece = _state[move.FromSquare];
             if (move.Promotion != Piece.None)
-                movingPiece = move.Promotion.OfColor(_activeColor);
+                movingPiece = move.Promotion.OfColor(_sideToMove);
 
             //move the correct piece to the target square
             _state[move.ToSquare] = movingPiece;
@@ -175,7 +175,7 @@ namespace MinimalChess
             UpdateCastlingRights(move.ToSquare);
 
             //toggle active color!
-            _activeColor = Pieces.Flip(_activeColor);
+            _sideToMove = Pieces.Flip(_sideToMove);
             return capturedPiece;
         }
 
@@ -641,8 +641,8 @@ namespace MinimalChess
         private int Rank(int square) => square / 8;
         private int Up(int square, int steps = 1) => square + steps * 8;
         private int Down(int square, int steps = 1) => square - steps * 8;
-        private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_activeColor);
-        private bool IsOpponentPiece(Piece piece) => Pieces.Color(piece) == Pieces.OtherColor(_activeColor);
+        private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_sideToMove);
+        private bool IsOpponentPiece(Piece piece) => Pieces.Color(piece) == Pieces.OtherColor(_sideToMove);
         private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
 
         private void SetCastlingRights(CastlingRights flag, bool state)
@@ -667,7 +667,7 @@ namespace MinimalChess
             //From: https://en.wikipedia.org/wiki/Threefold_repetition
             //Two positions are by definition "the same" if... 
             //1.) the same player has the move 
-            if (other._activeColor != _activeColor)
+            if (other._sideToMove != _sideToMove)
                 return false;
             //2.) the remaining castling rights are the same and 
             if (other._castlingRights != _castlingRights)
@@ -692,7 +692,7 @@ namespace MinimalChess
             //HashCollisions:       320,295         1,411,413
             //Collision Rate:       22 %            98%
 			//Duration:             2.79s           299.5s
-            int hash = (int)_activeColor;
+            int hash = (int)_sideToMove;
             for (int square = 0; square < 32; square++)
                 hash ^= (int)(_state[square] ^ _state[square + 32]) << square;
 

@@ -67,7 +67,7 @@ namespace MinimalChess
                 return 0; //draw through 3-fold repetition
             }
 
-            Color color = position.ActiveColor;
+            Color color = position.SideToMove;
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _pv, _killers))
             {
@@ -99,7 +99,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv[depth] = default;
-                return position.IsChecked(position.ActiveColor) ? (int)color * Evaluation.LostValue : 0;
+                return position.IsChecked(position.SideToMove) ? (int)color * Evaluation.Checkmate : 0;
             }
 
             return window.GetScore(color);
@@ -111,7 +111,7 @@ namespace MinimalChess
             if (Aborted)
                 return 0;
 
-            Color color = position.ActiveColor;
+            Color color = position.SideToMove;
             bool inCheck = position.IsChecked(color);
             //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
@@ -137,7 +137,7 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * Evaluation.LostValue;
+                return (int)color * Evaluation.Checkmate;
 
             //stalemate?
             if (expandedNodes == 0 && !LegalMoves.HasMoves(position))

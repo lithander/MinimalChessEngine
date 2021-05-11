@@ -13,7 +13,7 @@ namespace MinimalChess
                 //only add if the move doesn't result in a check for active color
                 _tempBoard.Copy(reference);
                 _tempBoard.Play(move);
-                if (!_tempBoard.IsChecked(reference.ActiveColor))
+                if (!_tempBoard.IsChecked(reference.SideToMove))
                     Add(move);
             });
         }
@@ -29,7 +29,7 @@ namespace MinimalChess
 
                     _tempBoard.Copy(position);
                     _tempBoard.Play(move);
-                    canMove = !_tempBoard.IsChecked(position.ActiveColor);
+                    canMove = !_tempBoard.IsChecked(position.SideToMove);
                 });
             }
             return canMove;

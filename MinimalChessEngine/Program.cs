@@ -108,12 +108,12 @@ namespace MinimalChessEngine
             TryParse(tokens, "nodes", out int maxNodes, int.MaxValue);
             TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move
 
-            if (_engine.ColorToPlay == Color.White && TryParse(tokens, "wtime", out int whiteTime))
+            if (_engine.SideToMove == Color.White && TryParse(tokens, "wtime", out int whiteTime))
             {
                 TryParse(tokens, "winc", out int whiteIncrement);
                 _engine.Go(whiteTime, whiteIncrement, movesToGo, maxDepth, maxNodes);
             }
-            else if (_engine.ColorToPlay == Color.Black && TryParse(tokens, "btime", out int blackTime))
+            else if (_engine.SideToMove == Color.Black && TryParse(tokens, "btime", out int blackTime))
             {
                 TryParse(tokens, "binc", out int blackIncrement);
                 _engine.Go(blackTime, blackIncrement, movesToGo, maxDepth, maxNodes);

@@ -11,7 +11,7 @@ namespace MinimalChess
             if (position.CanPlay(pvMove))
             {
                 var nextPosition = new Board(position, pvMove);
-                if (!nextPosition.IsChecked(position.ActiveColor))
+                if (!nextPosition.IsChecked(position.SideToMove))
                     yield return (pvMove, nextPosition);
             }
 
@@ -22,7 +22,7 @@ namespace MinimalChess
             foreach (var capture in captures)
             {
                 var nextPosition = new Board(position, capture);
-                if (!nextPosition.IsChecked(position.ActiveColor))
+                if (!nextPosition.IsChecked(position.SideToMove))
                     yield return (capture, nextPosition);
             }
 
@@ -31,7 +31,7 @@ namespace MinimalChess
                 if (killer != pvMove && position[killer.ToSquare] == Piece.None && position.CanPlay(killer))
                 {
                     var nextPosition = new Board(position, killer);
-                    if (!nextPosition.IsChecked(position.ActiveColor))
+                    if (!nextPosition.IsChecked(position.SideToMove))
                         yield return (killer, nextPosition);
                 }
 
@@ -40,7 +40,7 @@ namespace MinimalChess
                 if (move != pvMove && !killers.Contains(depth, move))
                 {
                     var nextPosition = new Board(position, move);
-                    if (!nextPosition.IsChecked(position.ActiveColor))
+                    if (!nextPosition.IsChecked(position.SideToMove))
                         yield return (move, nextPosition);
                 }
         }
@@ -50,14 +50,14 @@ namespace MinimalChess
             foreach (var capture in MoveList.SortedCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
-                if (!nextPosition.IsChecked(position.ActiveColor))
+                if (!nextPosition.IsChecked(position.SideToMove))
                     yield return nextPosition;
             }
 
             foreach (var move in MoveList.Quiets(position))
             {
                 var nextPosition = new Board(position, move);
-                if (!nextPosition.IsChecked(position.ActiveColor))
+                if (!nextPosition.IsChecked(position.SideToMove))
                     yield return nextPosition;
             }
         }
@@ -67,7 +67,7 @@ namespace MinimalChess
             foreach (var capture in MoveList.SortedCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
-                if (!nextPosition.IsChecked(position.ActiveColor))
+                if (!nextPosition.IsChecked(position.SideToMove))
                     yield return nextPosition;
             }
         }

@@ -17,7 +17,7 @@ namespace MinimalChessEngine
         HashSet<Board> _history = new HashSet<Board>();
 
         public bool Running { get; private set; }
-        public Color ColorToPlay => _board.ActiveColor;
+        public Color SideToMove => _board.SideToMove;
 
         public Engine()
         {
@@ -138,7 +138,7 @@ namespace MinimalChessEngine
 
         private void Collect()
         {
-            int score = (int)_search.Position.ActiveColor * _search.Score;
+            int score = (int)_search.Position.SideToMove * _search.Score;
             Uci.Info(_search.Depth, score, _search.NodesVisited, _time.Elapsed, _search.PrincipalVariation);
             _best = _search.PrincipalVariation[0];
         }
