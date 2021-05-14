@@ -55,7 +55,10 @@ namespace MinimalChess
         private int EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth == 0)
+            {
+                Evaluation.DynamicScore = Evaluation.ComputeMobility(position);
                 return QEval(position, window);
+            }
 
             NodesVisited++;
             if (Aborted)
@@ -116,7 +119,7 @@ namespace MinimalChess
             //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
             {
-                int standPatScore = Evaluation.Evaluate(position);
+                int standPatScore = Evaluation.DynamicScore + Evaluation.Evaluate(position);
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);
