@@ -82,6 +82,10 @@ namespace MinimalChessBoard
                     {
                         PrintMoves(board);
                     }
+                    else if(command == "m")
+                    {
+                        PrintMobility(board);
+                    }
                     else
                     {
                         ApplyMoves(board, tokens);
@@ -119,6 +123,21 @@ namespace MinimalChessBoard
             Console.WriteLine(" '----------------'");
             int score = Evaluation.Evaluate(board)  + Evaluation.ComputeMobility(board);
             Console.WriteLine($"  A B C D E F G H {score:+0.00;-0.00}");
+        }
+
+        private static void PrintMobility(Board board)
+        {
+            Console.WriteLine("   A   B   C   D   E   F   G   H");
+            Console.WriteLine("  .------------------------------.");
+            for (int rank = 7; rank >= 0; rank--)
+            {
+                Console.Write($"{rank + 1}|"); //ranks aren't zero-indexed
+                for (int file = 0; file < 8; file++)
+                    Console.Write($"{Evaluation.GetMobility(board, rank * 8 + file),3} ");
+
+                Console.WriteLine();
+            }
+            Console.WriteLine("  '-------------------------------'");
         }
 
         private static void SetColor(Piece piece, int rank, int file, Move move)
