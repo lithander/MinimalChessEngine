@@ -42,8 +42,8 @@ namespace MinimalChess
         }
 
         /*
-        Added dynamic mobility component to 'chillipepper003' creating 'mobility_one' by evaluating 725000 positions from "quiet-labeled.epd" 
-        MeanSquareError(k=102): 0.23988765735283205
+        Added dynamic mobility component to 'chillipepper003' creating 'mobility7e' by evaluating 725000 positions from "quiet-labeled.epd" 
+        MeanSquareError(k=102): 0.23835033815795936
         */
 
         const int Midgame = 5255;
@@ -54,138 +54,138 @@ namespace MinimalChess
         static readonly int[,] MidgameTables = new int[6, 64]{
         {  //PAWN MG
   100,  100,  100,  100,  100,  100,  100,  100,
-  176,  213,  145,  196,  188,  214,  132,   76,
-   82,   89,  106,  114,  150,  148,  110,   73,
-   67,   94,   84,   97,   98,   93,  101,   63,
-   55,   75,   80,   90,   95,   86,   91,   55,
-   55,   70,   68,   67,   74,   81,  102,   66,
-   49,   83,   63,   55,   65,   98,  116,   59,
+  176,  214,  147,  194,  189,  214,  132,   77,
+   82,   88,  106,  113,  150,  146,  110,   73,
+   67,   93,   83,   95,   97,   92,   99,   63,
+   55,   74,   80,   89,   94,   86,   90,   55,
+   55,   70,   68,   69,   76,   81,  101,   66,
+   52,   84,   66,   60,   69,   99,  117,   60,
   100,  100,  100,  100,  100,  100,  100,  100,
         },
         {  //KNIGHT MG
-  118,  228,  271,  268,  341,  213,  277,  192,
-  224,  247,  353,  330,  320,  360,  300,  282,
-  258,  354,  342,  363,  390,  426,  375,  346,
-  297,  330,  325,  363,  350,  378,  337,  332,
-  295,  320,  326,  321,  336,  331,  330,  301,
-  285,  297,  316,  318,  323,  322,  326,  293,
-  273,  257,  296,  300,  305,  321,  295,  291,
-  207,  286,  258,  272,  294,  283,  289,  285,
+  116,  228,  271,  270,  338,  213,  278,  191,
+  225,  247,  353,  331,  321,  360,  300,  281,
+  258,  354,  343,  362,  389,  428,  375,  347,
+  300,  332,  325,  360,  349,  379,  339,  333,
+  298,  322,  325,  321,  337,  332,  332,  303,
+  287,  297,  316,  319,  327,  320,  327,  294,
+  276,  259,  300,  304,  308,  322,  296,  292,
+  208,  290,  257,  274,  296,  284,  293,  284,
         },
         {  //BISHOP MG
-  295,  342,  255,  284,  299,  294,  337,  323,
-  315,  343,  321,  320,  360,  386,  344,  296,
-  342,  377,  376,  377,  370,  391,  385,  362,
-  331,  330,  361,  385,  373,  382,  335,  338,
-  324,  356,  356,  369,  375,  352,  346,  338,
-  332,  348,  352,  353,  355,  361,  351,  342,
-  332,  353,  356,  339,  346,  353,  365,  331,
-  309,  340,  337,  323,  333,  330,  302,  312,
+  292,  338,  254,  283,  299,  294,  337,  323,
+  316,  342,  319,  319,  360,  385,  343,  295,
+  342,  377,  373,  374,  368,  392,  385,  363,
+  332,  338,  356,  384,  370,  380,  337,  341,
+  327,  354,  353,  366,  373,  346,  345,  341,
+  335,  350,  351,  347,  352,  361,  350,  344,
+  333,  354,  354,  339,  344,  353,  367,  333,
+  309,  341,  342,  325,  334,  332,  302,  313,
         },
         {  //ROOK MG
-  494,  512,  487,  518,  513,  483,  487,  496,
-  493,  498,  531,  536,  546,  544,  486,  506,
-  467,  493,  502,  498,  485,  521,  531,  478,
-  448,  468,  478,  498,  487,  506,  466,  453,
-  442,  453,  470,  472,  478,  473,  498,  455,
-  442,  461,  471,  466,  480,  482,  479,  452,
-  445,  472,  467,  477,  484,  501,  487,  422,
-  459,  463,  470,  480,  480,  480,  446,  456,
+  493,  511,  487,  515,  514,  483,  485,  495,
+  493,  498,  529,  534,  546,  544,  483,  508,
+  465,  490,  499,  497,  483,  519,  531,  480,
+  448,  464,  476,  495,  484,  506,  467,  455,
+  442,  451,  468,  470,  476,  472,  498,  454,
+  441,  461,  468,  465,  478,  481,  478,  452,
+  443,  472,  467,  476,  483,  500,  487,  423,
+  459,  463,  470,  479,  480,  480,  446,  458,
         },
         {  //QUEEN MG
-  862,  901,  919,  911,  965,  949,  933,  926,
-  880,  862,  905,  921,  887,  951,  923,  939,
-  900,  901,  911,  922,  937,  979,  965,  959,
-  878,  885,  899,  902,  907,  933,  906,  908,
-  902,  886,  905,  906,  911,  913,  915,  909,
-  895,  916,  905,  910,  908,  916,  924,  915,
-  867,  899,  920,  909,  916,  928,  912,  905,
-  904,  892,  901,  913,  894,  889,  878,  858,
+  865,  902,  922,  911,  964,  948,  933,  928,
+  886,  865,  903,  921,  888,  951,  923,  940,
+  902,  901,  907,  919,  936,  978,  965,  966,
+  881,  885,  897,  894,  898,  929,  906,  915,
+  907,  884,  899,  896,  904,  906,  912,  911,
+  895,  916,  900,  902,  904,  912,  924,  917,
+  874,  899,  918,  908,  915,  924,  911,  906,
+  906,  899,  906,  918,  898,  890,  878,  858,
         },
         {  //KING MG
-  -11,   72,   58,   32,  -38,  -17,   22,   22,
-   39,   24,   25,   37,   17,    8,  -11,  -31,
-   34,   27,   43,   11,   11,   39,   35,   -2,
-    0,   -9,   -2,  -21,  -20,  -20,  -16,  -61,
-  -25,   15,  -26,  -65,  -80,  -56,  -38,  -60,
-    8,   -1,  -37,  -77,  -79,  -60,  -23,  -26,
-   13,   16,  -12,  -72,  -56,  -27,   15,   17,
-   -5,   43,   29,  -59,    9,  -27,   32,   29,
+  -11,   70,   55,   31,  -37,  -16,   22,   22,
+   37,   24,   25,   36,   16,    8,  -12,  -31,
+   33,   26,   42,   11,   11,   40,   35,   -2,
+    0,   -9,    1,  -21,  -20,  -22,  -15,  -60,
+  -25,   16,  -27,  -67,  -81,  -58,  -40,  -62,
+    7,   -2,  -37,  -77,  -79,  -60,  -23,  -26,
+   12,   15,  -13,  -72,  -56,  -28,   15,   17,
+   -6,   44,   29,  -58,    8,  -25,   34,   28,
         }
         };
 
         static readonly int[,] EndgameTables = new int[6, 64]{
         {  //PAWN EG
   100,  100,  100,  100,  100,  100,  100,  100,
-  274,  263,  251,  227,  237,  229,  262,  281,
-  188,  193,  179,  164,  153,  147,  177,  179,
-  126,  116,  107,  100,   93,   98,  109,  110,
-  106,  101,   88,   85,   85,   83,   92,   91,
-   96,   95,   85,   91,   88,   84,   85,   82,
-  107,   98,   97,   93,   99,   89,   89,   85,
+  277,  270,  252,  229,  240,  233,  264,  285,
+  190,  197,  182,  168,  155,  150,  180,  181,
+  128,  117,  108,  102,   93,  100,  110,  110,
+  107,  101,   89,   85,   86,   83,   92,   91,
+   96,   96,   85,   92,   88,   83,   85,   82,
+  107,   99,   97,   97,  100,   89,   89,   84,
   100,  100,  100,  100,  100,  100,  100,  100,
         },
         {  //KNIGHT EG
-  227,  236,  267,  248,  254,  249,  219,  188,
-  250,  270,  260,  280,  271,  257,  256,  227,
-  250,  262,  290,  289,  277,  274,  262,  240,
-  263,  279,  297,  298,  298,  292,  283,  259,
-  260,  271,  292,  300,  294,  292,  281,  257,
-  253,  274,  279,  290,  287,  275,  259,  251,
-  241,  257,  267,  273,  276,  261,  259,  235,
-  252,  230,  254,  262,  258,  258,  232,  215,
+  229,  236,  269,  250,  257,  249,  219,  188,
+  252,  274,  263,  281,  273,  258,  260,  229,
+  253,  264,  290,  289,  278,  275,  263,  243,
+  267,  280,  299,  301,  299,  293,  285,  264,
+  263,  273,  293,  301,  296,  293,  284,  261,
+  258,  276,  278,  290,  287,  274,  260,  255,
+  241,  259,  270,  277,  276,  262,  260,  237,
+  253,  233,  258,  264,  261,  260,  234,  215,
         },
         {  //BISHOP EG
-  288,  278,  288,  292,  293,  289,  286,  277,
-  289,  295,  304,  290,  297,  289,  294,  281,
-  292,  290,  300,  298,  301,  304,  296,  291,
-  292,  305,  309,  309,  312,  306,  298,  295,
-  288,  295,  308,  315,  304,  306,  294,  286,
-  284,  294,  306,  307,  310,  298,  292,  280,
-  283,  285,  293,  301,  302,  292,  287,  271,
-  276,  292,  283,  295,  293,  287,  291,  284,
+  288,  278,  287,  292,  293,  290,  287,  277,
+  289,  294,  301,  288,  296,  289,  294,  281,
+  292,  289,  296,  292,  296,  300,  296,  293,
+  293,  302,  305,  305,  306,  302,  296,  297,
+  289,  293,  304,  308,  298,  301,  291,  288,
+  285,  294,  304,  303,  306,  294,  290,  280,
+  285,  284,  291,  299,  300,  290,  284,  271,
+  277,  292,  286,  295,  294,  288,  290,  285,
         },
         {  //ROOK EG
-  507,  503,  511,  505,  508,  506,  505,  503,
-  505,  506,  503,  502,  492,  498,  505,  501,
-  503,  503,  500,  502,  501,  495,  496,  496,
-  503,  502,  511,  501,  503,  505,  501,  504,
-  505,  509,  510,  509,  506,  503,  497,  495,
-  500,  505,  502,  508,  501,  500,  501,  490,
-  495,  497,  505,  507,  500,  498,  492,  499,
-  491,  497,  497,  496,  493,  493,  497,  481,
+  506,  500,  508,  502,  504,  507,  505,  503,
+  505,  506,  502,  502,  491,  497,  506,  501,
+  504,  503,  499,  500,  500,  495,  496,  496,
+  503,  502,  510,  500,  502,  504,  500,  505,
+  505,  509,  509,  506,  504,  503,  496,  495,
+  500,  503,  500,  505,  498,  498,  499,  489,
+  496,  495,  502,  505,  498,  498,  491,  499,
+  492,  497,  498,  496,  493,  493,  497,  480,
         },
         {  //QUEEN EG
-  917,  936,  941,  946,  933,  924,  924,  941,
-  903,  944,  948,  950,  981,  934,  929,  909,
-  893,  920,  927,  968,  963,  937,  925,  914,
-  927,  944,  940,  967,  986,  959,  981,  950,
-  895,  951,  943,  975,  957,  960,  954,  937,
-  910,  890,  935,  932,  937,  944,  933,  923,
-  904,  898,  884,  904,  904,  894,  886,  888,
-  885,  886,  889,  869,  915,  888,  907,  879,
+  918,  937,  943,  945,  934,  926,  924,  942,
+  907,  945,  946,  951,  982,  933,  928,  912,
+  896,  921,  926,  967,  963,  937,  924,  915,
+  926,  944,  939,  962,  983,  957,  981,  950,
+  893,  949,  942,  970,  952,  956,  953,  936,
+  911,  892,  933,  928,  934,  942,  934,  924,
+  907,  898,  883,  903,  903,  893,  886,  888,
+  886,  887,  890,  872,  916,  890,  906,  879,
         },
         {  //KING EG
-  -74,  -43,  -24,  -25,  -10,   11,    1,  -14,
-  -18,    7,    3,    9,    7,   26,   14,    8,
-   -3,    5,   10,    6,    7,   24,   27,    3,
-  -16,    8,   12,   19,   13,   19,    9,   -3,
-  -25,  -14,   13,   20,   23,   15,    1,  -15,
+  -74,  -43,  -23,  -25,  -11,   10,    1,  -12,
+  -18,    6,    4,    9,    7,   26,   14,    8,
+   -3,    6,   10,    6,    8,   24,   27,    3,
+  -16,    8,   13,   20,   14,   19,   10,   -3,
+  -25,  -14,   13,   20,   24,   15,    1,  -15,
   -27,  -10,    9,   20,   23,   14,    2,  -12,
-  -31,  -16,    4,   14,   15,    5,   -9,  -21,
-  -53,  -39,  -23,   -6,  -23,   -8,  -29,  -47,
+  -32,  -17,    4,   14,   15,    5,  -10,  -22,
+  -55,  -40,  -23,   -6,  -20,   -8,  -28,  -47,
         }};
 
-        public static readonly int[] MobilityValues = new int[6 * 18]
+        public static readonly int[] MobilityValues = new int[2 * 7 * 6]
         {
-          // Friend.                                Foes                                  2nd Foe
-          // P     N     B     R     Q     K        P     N     B     R     Q     K       P     N     B     R     Q     K
-             9,    7,   12,    3,    1,   -5,       0,   28,   38,   15,   31,   84,      0,    0,    0,    0,    0,    0,
-             0,    1,   -2,    0,    4,    0,      -4,    0,   18,   16,   14,   30,      0,    0,    0,    0,    0,    0,
-           -11,   -1,   49,    3,   -4,   -7,      -2,   20,    0,   13,   29,   68,     -3,    5,    0,   12,   16,   21,
-           -15,   -4,   -6,    1,   -6,   -5,      -3,    3,   10,    0,   26,   34,     -5,   -3,   -3,    0,   11,    8,
-            -7,    0,    0,    0,  -28,   -6,      -4,   -5,    0,   -2,    0,   79,     -1,   -2,    0,    5,    0,    7,
-             5,    1,    8,   -8,    0,    0,      30,    4,   10,    4,  -28,    0,      0,    0,    0,    0,    0,    0,
+          // Friend.                                   Foes
+          // -     P     N     B     R     Q     K     -     P     N     B     R     Q     K
+             0,   10,    9,   11,    3,   -1,   -5,    0,    0,   28,   36,   17,   31,   89,
+             0,    1,    3,    0,    2,    4,    3,    1,   -4,    0,   20,   19,   18,   34,
+             0,   -8,    3,   54,    4,   -1,   -3,    2,   -1,   22,    0,   15,   30,   67,
+             0,  -11,    3,   -2,    4,    2,   -1,    2,   -1,    6,   15,    0,   31,   36,
+             0,   -3,    5,    6,    1,  -99,   -4,    3,   -3,   -3,    4,    1,    0,   75,
+             0,    6,    4,    7,   -8,    6,    0,    0,   30,    3,   12,    5,  -99,    0,
         };
 
         public static int DynamicScore;
@@ -201,101 +201,81 @@ namespace MinimalChess
 
         public static int GetMobility(Board board, int square)
         {
-            int mobility = 0;
             Piece piece = board[square];
+            if (piece == Piece.None)
+                return 0;
+
+            int mobility = 0;
             switch (piece)
             {
                 case Piece.BlackPawn:
-                    return GetMobility(board, piece, Attacks.BlackPawn[square]);
+                    foreach (int target in Attacks.BlackPawn[square])
+                        mobility += GetMobilityValue(piece, board[target]);
+                    break;
                 case Piece.WhitePawn:
-                    return GetMobility(board, piece, Attacks.WhitePawn[square]);
+                    foreach (int target in Attacks.WhitePawn[square])
+                        mobility += GetMobilityValue(piece, board[target]);
+                    break;
                 case Piece.BlackKing:
                 case Piece.WhiteKing:
-                    return GetMobility(board, piece, Attacks.King[square]);
+                    foreach (int target in Attacks.King[square])
+                        mobility += GetMobilityValue(piece, board[target]);
+                    break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    return GetMobility(board, piece, Attacks.Knight[square]);
+                    foreach (int target in Attacks.Knight[square])
+                        mobility += GetMobilityValue(piece, board[target]);
+                    break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
                     for (int dir = 0; dir < 4; dir++)
-                        mobility += GetMobilitySlider(board, piece, Attacks.Straight[square, dir]);
-                    return mobility;
+                        foreach (int target in Attacks.Straight[square, dir])
+                        {
+                            mobility += GetMobilityValue(piece, board[target]);
+                            if (board[target] != Piece.None) break;
+                        }
+                    break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
                     for (int dir = 0; dir < 4; dir++)
-                        mobility += GetMobilitySlider(board, piece, Attacks.Diagonal[square, dir]);
-                    return mobility;
+                        foreach (int target in Attacks.Diagonal[square, dir])
+                        {
+                            mobility += GetMobilityValue(piece, board[target]);
+                            if (board[target] != Piece.None) break;
+                        }
+                    break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
                     for (int dir = 0; dir < 4; dir++)
                     {
-                        mobility += GetMobilitySlider(board, piece, Attacks.Straight[square, dir]);
-                        mobility += GetMobilitySlider(board, piece, Attacks.Diagonal[square, dir]);
+                        foreach (int target in Attacks.Diagonal[square, dir])
+                        {
+                            mobility += GetMobilityValue(piece, board[target]);
+                            if (board[target] != Piece.None) break;
+                        }
+                        foreach (int target in Attacks.Straight[square, dir])
+                        {
+                            mobility += GetMobilityValue(piece, board[target]);
+                            if (board[target] != Piece.None) break;
+                        }
                     }
-                    return mobility;
-                default: //Piece == Piece.None
-                    return 0;
-            }
-        }
-
-
-        private static int GetMobility(Board board, Piece piece, byte[] targets)
-        {
-            int result = 0;
-            int subjectIndex = PieceTableIndex(piece);
-            foreach (int target in targets)
-            {
-                Piece targetPiece = board[target];
-                if (targetPiece == Piece.None)
-                    continue;
-
-                //[0..5]
-                int targetIndex = PieceTableIndex(targetPiece);
-                if (Pieces.Color(targetPiece) != Pieces.Color(piece))
-                    targetIndex += 6;
-
-                //each piece has a value for friendly [0..5] and opponent pieces [6..11] it can attack
-                result += MobilityValues[subjectIndex * 18 + targetIndex];
-            }
-            //but we return negative values if subject is black (black minimizes)
-            return (int)Pieces.GetColor(piece) * result;
-        }
-
-        private static int GetMobilitySlider(Board board, Piece piece, byte[] targets)
-        {
-            int subjectIndex = PieceTableIndex(piece);
-            int result = 0;
-            for (int i = 0; i < targets.Length; i++)
-            {
-                Piece targetPiece = board[targets[i]];
-                if (targetPiece == Piece.None)
-                    continue;
-
-                //[0..5]
-                int targetIndex = PieceTableIndex(targetPiece);
-                if (Pieces.Color(targetPiece) != Pieces.Color(piece))
-                    targetIndex += 6;
-
-                //each piece has a value for friendly [0..5] and opponent pieces [6..11] it can attack
-                result += MobilityValues[subjectIndex * 18 + targetIndex];
-
-                //after the first piece only scan for enemy pieces that are target of a pin or discovered attack
-                for (i++; i < targets.Length; i++)
-                {
-                    targetPiece = board[targets[i]];
-                    if (targetPiece == Piece.None)
-                        continue;
-
-                    if (Pieces.Color(targetPiece) != Pieces.Color(piece))
-                        result += MobilityValues[subjectIndex * 18 + PieceTableIndex(targetPiece) + 12];
-
                     break;
-                }
-
-                break;
             }
+            return mobility;
+        }
+
+        private static int GetMobilityValue(Piece subject, Piece target)
+        {
+            //[0..5]
+            int subjectIndex = PieceTableIndex(subject);
+            int targetIndex = (int)target >> 2;
+            if (Pieces.Color(target) != Pieces.Color(subject))
+                targetIndex += 7;
+
+            //each piece has a value for friendly [0..6] and opponent pieces [7..13] it can attack
+            int value = MobilityValues[subjectIndex * 14 + targetIndex];
             //but we return negative values if subject is black (black minimizes)
-            return (int)Pieces.GetColor(piece) * result;
+            return (int)Pieces.GetColor(subject) * value;
         }
     }
 }
