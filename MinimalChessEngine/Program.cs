@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.4.3e";
+        const string NAME_VERSION = "MinimalChess 0.4.3f";
 
         static Engine _engine = new Engine();
         static async Task Main(string[] args)
