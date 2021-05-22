@@ -313,28 +313,27 @@ namespace MinimalChess
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moveHandler);
-                    AddKingMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.King);
                     break;
                 case Piece.WhiteKing:
                     AddWhiteCastlingMoves(moveHandler);
-                    AddKingMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.King);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.Knight);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.Rook);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.Bishop);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookMoves(moveHandler, square);
-                    AddBishopMoves(moveHandler, square);
+                    AddMoves(moveHandler, square, Attacks.Queen);
                     break;
             }
         }
@@ -351,24 +350,23 @@ namespace MinimalChess
                     break;
                 case Piece.BlackKing:
                 case Piece.WhiteKing:
-                    AddKingCaptures(moveHandler, square);
+                    AddCaptures(moveHandler, square, Attacks.King);
                     break;
                 case Piece.BlackKnight:
                 case Piece.WhiteKnight:
-                    AddKnightCaptures(moveHandler, square);
+                    AddCaptures(moveHandler, square, Attacks.Knight);
                     break;
                 case Piece.BlackRook:
                 case Piece.WhiteRook:
-                    AddRookCaptures(moveHandler, square);
+                    AddCaptures(moveHandler, square, Attacks.Rook);
                     break;
                 case Piece.BlackBishop:
                 case Piece.WhiteBishop:
-                    AddBishopCaptures(moveHandler, square);
+                    AddCaptures(moveHandler, square, Attacks.Bishop);
                     break;
                 case Piece.BlackQueen:
                 case Piece.WhiteQueen:
-                    AddRookCaptures(moveHandler, square);
-                    AddBishopCaptures(moveHandler, square);
+                    AddCaptures(moveHandler, square, Attacks.Queen);
                     break;
             }
         }
@@ -407,7 +405,7 @@ namespace MinimalChess
 
             //3. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[square, dir])
+                foreach (int target in Attacks.Bishop[square][dir])
                 {
                     if (_state[target] == (Piece.Bishop | color) || _state[target] == (Piece.Queen | color))
                         return true;
@@ -417,7 +415,7 @@ namespace MinimalChess
 
             //4. Queen or Rook on straight lines
             for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[square, dir])
+                foreach (int target in Attacks.Rook[square][dir])
                 {
                     if (_state[target] == (Piece.Rook | color) || _state[target] == (Piece.Queen | color))
                         return true;
@@ -438,24 +436,17 @@ namespace MinimalChess
         //** CAPTURES **
         //****************
 
-        private void AddKingCaptures(Action<Move> moveHandler, int square)
+        private void AddCaptures(Action<Move> moveHandler, int square, byte[][] targets)
         {
-            foreach (int target in Attacks.King[square])
+            foreach (int target in targets[square])
                 if (IsOpponentPiece(_state[target]))
                     AddMove(moveHandler, square, target);
         }
 
-        private void AddKnightCaptures(Action<Move> moveHandler, int square)
+        private void AddCaptures(Action<Move> moveHandler, int square, byte[][][] targets)
         {
-            foreach (int target in Attacks.Knight[square])
-                if (IsOpponentPiece(_state[target]))
-                    AddMove(moveHandler, square, target);
-        }
-
-        private void AddBishopCaptures(Action<Move> moveHandler, int square)
-        {
-            for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[square, dir])
+            foreach (var axis in targets[square])
+                foreach (int target in axis)
                     if (_state[target] != Piece.None)
                     {
                         if (IsOpponentPiece(_state[target]))
@@ -464,28 +455,31 @@ namespace MinimalChess
                     }
         }
 
-        private void AddRookCaptures(Action<Move> moveHandler, int square)
+        //****************
+        //** MOVES **
+        //****************
+
+        private void AddMoves(Action<Move> moveHandler, int square, byte[][] targets)
         {
-            for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[square, dir])
-                    if (_state[target] != Piece.None)
-                    {
-                        if (IsOpponentPiece(_state[target]))
-                            AddMove(moveHandler, square, target);
+            foreach (int target in targets[square])
+                if (_state[target] == Piece.None)
+                    AddMove(moveHandler, square, target);
+        }
+
+        private void AddMoves(Action<Move> moveHandler, int square, byte[][][] targets)
+        {
+            foreach (var axis in targets[square])
+                foreach (int target in axis)
+                    if (_state[target] == Piece.None)
+                        AddMove(moveHandler, square, target);
+                    else
                         break;
-                    }
         }
 
         //****************
         //** KING MOVES **
         //****************
 
-        private void AddKingMoves(Action<Move> moveHandler, int square)
-        {
-            foreach (int target in Attacks.King[square])
-                if (_state[target] == Piece.None)
-                    AddMove(moveHandler, square, target);
-        }
 
         private void AddWhiteCastlingMoves(Action<Move> moveHandler)
         {
@@ -527,42 +521,6 @@ namespace MinimalChess
                     return false;
 
             return true;
-        }
-
-        //*******************
-        //** KNIGHT MOVES ***
-        //*******************
-
-        private void AddKnightMoves(Action<Move> moveHandler, int square)
-        {
-            foreach (int target in Attacks.Knight[square])
-                if (_state[target] == Piece.None)
-                    AddMove(moveHandler, square, target);
-        }
-
-        //********************************
-        //** QUEEN, ROOK, BISHOP MOVES ***
-        //********************************
-
-        private void AddBishopMoves(Action<Move> moveHandler, int square)
-        {
-            for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Diagonal[square, dir])
-                    if (_state[target] == Piece.None)
-                        AddMove(moveHandler, square, target);
-                    else
-                        break;
-        }
-
-        private void AddRookMoves(Action<Move> moveHandler, int square)
-        {
-            for (int dir = 0; dir < 4; dir++)
-                foreach (int target in Attacks.Straight[square, dir])
-                    if (_state[target] == Piece.None)
-                        AddMove(moveHandler, square, target);
-                    else
-                        break;
-
         }
 
         //*****************

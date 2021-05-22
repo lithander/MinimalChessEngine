@@ -4,8 +4,9 @@ namespace MinimalChess
 {
     public static class Attacks
     {
-        public static byte[,][] Diagonal = new byte[64, 4][];
-        public static byte[,][] Straight = new byte[64, 4][];
+        public static byte[][][] Bishop = new byte[64][][];
+        public static byte[][][] Rook = new byte[64][][];
+        public static byte[][][] Queen = new byte[64][][];
         public static byte[][] King = new byte[64][];
         public static byte[][] Knight = new byte[64][];
         public static byte[][] BlackPawn = new byte[64][];
@@ -32,13 +33,17 @@ namespace MinimalChess
                 int rank = index / 8;
                 int file = index % 8;
 
+                Bishop[index] = new byte[4][];
+                Rook[index] = new byte[4][];
+                Queen[index] = new byte[8][];
+
                 //Add 4 diagonal lines
                 for (int dir = 0; dir < 4; dir++)
-                    Diagonal[index, dir] = WalkTheLine(rank, file, DIAGONALS_RANK[dir], DIAGONALS_FILE[dir]);
+                    Queen[index][dir] = Bishop[index][dir] = WalkTheLine(rank, file, DIAGONALS_RANK[dir], DIAGONALS_FILE[dir]);
 
                 //Add 4 straight lines
                 for (int dir = 0; dir < 4; dir++)
-                    Straight[index, dir] = WalkTheLine(rank, file, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);
+                    Queen[index][dir+4] = Rook[index][dir] = WalkTheLine(rank, file, STRAIGHTS_RANK[dir], STRAIGHTS_FILE[dir]);
 
                 //Add Knight&King attack patterns
                 King[index] = ApplyPattern(rank, file, KING_RANK, KING_FILE);
