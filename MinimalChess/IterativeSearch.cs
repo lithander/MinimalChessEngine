@@ -52,9 +52,9 @@ namespace MinimalChess
             Score = EvalPosition(_root, Depth, window);
         }
 
-        private int EvalPosition(Board position, int depth, SearchWindow window)
+        private int EvalPosition(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
-            if (depth == 0)
+            if (depth <= 0)
             {
                 Evaluation.DynamicScore = Evaluation.ComputeMobility(position);
                 return QEval(position, window);
@@ -71,15 +71,30 @@ namespace MinimalChess
             }
 
             Color color = position.SideToMove;
+            bool isInCheck = position.IsChecked(color);
+            if (!isInCheck && !isNullMove && depth >= 2)
+            {
+                const int R = 2;
+                SearchWindow nullWindow = window.GetUpperBound(color);
+                //skip a move
+                Board nullChild = new Board(position, Pieces.Flip(color));
+                //evaluate the position at reduced depth
+                int nullScore = EvalPosition(nullChild, depth - R - 1, nullWindow, true);
+                //is the evaluation "too good"? then don't waste time on what is likely a beta-cutoff
+                if (nullWindow.Cut(nullScore, color))
+                    return nullScore;
+            }
+
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _pv, _killers))
             {
                 expandedNodes++;
 
-                //For all rootmoves after the first search with "null window"
-                if (expandedNodes > 1 && depth == Depth)
+                //moves after the first are unlikely to raise alpha.
+                //if that's true we can save a lot of nodes by searching with "null window" first...
+                if (expandedNodes > 1 && depth > 3 && window.Width > 0)
                 {
-                    SearchWindow nullWindow = window.GetNullWindow(color);
+                    SearchWindow nullWindow = window.GetLowerBound(color);
                     int nullScore = EvalPosition(child, depth - 1, nullWindow);
                     if (!nullWindow.Inside(nullScore, color))
                         continue;
@@ -102,7 +117,7 @@ namespace MinimalChess
             {
                 //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv[depth] = default;
-                return position.IsChecked(position.SideToMove) ? (int)color * Evaluation.Checkmate : 0;
+                return isInCheck ? (int)color * Evaluation.Checkmate : 0;
             }
 
             return window.GetScore(color);

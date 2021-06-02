@@ -66,10 +66,6 @@
         //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
         public static Piece OfColor(this Piece piece, Color color) => Type(piece) | Color(color);
 
-        internal static bool IsWhite(Piece piece) => Color(piece) == Piece.White;
-
-        internal static bool IsBlack(Piece piece) => Color(piece) == Piece.Black;
-
         public static Color Flip(Color color) => (Color)(-(int)color);
     }
 }

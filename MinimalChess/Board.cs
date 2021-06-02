@@ -57,6 +57,12 @@ namespace MinimalChess
             Copy(board);
         }
 
+        public Board(Board board, Color sideToMove)
+        {
+            Copy(board);
+            _sideToMove = sideToMove;
+        }
+
         public Board(Board board, Move move)
         {
             Copy(board);
@@ -126,15 +132,6 @@ namespace MinimalChess
 
             //Set en-passant square
             _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquare(fields[3]);
-
-            //Move counts
-            if (fields.Length == 6)
-            {
-                // Set half move count.
-                int halfMoveCount = int.Parse(fields[4]);
-                // Set full move number.
-                int fullMoveNumber = int.Parse(fields[5]);
-            }
         }
 
 
@@ -556,14 +553,14 @@ namespace MinimalChess
         private void AddWhitePawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.WhitePawn[square])
-                if (Pieces.IsBlack(_state[target]) || target == _enPassantSquare)
+                if (Pieces.Color(_state[target]) == Piece.Black || target == _enPassantSquare)
                     AddWhitePawnMove(moveHandler, square, target);
         }
 
         private void AddBlackPawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.BlackPawn[square])
-                if (Pieces.IsWhite(_state[target]) || target == _enPassantSquare)
+                if (Pieces.Color(_state[target]) == Piece.White || target == _enPassantSquare)
                     AddBlackPawnMove(moveHandler, square, target);
         }
 
