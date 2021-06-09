@@ -1,5 +1,6 @@
 ﻿using MinimalChess;
 using System;
+using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
 using System.IO;
@@ -9,7 +10,7 @@ namespace MinimalChessBoard
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
@@ -22,6 +23,7 @@ namespace MinimalChessBoard
                 {
                     Console.WriteLine();
                     Print(board, move);
+                    move = default;
                     if (board.IsChecked(Color.Black))
                         Console.WriteLine(" <!> Black is in check");
                     if (board.IsChecked(Color.White))
@@ -44,12 +46,10 @@ namespace MinimalChessBoard
                     if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
-                        move = default;
                     }
                     else if (command.Count(c => c == '/') == 7) //Fen-string detection
                     {
                         board.SetupPosition(input);
-                        move = default;
                     }
                     else if (command == "perft")
                     {
@@ -73,14 +73,16 @@ namespace MinimalChessBoard
                         Console.WriteLine($"{board.SideToMove} >> {move}");
                         board.Play(move);
                     }
+                    else if (command == "?" && tokens.Length > 2)
+                    {
+                        int depth = int.Parse(tokens[1]);
+                        int num = (tokens.Length > 3) ? int.Parse(tokens[3]) : int.MaxValue;
+                        CompareBestMove(depth, tokens[2], num);
+                    }
                     else if (command == "?")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
                         ListMoves(board, depth);
-                    }
-                    else if (command == "??")
-                    {
-                        PrintMoves(board);
                     }
                     else if(command == "m")
                     {
@@ -161,18 +163,6 @@ namespace MinimalChessBoard
                 Console.ForegroundColor = ConsoleColor.Gray;
         }
 
-        private static void PrintMoves(Board board)
-        {
-            int i = 1;
-            foreach (var move in new LegalMoves(board))
-            {
-                Console.WriteLine($"{i++}. {board.SideToMove} >> {move}");
-                var copy = new Board(board, move);
-                Print(copy, move);
-                Console.WriteLine();
-            }
-        }
-
         private static void ListMoves(Board board, int depth)
         {
             IterativeSearch search = new IterativeSearch(board);
@@ -182,7 +172,7 @@ namespace MinimalChessBoard
             int i = 1;
             foreach (var move in new LegalMoves(board))
             {
-                if (line != null && line[0] == move)
+                if (line != null && line.Length > 0 && line[0] == move)
                 {
                     string pvString = string.Join(' ', line);
                     Console.WriteLine($"{i++,4}. {pvString} = {search.Score:+0.00;-0.00}");
@@ -268,7 +258,6 @@ namespace MinimalChessBoard
             {
                 //The parser expects a fen-string followed by a list of perft results for each depth (D1, D2...) starting with depth D1.
                 //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1; D1 15; D2 66; D3 1197; D4 7059; D5 133987; D6 764643
-
                 string entry = file.ReadLine();
                 string[] data = entry.Split(';');
                 string fen = data[0];
@@ -293,6 +282,59 @@ namespace MinimalChessBoard
             double dt = (t1 - t0) / (double)Stopwatch.Frequency;
             Console.WriteLine();
             Console.WriteLine($"Test finished with {error} wrong results after {dt:0.###} seconds!");
+        }
+
+
+        private static void CompareBestMove(int depth, string filePath, int maxCount)
+        {
+            var file = File.OpenText(filePath);
+            double freq = (double)Stopwatch.Frequency;
+            long totalTime = 0;
+            long totalNodes = 0;
+            int count = 0;
+            int foundBest = 0;
+            List<Move> bestMoves = new List<Move>();
+            while (!file.EndOfStream && count < maxCount)
+            {
+                ParseEpd(file.ReadLine(), out Board board, ref bestMoves);
+                IterativeSearch search = new IterativeSearch(board);
+                long t0 = Stopwatch.GetTimestamp();
+                search.Search(depth);
+                long t1 = Stopwatch.GetTimestamp();
+                long dt = t1 - t0;
+                totalTime += dt;
+                totalNodes += search.NodesVisited;
+                count++;
+                string pvString = string.Join(' ', search.PrincipalVariation);
+                bool foundBestMove = bestMoves.Contains(search.PrincipalVariation[0]);
+                if (foundBestMove)
+                    foundBest++;
+                Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
+            }
+            Console.WriteLine();
+            Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");
+            Console.WriteLine($"Best move found in {foundBest} / {count} positions!");
+        }
+
+
+        private static void ParseEpd(string epd, out Board board, ref List<Move> bestMoves)
+        {
+            //The parser expects a fen-string with bm delimited by a ';'
+            //Example: 2q1r1k1/1ppb4/r2p1Pp1/p4n1p/2P1n3/5NPP/PP3Q1K/2BRRB2 w - - bm f7+; id "ECM.001";
+            int bmStart = epd.IndexOf("bm") + 3;
+            int bmEnd = epd.IndexOf(';', bmStart);
+
+            string fen = epd.Substring(0, bmStart);
+            string bmString = epd.Substring(bmStart, bmEnd - bmStart);
+
+            board = new Board(fen);
+            bestMoves.Clear();
+            foreach (var token in bmString.Split())
+            {
+                Move bestMove = AlgebraicNotation.ToMove(board, token);
+                //Console.WriteLine($"{bmString} => {bestMove}");
+                bestMoves.Add(bestMove);
+            }
         }
     }
 }

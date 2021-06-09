@@ -64,6 +64,7 @@ namespace MinimalChess
             if (Aborted)
                 return 0;
 
+            //is this position a repetition?
             if (depth < Depth && _history.Contains(position))
             {
                 _pv[depth] = default;
@@ -71,41 +72,45 @@ namespace MinimalChess
             }
 
             Color color = position.SideToMove;
-            bool isInCheck = position.IsChecked(color);
-            if (!isInCheck && !isNullMove && depth >= 2)
+            //should we try null move pruning?
+            if (depth >= 2 && !isNullMove && !position.IsChecked(color))
             {
                 const int R = 2;
-                SearchWindow nullWindow = window.GetUpperBound(color);
-                //skip a move
+                //skip making a move
                 Board nullChild = new Board(position, Pieces.Flip(color));
-                //evaluate the position at reduced depth
+                //evaluate the position at reduced depth with a null-window around beta
+                SearchWindow nullWindow = window.GetUpperBound(color);
                 int nullScore = EvalPosition(nullChild, depth - R - 1, nullWindow, true);
-                //is the evaluation "too good"? then don't waste time on what is likely a beta-cutoff
+                //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
                 if (nullWindow.Cut(nullScore, color))
                     return nullScore;
             }
 
+            //do a regular expansion...
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _pv, _killers))
             {
                 expandedNodes++;
 
-                //moves after the first are unlikely to raise alpha.
-                //if that's true we can save a lot of nodes by searching with "null window" first...
+                //moves after the PV node are unlikely to raise alpha.
                 if (expandedNodes > 1 && depth > 3 && window.Width > 0)
                 {
+                    //we can save a lot of nodes by searching with "null window" first and nullScore stays below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
                     int nullScore = EvalPosition(child, depth - 1, nullWindow);
                     if (!nullWindow.Inside(nullScore, color))
                         continue;
                 }
 
+                //this node may raise alpha!
                 int score = EvalPosition(child, depth - 1, window);
                 if (window.Inside(score, color))
                 {
                     _pv[depth] = move;
+                    //...and maybe get a beta cutoff
                     if (window.Cut(score, color))
                     {
+                        //we remember killers like hat!
                         if (position[move.ToSquare] == Piece.None)
                             _killers.Add(move, depth);
                         return window.GetScore(color);
@@ -113,11 +118,12 @@ namespace MinimalChess
                 }
             }
 
-            if (expandedNodes == 0) //no expansion happened from this node!
+            //no playable moves in this position?
+            if (expandedNodes == 0)
             {
-                //having no legal moves can mean two things: (1) lost or (2) draw?
                 _pv[depth] = default;
-                return isInCheck ? (int)color * Evaluation.Checkmate : 0;
+                //can mean two things: (1) lost or (2) draw?
+                return position.IsChecked(color) ? (int)color * Evaluation.Checkmate : 0;
             }
 
             return window.GetScore(color);

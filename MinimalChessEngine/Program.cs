@@ -10,7 +10,7 @@ namespace MinimalChessEngine
         const string NAME_VERSION = "MinimalChess 0.4.4";
 
         static Engine _engine = new Engine();
-        static async Task Main(string[] args)
+        static async Task Main()
         {
             Console.WriteLine(NAME_VERSION);
             Start();
