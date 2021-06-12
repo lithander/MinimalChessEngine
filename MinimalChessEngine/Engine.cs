@@ -138,8 +138,7 @@ namespace MinimalChessEngine
 
         private void Collect()
         {
-            int score = (int)_search.Position.SideToMove * _search.Score;
-            Uci.Info(_search.Depth, score, _search.NodesVisited, _time.Elapsed, _search.PrincipalVariation);
+            Uci.Info(_search.Depth, (int)SideToMove * _search.Score, _search.NodesVisited, _time.Elapsed, _search.PrincipalVariation);
             _best = _search.PrincipalVariation[0];
         }
     }

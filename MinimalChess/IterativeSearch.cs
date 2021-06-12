@@ -12,10 +12,9 @@ namespace MinimalChess
         public long NodesVisited { get; private set; }
         public int Depth { get; private set; }
         public int Score { get; private set; }
-        public Board Position => new Board(_root); //return copy, _root must not be modified during search!
         public Move[] PrincipalVariation => _pv.GetLine(Depth);
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
-        public bool GameOver => PrincipalVariation?.Length < Depth;
+        public bool GameOver => Evaluation.IsCheckmate(Score) || PrincipalVariation?.Length < Depth;
 
         Board _root = null;
         HashSet<Board> _history = null;
@@ -38,7 +37,7 @@ namespace MinimalChess
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
-
+        
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
             if (GameOver)
@@ -95,7 +94,7 @@ namespace MinimalChess
                 //moves after the PV node are unlikely to raise alpha.
                 if (expandedNodes > 1 && depth > 3 && window.Width > 0)
                 {
-                    //we can save a lot of nodes by searching with "null window" first and nullScore stays below alpha...
+                    //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
                     int nullScore = EvalPosition(child, depth - 1, nullWindow);
                     if (!nullWindow.Inside(nullScore, color))
@@ -121,9 +120,13 @@ namespace MinimalChess
             //no playable moves in this position?
             if (expandedNodes == 0)
             {
+                //clear PV because the game is over
                 _pv[depth] = default;
-                //can mean two things: (1) lost or (2) draw?
-                return position.IsChecked(color) ? (int)color * Evaluation.Checkmate : 0;
+
+                if (position.IsChecked(color))
+                    return Evaluation.Checkmate(color); //lost!
+                else
+                    return 0; //draw!
             }
 
             return window.GetScore(color);
@@ -161,7 +164,7 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return (int)color * Evaluation.Checkmate;
+                return Evaluation.Checkmate(color);
 
             //stalemate?
             if (expandedNodes == 0 && !LegalMoves.HasMoves(position))

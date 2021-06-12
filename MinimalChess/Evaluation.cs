@@ -4,12 +4,11 @@ namespace MinimalChess
 {
     public class Evaluation
     {
-        public const int Checkmate = -9999;
+        const int CheckmateScore = 9999;
 
-        private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
+        public static bool IsCheckmate(int score) => Math.Abs(score) == CheckmateScore;
 
-        //a black piece has 2nd bit set, white has not. Square ^ 56 flips the file, so that tables work for black
-        private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
+        public static int Checkmate(Color color) => (int)color * -CheckmateScore;
 
         public static int Evaluate(Board board)
         {
@@ -40,6 +39,11 @@ namespace MinimalChess
         {
             return Math.Min(1, Math.Max(0, (value - edge0) / (edge1 - edge0)));
         }
+
+        private static int PieceTableIndex(Piece piece) => ((int)piece >> 2) - 1;
+
+        //a black piece has 2nd bit set, white has not. Square ^ 56 flips the file, so that tables work for black
+        private static int SquareTableIndex(int square, Piece piece) => square ^ (28 * ((int)piece & 2));
 
         /*
         Added dynamic mobility component to 'chillipepper003' from 'mobility13_7e', the same values as in 0.4.3d which have proven best in tests despite a rather high MSE
