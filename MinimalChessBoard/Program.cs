@@ -157,7 +157,7 @@ namespace MinimalChessBoard
                     Console.BackgroundColor = ConsoleColor.DarkCyan;
             }
 
-            if (piece.GetColor() == Color.White)
+            if (piece.Color() == Color.White)
                 Console.ForegroundColor = ConsoleColor.White;
             else
                 Console.ForegroundColor = ConsoleColor.Gray;

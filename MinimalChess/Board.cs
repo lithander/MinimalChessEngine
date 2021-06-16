@@ -386,25 +386,24 @@ namespace MinimalChess
             throw new Exception($"No {color} King found!");
         }
 
-        private bool IsSquareAttacked(int square, Color attackedBy)
+        private bool IsSquareAttacked(int square, Color color)
         {
-            Piece color = Pieces.Color(attackedBy);
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
-            var pawnAttacks = attackedBy == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
+            var pawnAttacks = color == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
             foreach (int target in pawnAttacks[square])
-                if (_state[target] == (Piece.Pawn | color))
+                if (_state[target] == Piece.Pawn.OfColor(color))
                     return true;
 
             //2. Knight
             foreach (int target in Attacks.Knight[square])
-                if (_state[target] == (Piece.Knight | color))
+                if (_state[target] == Piece.Knight.OfColor(color))
                     return true;
 
             //3. Queen or Bishops on diagonals lines
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Bishop[square][dir])
                 {
-                    if (_state[target] == (Piece.Bishop | color) || _state[target] == (Piece.Queen | color))
+                    if (_state[target] == Piece.Bishop.OfColor(color) || _state[target] == Piece.Queen.OfColor(color))
                         return true;
                     if (_state[target] != Piece.None)
                         break;
@@ -414,7 +413,7 @@ namespace MinimalChess
             for (int dir = 0; dir < 4; dir++)
                 foreach (int target in Attacks.Rook[square][dir])
                 {
-                    if (_state[target] == (Piece.Rook | color) || _state[target] == (Piece.Queen | color))
+                    if (_state[target] == Piece.Rook.OfColor(color) || _state[target] == Piece.Queen.OfColor(color))
                         return true;
                     if (_state[target] != Piece.None)
                         break;
@@ -422,7 +421,7 @@ namespace MinimalChess
 
             //5. King
             foreach (int target in Attacks.King[square])
-                if (_state[target] == (Piece.King | color))
+                if (_state[target] == Piece.King.OfColor(color))
                     return true;
 
             return false; //not threatened by anyone!
@@ -553,14 +552,14 @@ namespace MinimalChess
         private void AddWhitePawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.WhitePawn[square])
-                if (Pieces.Color(_state[target]) == Piece.Black || target == _enPassantSquare)
+                if (_state[target].Color() == Color.Black || target == _enPassantSquare)
                     AddWhitePawnMove(moveHandler, square, target);
         }
 
         private void AddBlackPawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.BlackPawn[square])
-                if (Pieces.Color(_state[target]) == Piece.White || target == _enPassantSquare)
+                if (_state[target].Color() == Color.White || target == _enPassantSquare)
                     AddBlackPawnMove(moveHandler, square, target);
         }
 
@@ -596,8 +595,8 @@ namespace MinimalChess
         private int Rank(int square) => square / 8;
         private int Up(int square, int steps = 1) => square + steps * 8;
         private int Down(int square, int steps = 1) => square - steps * 8;
-        private bool IsActivePiece(Piece piece) => Pieces.Color(piece) == Pieces.Color(_sideToMove);
-        private bool IsOpponentPiece(Piece piece) => Pieces.Color(piece) == Pieces.OtherColor(_sideToMove);
+        private bool IsActivePiece(Piece piece) => piece.Color() == _sideToMove;
+        private bool IsOpponentPiece(Piece piece) => piece.Color() == Pieces.Flip(_sideToMove);
         private bool HasCastlingRight(CastlingRights flag) => (_castlingRights & flag) == flag;
 
         private void SetCastlingRights(CastlingRights flag, bool state)

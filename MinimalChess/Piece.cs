@@ -53,19 +53,15 @@
 
         public static Piece Type(Piece piece) => piece & Piece.TypeMask;
 
-        public static Piece Color(Piece piece) => piece & Piece.ColorMask;
-
-        //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
-        public static Piece Color(Color color) => (Piece)(color + 2);
-
-        public static Piece OtherColor(Color color) => (Piece)(2 - color);
-
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
-        public static Color GetColor(this Piece piece) => (Color)(Color(piece) - 2);
+        public static Color Color(this Piece piece) => (Color)((piece & Piece.ColorMask) - 2);
 
         //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
-        public static Piece OfColor(this Piece piece, Color color) => Type(piece) | Color(color);
+        //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
+        public static Piece OfColor(this Piece piece, Color color) => Type(piece) | (Piece)(color + 2);
 
         public static Color Flip(Color color) => (Color)(-(int)color);
+
+        public static bool IsColor(this Piece piece, Piece other) => (piece & Piece.ColorMask) == (other & Piece.ColorMask);
     }
 }

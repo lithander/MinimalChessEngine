@@ -21,12 +21,12 @@ namespace MinimalChess
                 if (piece == Piece.None)
                     continue;
 
-                Color color = Pieces.GetColor(piece);
+                int sign = (int)piece.Color();
                 int pieceIndex = PieceTableIndex(piece);
                 int squareIndex = SquareTableIndex(i, piece);
                 phaseValue += PhaseValues[pieceIndex];
-                midGame += (int)color * MidgameTables[pieceIndex, squareIndex];
-                endGame += (int)color * EndgameTables[pieceIndex, squareIndex];
+                midGame += sign * MidgameTables[pieceIndex, squareIndex];
+                endGame += sign * EndgameTables[pieceIndex, squareIndex];
             }
 
             //linearily interpolate between midGame and endGame score based on current phase (tapered eval)
@@ -182,14 +182,14 @@ namespace MinimalChess
 
         public static int[] MobilityValues = new int[13 * 6]
         {
-         //                 friendly                                opponent
-         // -      P      N     B     R     Q     K       P     N     B     R     Q     K
-            0,     10,    9,   11,    3,   -1,   -5,      0,   28,   36,   17,   31,   89, // P
-            1,      1,    3,    0,    2,    4,    3,     -4,    0,   20,   19,   18,   34, // N
-            2,     -8,    3,   54,    4,   -1,   -3,     -1,   22,    0,   15,   30,   67, // B
-            2,    -11,    3,   -2,    4,    2,   -1,     -1,    6,   15,    0,   31,   36, // R
-            3,     -3,    5,    6,    1,  -99,   -4,     -3,   -3,    4,    1,    0,   75, // Q
-            0,      6,    4,    7,   -8,    6,    0,     30,    3,   12,    5,  -99,    0, // K
+         //                 opponent                            friendly                  
+         // -     P     N     B     R     Q     K      P      N     B     R     Q     K   
+            0,    0,   28,   36,   17,   31,   89,     10,    9,   11,    3,   -1,   -5,  // P
+            1,   -4,    0,   20,   19,   18,   34,      1,    3,    0,    2,    4,    3,  // N
+            2,   -1,   22,    0,   15,   30,   67,     -8,    3,   54,    4,   -1,   -3,  // B
+            2,   -1,    6,   15,    0,   31,   36,    -11,    3,   -2,    4,    2,   -1,  // R
+            3,   -3,   -3,    4,    1,    0,   75,     -3,    5,    6,    1,  -99,   -4,  // Q
+            0,   30,    3,   12,    5,  -99,    0,      6,    4,    7,   -8,    6,    0,  // K
         };
 
         public static int DynamicScore;
@@ -235,39 +235,32 @@ namespace MinimalChess
         private static int GetMobility(Board board, Piece piece, byte[] targets)
         {
             int result = 0;
-            int index = 13 * PieceTableIndex(piece);
-            foreach (int target in targets)
-                result += MobilityValues[index + GetOffset(piece, board[target])];
+            int row = 13 * PieceTableIndex(piece);
+            foreach (int square in targets)
+            {
+                Piece targetPiece = board[square];
+                int offset = targetPiece.IsColor(piece) ? 6 : 0;
+                result += MobilityValues[row + offset + Pieces.Rank(targetPiece)];
+            }
             //we return negative values if piece is black (black minimizes)
-            return (int)Pieces.GetColor(piece) * result;
+            return (int)piece.Color() * result;
         }
 
         private static int GetMobilitySlider(Board board, Piece piece, byte[][] targets)
         {
             int result = 0;
-            int index = 13 * PieceTableIndex(piece);
-            foreach(var axis in targets)
-                for (int i = 0; i < axis.Length; i++)
+            int row = 13 * PieceTableIndex(piece);
+            foreach (var axis in targets)
+                foreach(var square in axis)
                 {
-                    Piece targetPiece = board[axis[i]];
-                    result += MobilityValues[index + GetOffset(piece, targetPiece)];
+                    Piece targetPiece = board[square];
+                    int offset = targetPiece.IsColor(piece) ? 6 : 0;
+                    result += MobilityValues[row + offset + Pieces.Rank(targetPiece)];
                     if (targetPiece != Piece.None)
                         break;
                 }
             //we return negative values if piece is black (black minimizes)
-            return (int)Pieces.GetColor(piece) * result;
-        }
-
-        private static int GetOffset(Piece piece, Piece targetPiece)
-        {
-            if (targetPiece == Piece.None)
-                return 0;
-
-            int offset = (int)targetPiece >> 2; //[1..6]
-            if (Pieces.Color(targetPiece) == Pieces.Color(piece))
-                return offset;
-
-            return offset + 6;
+            return (int)piece.Color() * result;
         }
     }
 }
