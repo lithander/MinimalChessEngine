@@ -92,7 +92,7 @@ namespace MinimalChess
                 expandedNodes++;
 
                 //moves after the PV node are unlikely to raise alpha.
-                if (expandedNodes > 1 && depth > 3 && window.Width > 0)
+                if (expandedNodes > 1 && depth >= 3 && window.Width > 0)
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
