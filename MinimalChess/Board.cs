@@ -57,12 +57,6 @@ namespace MinimalChess
             Copy(board);
         }
 
-        public Board(Board board, Color sideToMove)
-        {
-            Copy(board);
-            _sideToMove = sideToMove;
-        }
-
         public Board(Board board, Move move)
         {
             Copy(board);
@@ -138,6 +132,12 @@ namespace MinimalChess
         //*****************
         //** PLAY MOVES ***
         //*****************
+
+        public void PlayNullMove()
+        {
+            _sideToMove = Pieces.Flip(_sideToMove);
+            _enPassantSquare = -1;
+        }
 
         public Piece Play(Move move)
         {
@@ -637,20 +637,40 @@ namespace MinimalChess
             return true;
         }
 
+        public ulong ZobristHash()
+        {
+            //Side to move
+            ulong hash = _sideToMove == Color.White ? Zobrist.Black : Zobrist.White;
+            //Pieces
+            for (int square = 0; square < 64; square++)
+            {
+                Piece piece = _state[square];
+                if (piece != Piece.None)
+                {
+                    int pieceIndex = ((int)piece >> 1) - 2;
+                    hash ^= Zobrist.Board[square][pieceIndex];
+                }
+            }
+            //En passent
+            hash ^= Zobrist.Castling[(int)_castlingRights];
+            //Castling
+            if (_enPassantSquare >= 0)
+                hash ^= Zobrist.EnPassant[_enPassantSquare];
+            return hash;
+        }
+
         public override int GetHashCode()
         {
-            //perft 4 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-            //Moves:                4,085,603       Previous:
-            //Unique Positions:     1,443,541       1,443,541
-            //Unique HashCodes:     1,123,246       32,128
-            //HashCollisions:       320,295         1,411,413
-            //Collision Rate:       22 %            98%
-			//Duration:             2.79s           299.5s
-            int hash = (int)_sideToMove;
-            for (int square = 0; square < 32; square++)
-                hash ^= (int)(_state[square] ^ _state[square + 32]) << square;
-
-            return hash;
+            //perft 5 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
+            //Moves: 193,690,690
+            //Unique Positions:  30,216,804
+            //Unique HashCodes:  30,113,127
+            //HashCollisions: 103,677 (would be 0 with 64bit hashes)
+            //Collision Rate: 0 %
+            //Duration: 135.3804
+            ulong zobrist = ZobristHash();
+            uint zobrist32 = (uint)zobrist ^ (uint)(zobrist >> 32);
+            return (int)zobrist32;
         }
     }
 }

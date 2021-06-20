@@ -76,7 +76,7 @@ namespace MinimalChess
             {
                 const int R = 2;
                 //skip making a move
-                Board nullChild = new Board(position, Pieces.Flip(color));
+                Board nullChild = Playmaker.PlayNullMove(position);
                 //evaluate the position at reduced depth with a null-window around beta
                 SearchWindow nullWindow = window.GetUpperBound(color);
                 int nullScore = EvalPosition(nullChild, depth - R - 1, nullWindow, true);

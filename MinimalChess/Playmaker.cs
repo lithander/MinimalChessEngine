@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MinimalChess
 {
@@ -70,6 +71,13 @@ namespace MinimalChess
                 if (!nextPosition.IsChecked(position.SideToMove))
                     yield return nextPosition;
             }
+        }
+
+        internal static Board PlayNullMove(Board position)
+        {
+            Board copy = new Board(position);
+            copy.PlayNullMove();
+            return copy;
         }
     }
 }

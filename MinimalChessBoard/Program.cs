@@ -41,11 +41,16 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
+                //try
                 {
                     if (command == "reset")
                     {
                         board = new Board(Board.STARTING_POS_FEN);
+                    }
+                    if (command == "kiwi")
+                    {
+                        //Kiwipete position
+                        board = new Board("r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -");
                     }
                     else if (command.Count(c => c == '/') == 7) //Fen-string detection
                     {
@@ -98,10 +103,10 @@ namespace MinimalChessBoard
                     if (dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -200,28 +205,44 @@ namespace MinimalChessBoard
             }
         }
 
+        private static HashSet<Board> _uniquePositions = new HashSet<Board>();
+        private static HashSet<ulong> _uniqueHashKeys = new HashSet<ulong>();
+        private static Dictionary<ulong, Board> _hashOwner = new Dictionary<ulong, Board>();
+        private static int _hashCollisionCount = 0;
+
         private static long Perft(Board board, int depth)
         {
-            if (depth <= 0)
-                return 0;
+            if (_uniquePositions.Add(board))
+            {
+                //new position, ideally it had it's own unique hashcode, too
+                ulong hashCode = board.ZobristHash();
+                //Console.WriteLine(Convert.ToString((long)hashCode, 2));
+                if (!_uniqueHashKeys.Add(hashCode))
+                {
+                    var owner = _hashOwner[hashCode];
+                    //A true collision means they are not equal but have the same hash!
+                    Debug.Assert(!owner.Equals(board));
+                    _hashCollisionCount++;
+                }
+                _hashOwner[hashCode] = board;
+            }
+
+            if (depth == 0)
+                return 1;
 
             var moves = new LegalMoves(board);
-            if (depth == 1) //no need to apply the moves before counting them
-                return moves.Count;
-
             long sum = 0;
-            Board next = new Board(board);
             foreach (var move in moves)
-            {
-                next.Copy(board);
-                next.Play(move);
-                sum += Perft(next, depth - 1);
-            }
+                sum += Perft(new Board(board, move), depth - 1);
+
             return sum;
         }
 
         private static void RunPerft(Board board, int depth)
         {
+            _hashCollisionCount = 0;
+            _uniquePositions.Clear();
+            _uniqueHashKeys.Clear();
             long t0 = Stopwatch.GetTimestamp();
             long result = Perft(board, depth);
             long t1 = Stopwatch.GetTimestamp();
@@ -229,6 +250,10 @@ namespace MinimalChessBoard
             Console.WriteLine($"  Moves:    {result:N0}");
             Console.WriteLine($"  Seconds:  {dt:0.####}");
             Console.WriteLine($"  Moves/s:  {(result / dt):N0}");
+            Console.WriteLine($"  Unique Positions:  {_uniquePositions.Count:N0}");
+            Console.WriteLine($"  Unique HashCodes:  {_uniqueHashKeys.Count:N0}");
+            Console.WriteLine($"  HashCollisions:  {_hashCollisionCount:N0}");
+            Console.WriteLine($"  Collision Rate: {(100 * _hashCollisionCount / (double)_uniquePositions.Count):N0}%");
         }
 
         private static void RunDivide(Board board, int depth)

@@ -16,12 +16,12 @@
         White = 3,
 
         //3rd+ Bits = Type of Piece
-        Pawn = 1 << 2,
-        Knight = 2 << 2,
-        Bishop = 3 << 2,
-        Rook = 4 << 2,
-        Queen = 5 << 2,
-        King = 6 << 2,
+        Pawn = 4,
+        Knight = 8,
+        Bishop = 12,
+        Rook = 16,
+        Queen = 20,
+        King = 24,
 
         //White + Type = White Pieces
         WhitePawn = White + Pawn,
