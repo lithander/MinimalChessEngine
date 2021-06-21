@@ -6,31 +6,55 @@ namespace MinimalChess
 {
     public static class Zobrist
     {
-        public static ulong[][] Board = new ulong[64][];
-        public static ulong[] EnPassant = new ulong[64];
-        public static ulong[] Castling = new ulong[16]; //all permutations of castling rights, CastlingRights.All == 15
-        public static ulong Black;
-        public static ulong White;
+        static ulong[][] BoardTable = new ulong[64][];
+        static ulong[] EnPassantTable = new ulong[64];
+        static ulong[] CastlingTable = new ulong[16]; //all permutations of castling rights, CastlingRights.All == 15
+        static ulong Black;
+        static ulong White;
 
         static Zobrist()
         {
-            Random rnd = new Random(150482);
-            //6 black pieces + 6 white pieces
+            Random rnd = new Random(228126);
             for (int square = 0; square < 64; square++)
             {
-                Board[square] = new ulong[12];
+                //6 black pieces + 6 white pieces
+                BoardTable[square] = new ulong[12];
                 for (int piece = 0; piece < 12; piece++)
-                    Board[square][piece] = RandomUInt64(rnd);
+                    BoardTable[square][piece] = RandomUInt64(rnd);
+                //En passent
+                EnPassantTable[square] = RandomUInt64(rnd);
             }
             //Side to Move
             Black = RandomUInt64(rnd);
             White = RandomUInt64(rnd);
-            //En passent
-            for (int square = 0; square < 64; square++)
-                EnPassant[square] = RandomUInt64(rnd);
             //Castling
             for (int i = 0; i < 16; i++)
-                Castling[i] = RandomUInt64(rnd);
+                CastlingTable[i] = RandomUInt64(rnd);
+        }
+
+        public static ulong PieceSquare(Piece piece, int square)
+        {
+            return (piece != Piece.None) ? BoardTable[square][PieceIndex(piece)] : 0;
+        }
+
+        public static int PieceIndex(Piece piece)
+        {
+            return ((int)piece >> 1) - 2;
+        }
+
+        public static ulong Castling(Board.CastlingRights castlingRights)
+        {
+            return CastlingTable[(int)castlingRights];
+        }
+
+        public static ulong EnPassant(int square)
+        {
+            return (square >= 0) ? EnPassantTable[square] : 0;
+        }
+
+        public static ulong SideToMove(Color sideToMove)
+        {
+            return sideToMove == Color.White ? Zobrist.Black : Zobrist.White;
         }
 
         private static ulong RandomUInt64(Random rnd)

@@ -26,7 +26,7 @@ namespace MinimalChess
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
         [Flags]
-        enum CastlingRights
+        public enum CastlingRights
         {
             None = 0,
             WhiteKingside = 1,
@@ -41,9 +41,21 @@ namespace MinimalChess
         private CastlingRights _castlingRights = CastlingRights.All;
         private Color _sideToMove = Color.White;
         private int _enPassantSquare = -1;
+        private ulong _zobristHash = 0;
         /*** STATE DATA ***/
 
-        public Color SideToMove => _sideToMove;
+        public ulong ZobristHash => _zobristHash;
+
+        public Color SideToMove
+        {
+            get => _sideToMove;
+            private set 
+            {
+                _zobristHash ^= Zobrist.SideToMove(_sideToMove);
+                _sideToMove = value;
+                _zobristHash ^= Zobrist.SideToMove(_sideToMove);
+            }
+        }
 
         public Board() { }
 
@@ -65,16 +77,25 @@ namespace MinimalChess
 
         public void Copy(Board board)
         {
+            board.ValidateZobristHash();
             //Array.Copy(board._state, _state, 64);
             board._state.AsSpan().CopyTo(_state.AsSpan());
             _sideToMove = board._sideToMove;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
+            _zobristHash = board._zobristHash;
+            ValidateZobristHash();
         }
 
         public Piece this[int square]
         {
             get => _state[square];
+            private set
+            {
+                _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
+                _state[square] = value;
+                _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
+            }
         }
 
         //Rank - the eight horizontal rows of the chess board are called ranks.
@@ -126,6 +147,9 @@ namespace MinimalChess
 
             //Set en-passant square
             _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquare(fields[3]);
+
+            //Initialze Hash
+            _zobristHash = GetZobristHash();
         }
 
 
@@ -135,35 +159,43 @@ namespace MinimalChess
 
         public void PlayNullMove()
         {
-            _sideToMove = Pieces.Flip(_sideToMove);
+            ValidateZobristHash();
+
+            SideToMove = Pieces.Flip(_sideToMove);
+            //Clear en passent
+            _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
             _enPassantSquare = -1;
+
+            ValidateZobristHash();
         }
 
         public Piece Play(Move move)
         {
-            Piece capturedPiece = _state[move.ToSquare];
-            Piece movingPiece = _state[move.FromSquare];
+            ValidateZobristHash();
+
+            Piece capturedPiece = this[move.ToSquare];
+            Piece movingPiece = this[move.FromSquare];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_sideToMove);
 
             //move the correct piece to the target square
-            _state[move.ToSquare] = movingPiece;
+            this[move.ToSquare] = movingPiece;
             //...and clear the square it was previously located
-            _state[move.FromSquare] = Piece.None;
+            this[move.FromSquare] = Piece.None;
 
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
-                capturedPiece = _state[captureIndex];
-                _state[captureIndex] = Piece.None;
+                capturedPiece = this[captureIndex];
+                this[captureIndex] = Piece.None;
             }
 
             //handle castling special case
             if (IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
-                _state[rookMove.ToSquare] = _state[rookMove.FromSquare];
-                _state[rookMove.FromSquare] = Piece.None;
+                this[rookMove.ToSquare] = this[rookMove.FromSquare];
+                this[rookMove.FromSquare] = Piece.None;
             }
 
             //update board state
@@ -172,7 +204,9 @@ namespace MinimalChess
             UpdateCastlingRights(move.ToSquare);
 
             //toggle active color!
-            _sideToMove = Pieces.Flip(_sideToMove);
+            SideToMove = Pieces.Flip(_sideToMove);
+
+            ValidateZobristHash();
             return capturedPiece;
         }
 
@@ -192,6 +226,8 @@ namespace MinimalChess
 
         private void UpdateEnPassent(Move move)
         {
+            _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
+
             int to = move.ToSquare;
             int from = move.FromSquare;
             Piece movingPiece = _state[to];
@@ -203,6 +239,8 @@ namespace MinimalChess
                 _enPassantSquare = Up(from);
             else
                 _enPassantSquare = -1;
+
+            _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
         }
 
         private bool IsEnPassant(Piece movingPiece, Move move, out int captureIndex)
@@ -601,10 +639,14 @@ namespace MinimalChess
 
         private void SetCastlingRights(CastlingRights flag, bool state)
         {
+            _zobristHash ^= Zobrist.Castling(_castlingRights);
+
             if (state)
                 _castlingRights |= flag;
             else
                 _castlingRights &= ~flag;
+
+            _zobristHash ^= Zobrist.Castling(_castlingRights);
         }
 
         public override bool Equals(object obj)
@@ -637,26 +679,25 @@ namespace MinimalChess
             return true;
         }
 
-        public ulong ZobristHash()
+        public ulong GetZobristHash()
         {
             //Side to move
-            ulong hash = _sideToMove == Color.White ? Zobrist.Black : Zobrist.White;
+            ulong hash = Zobrist.SideToMove(_sideToMove);
             //Pieces
             for (int square = 0; square < 64; square++)
-            {
-                Piece piece = _state[square];
-                if (piece != Piece.None)
-                {
-                    int pieceIndex = ((int)piece >> 1) - 2;
-                    hash ^= Zobrist.Board[square][pieceIndex];
-                }
-            }
+                hash ^= Zobrist.PieceSquare(_state[square], square);
             //En passent
-            hash ^= Zobrist.Castling[(int)_castlingRights];
+            hash ^= Zobrist.Castling(_castlingRights);
             //Castling
-            if (_enPassantSquare >= 0)
-                hash ^= Zobrist.EnPassant[_enPassantSquare];
+            hash ^= Zobrist.EnPassant(_enPassantSquare);
             return hash;
+        }
+
+        [Conditional("DEBUG")]
+        private void ValidateZobristHash()
+        {
+            ulong zobrist = GetZobristHash();
+            Debug.Assert(zobrist == _zobristHash);
         }
 
         public override int GetHashCode()
@@ -664,13 +705,12 @@ namespace MinimalChess
             //perft 5 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
             //Moves: 193,690,690
             //Unique Positions:  30,216,804
-            //Unique HashCodes:  30,113,127
-            //HashCollisions: 103,677 (would be 0 with 64bit hashes)
+            //Unique HashCodes:  30,111,082
+            //HashCollisions: 105,722
             //Collision Rate: 0 %
-            //Duration: 135.3804
-            ulong zobrist = ZobristHash();
-            uint zobrist32 = (uint)zobrist ^ (uint)(zobrist >> 32);
-            return (int)zobrist32;
+            //Duration: 114.7461
+            ValidateZobristHash();
+            return (int)_zobristHash;
         }
     }
 }

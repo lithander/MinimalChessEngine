@@ -206,8 +206,7 @@ namespace MinimalChessBoard
         }
 
         private static HashSet<Board> _uniquePositions = new HashSet<Board>();
-        private static HashSet<ulong> _uniqueHashKeys = new HashSet<ulong>();
-        private static Dictionary<ulong, Board> _hashOwner = new Dictionary<ulong, Board>();
+        private static HashSet<int> _uniqueHashKeys = new HashSet<int>();
         private static int _hashCollisionCount = 0;
 
         private static long Perft(Board board, int depth)
@@ -215,16 +214,10 @@ namespace MinimalChessBoard
             if (_uniquePositions.Add(board))
             {
                 //new position, ideally it had it's own unique hashcode, too
-                ulong hashCode = board.ZobristHash();
-                //Console.WriteLine(Convert.ToString((long)hashCode, 2));
-                if (!_uniqueHashKeys.Add(hashCode))
-                {
-                    var owner = _hashOwner[hashCode];
-                    //A true collision means they are not equal but have the same hash!
-                    Debug.Assert(!owner.Equals(board));
+                if (!_uniqueHashKeys.Add(board.GetHashCode()))
                     _hashCollisionCount++;
-                }
-                _hashOwner[hashCode] = board;
+                    //A true collision means they are not equal but have the same hash!
+                    //Debug.Assert(!owner.Equals(board));
             }
 
             if (depth == 0)
