@@ -205,48 +205,34 @@ namespace MinimalChessBoard
             }
         }
 
-        private static HashSet<Board> _uniquePositions = new HashSet<Board>();
-        private static HashSet<int> _uniqueHashKeys = new HashSet<int>();
-        private static int _hashCollisionCount = 0;
-
         private static long Perft(Board board, int depth)
         {
-            if (_uniquePositions.Add(board))
-            {
-                //new position, ideally it had it's own unique hashcode, too
-                if (!_uniqueHashKeys.Add(board.GetHashCode()))
-                    _hashCollisionCount++;
-                    //A true collision means they are not equal but have the same hash!
-                    //Debug.Assert(!owner.Equals(board));
-            }
-
             if (depth == 0)
                 return 1;
+
+            //probe hash-tree
+            if (PerftTable.Retrieve(board.ZobristHash, depth, out long childCount))
+                return childCount;
 
             var moves = new LegalMoves(board);
             long sum = 0;
             foreach (var move in moves)
                 sum += Perft(new Board(board, move), depth - 1);
 
+            PerftTable.Store(board.ZobristHash, depth, sum);
             return sum;
         }
 
         private static void RunPerft(Board board, int depth)
         {
-            _hashCollisionCount = 0;
-            _uniquePositions.Clear();
-            _uniqueHashKeys.Clear();
             long t0 = Stopwatch.GetTimestamp();
             long result = Perft(board, depth);
             long t1 = Stopwatch.GetTimestamp();
+
             double dt = (t1 - t0) / (double)Stopwatch.Frequency;
             Console.WriteLine($"  Moves:    {result:N0}");
             Console.WriteLine($"  Seconds:  {dt:0.####}");
             Console.WriteLine($"  Moves/s:  {(result / dt):N0}");
-            Console.WriteLine($"  Unique Positions:  {_uniquePositions.Count:N0}");
-            Console.WriteLine($"  Unique HashCodes:  {_uniqueHashKeys.Count:N0}");
-            Console.WriteLine($"  HashCollisions:  {_hashCollisionCount:N0}");
-            Console.WriteLine($"  Collision Rate: {(100 * _hashCollisionCount / (double)_uniquePositions.Count):N0}%");
         }
 
         private static void RunDivide(Board board, int depth)
@@ -258,6 +244,7 @@ namespace MinimalChessBoard
             {
                 next.Copy(board);
                 next.Play(move);
+                PerftTable.Clear();
                 long nodes = Perft(next, depth - 1);
                 sum += nodes;
                 Console.WriteLine($"  {move}:    {nodes:N0}");
@@ -287,6 +274,7 @@ namespace MinimalChessBoard
                 long refResult = long.Parse(data[depth].Substring(3));
 
                 Board board = new Board(data[0]);
+                PerftTable.Clear();
                 long result = Perft(board, depth);
                 if (result != refResult)
                 {
