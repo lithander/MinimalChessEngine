@@ -65,5 +65,11 @@ namespace MinimalChess
                     _moves[a + i + 1] = _moves[b + i];
             }
         }
+
+        public void Truncate(int depth)
+        {
+            for (int i = 1; i <= Math.Max(depth, 1); i++)
+                this[i] = default;
+        }
     }
 }

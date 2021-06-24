@@ -14,7 +14,7 @@ namespace MinimalChess
         public int Score { get; private set; }
         public Move[] PrincipalVariation => _pv.GetLine(Depth);
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
-        public bool GameOver => Evaluation.IsCheckmate(Score) || PrincipalVariation?.Length < Depth;
+        public bool GameOver => Evaluation.IsCheckmate(Score);
 
         Board _root = null;
         HashSet<Board> _history = null;
@@ -34,6 +34,7 @@ namespace MinimalChess
 
         public void Search(int maxDepth)
         {
+            Transpositions.Clear();
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
@@ -102,7 +103,16 @@ namespace MinimalChess
                 }
 
                 //this node may raise alpha!
-                int score = EvalPosition(child, depth - 1, window);
+                if (Transpositions.Retrieve(child, depth - 1, window, out int score))
+                {
+                    _pv.Truncate(depth);
+                }
+                else
+                {
+                    score = EvalPosition(child, depth - 1, window);
+                    Transpositions.Store(child.ZobristHash, depth - 1, window, score);
+                }
+
                 if (window.Inside(score, color))
                 {
                     _pv[depth] = move;
@@ -112,6 +122,7 @@ namespace MinimalChess
                         //we remember killers like hat!
                         if (position[move.ToSquare] == Piece.None)
                             _killers.Add(move, depth);
+
                         return window.GetScore(color);
                     }
                 }

@@ -95,6 +95,7 @@ namespace MinimalChessEngine
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
 
+            Transpositions.Clear();
             _search = new IterativeSearch(_board, maxNodes, _history);
             _time.StartInterval();
             _search.SearchDeeper();

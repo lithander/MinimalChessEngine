@@ -53,6 +53,7 @@ namespace MinimalChess
         const int Midgame = 5255;
         const int Endgame = 435;
 
+        //Pawn = 0, Knight = 155, Bishop = 305; Rook = 405, Queen = 1050, King = 0
         static readonly int[] PhaseValues = new int[6] { 0, 155, 305, 405, 1050, 0 };
 
         static readonly int[,] MidgameTables = new int[6, 64]{

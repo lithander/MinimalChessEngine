@@ -6,7 +6,7 @@
         White = +1
     }
 
-    public enum Piece
+    public enum Piece : sbyte
     {
         //1st Bit = Piece or None?
         None = 0,
@@ -41,7 +41,7 @@
 
         //Mask
         ColorMask = 3,
-        TypeMask = 255 - 3
+        TypeMask = 127 - 3
     }
 
     public static class Pieces
