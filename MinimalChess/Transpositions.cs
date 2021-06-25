@@ -30,14 +30,18 @@ namespace MinimalChess
             //                          16 Bytes
         }
 
-        public static void Store(ulong zobristHash, int depth, SearchWindow window, int score)
+        public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
             int slot = (int)(zobristHash % TT_SIZE);
+
+            if(_table[slot].ZobristHash != zobristHash 
+                || depth >= _table[slot].Depth && bestMove != default)
+                _table[slot].BestMove = bestMove;
 
             _table[slot].ZobristHash = zobristHash;
             _table[slot].Depth = (short)Math.Max(0, depth);
 
-            if(score >= window.Ceiling)
+            if (score >= window.Ceiling)
             {
                 _table[slot].Type = ScoreType.GreaterOrEqual;
                 _table[slot].Score = (short)window.Ceiling;
@@ -54,13 +58,29 @@ namespace MinimalChess
             }
         }
 
-        public static bool Retrieve(Board board, int depth, SearchWindow window, out int score)
+        internal static bool GetBestMove(Board position, out Move bestMove)
         {
-            ulong zobristHash = board.ZobristHash;
+            ulong zobristHash = position.ZobristHash;
+            int slot = (int)(zobristHash % TT_SIZE);
+            if (_table[slot].ZobristHash == zobristHash)
+            {
+                bestMove = _table[slot].BestMove;
+                return bestMove != default;
+            }
+            bestMove = default;
+            return false;
+        }
+
+        public static bool GetScore(Board position, int depth, SearchWindow window, out int score)
+        {
+            ulong zobristHash = position.ZobristHash;
             int slot = (int)(zobristHash % TT_SIZE);
             score = 0;
-            if (_table[slot].ZobristHash == zobristHash && _table[slot].Depth >= depth)
+            if (_table[slot].ZobristHash == zobristHash)
             {
+                if (_table[slot].Depth < depth)
+                    return false;
+
                 score = _table[slot].Score;
                 ScoreType type = _table[slot].Type;
                 //1.) score is exact and within window

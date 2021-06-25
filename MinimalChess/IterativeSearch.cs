@@ -52,6 +52,19 @@ namespace MinimalChess
             Score = EvalPosition(_root, Depth, window);
         }
 
+        private int EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
+        {
+            if (Transpositions.GetScore(position, depth, window, out int score))
+            {
+                _pv.Truncate(depth);
+                return score;
+            }
+
+            score = EvalPosition(position, depth, window, isNullMove);
+            Transpositions.Store(position.ZobristHash, depth, window, score, default);
+            return score;
+        }
+
         private int EvalPosition(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
             if (depth <= 0)
@@ -80,7 +93,7 @@ namespace MinimalChess
                 Board nullChild = Playmaker.PlayNullMove(position);
                 //evaluate the position at reduced depth with a null-window around beta
                 SearchWindow nullWindow = window.GetUpperBound(color);
-                int nullScore = EvalPosition(nullChild, depth - R - 1, nullWindow, true);
+                int nullScore = EvalPositionTT(nullChild, depth - R - 1, nullWindow, true);
                 //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
                 if (nullWindow.Cut(nullScore, color))
                     return nullScore;
@@ -97,24 +110,16 @@ namespace MinimalChess
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
-                    int nullScore = EvalPosition(child, depth - 1, nullWindow);
+                    int nullScore = EvalPositionTT(child, depth - 1, nullWindow);
                     if (!nullWindow.Inside(nullScore, color))
                         continue;
                 }
 
                 //this node may raise alpha!
-                if (Transpositions.Retrieve(child, depth - 1, window, out int score))
-                {
-                    _pv.Truncate(depth);
-                }
-                else
-                {
-                    score = EvalPosition(child, depth - 1, window);
-                    Transpositions.Store(child.ZobristHash, depth - 1, window, score);
-                }
-
+                int score = EvalPositionTT(child, depth - 1, window);
                 if (window.Inside(score, color))
                 {
+                    Transpositions.Store(position.ZobristHash, depth, window, score, move);
                     _pv[depth] = move;
                     //...and maybe get a beta cutoff
                     if (window.Cut(score, color))

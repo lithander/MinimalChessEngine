@@ -14,6 +14,11 @@ namespace MinimalChessBoard
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
+            unsafe{
+                Console.WriteLine($"Move: {sizeof(Move)} bytes");
+                Console.WriteLine($"Transpositions.HashEntry: {sizeof(Transpositions.HashEntry)} bytes");
+            }
+
             bool running = true;
             Board board = new Board(Board.STARTING_POS_FEN);
             Move move = default;
@@ -274,7 +279,7 @@ namespace MinimalChessBoard
                 long refResult = long.Parse(data[depth].Substring(3));
 
                 Board board = new Board(data[0]);
-                PerftTable.Clear();
+                //PerftTable.Clear();
                 long result = Perft(board, depth);
                 if (result != refResult)
                 {
@@ -293,6 +298,7 @@ namespace MinimalChessBoard
 
         private static void CompareBestMove(int depth, string filePath, int maxCount)
         {
+            Transpositions.Clear();
             var file = File.OpenText(filePath);
             double freq = (double)Stopwatch.Frequency;
             long totalTime = 0;
@@ -316,6 +322,10 @@ namespace MinimalChessBoard
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
+                Console.WriteLine($"PV Played: {Playmaker.CanPlayPV} = {(100 * Playmaker.CanPlayPV) / (Playmaker.Expansions)}% BestMove Played: {Playmaker.BestMove} = {(100 * Playmaker.BestMove) / (Playmaker.Expansions)}%");
+                Playmaker.CanPlayPV = 0;
+                Playmaker.Expansions = 0;
+                Playmaker.BestMove = 0;
             }
             Console.WriteLine();
             Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");
