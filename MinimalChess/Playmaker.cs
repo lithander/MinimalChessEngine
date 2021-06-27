@@ -8,6 +8,7 @@ namespace MinimalChess
         public static long CanPlayPV = 0;
         public static long Expansions = 0;
         public static long BestMove = 0;
+        public static long BestMoveCuts = 0;
 
         internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, PrincipalVariation pv, KillerMoves killers)
         {
@@ -16,13 +17,15 @@ namespace MinimalChess
             if (Transpositions.GetBestMove(position, out Move bestMove))
             {
                 BestMove++;
+                BestMoveCuts++;
                 var nextPosition = new Board(position, bestMove);
                 yield return (bestMove, nextPosition);
+                BestMoveCuts--;
             }
 
             //1. PV if available
             Move pvMove = pv[depth];
-            if (pvMove != bestMove && position.CanPlay(pvMove))
+            if (pvMove != bestMove && position.IsPlayable(pvMove))
             {
                 CanPlayPV++;
                 var nextPosition = new Board(position, pvMove);
@@ -44,7 +47,7 @@ namespace MinimalChess
 
             //3. Killers if available
             foreach (Move killer in killers.Get(depth))
-                if (killer != pvMove && killer != bestMove && position[killer.ToSquare] == Piece.None && position.CanPlay(killer))
+                if (killer != pvMove && killer != bestMove && position[killer.ToSquare] == Piece.None && position.IsPlayable(killer))
                 {
                     var nextPosition = new Board(position, killer);
                     if (!nextPosition.IsChecked(position.SideToMove))

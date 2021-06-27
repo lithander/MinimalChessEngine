@@ -169,7 +169,7 @@ namespace MinimalChess
             ValidateZobristHash();
         }
 
-        public Piece Play(Move move)
+        public void Play(Move move)
         {
             ValidateZobristHash();
 
@@ -207,7 +207,6 @@ namespace MinimalChess
             SideToMove = Pieces.Flip(_sideToMove);
 
             ValidateZobristHash();
-            return capturedPiece;
         }
 
         private void UpdateCastlingRights(int square)
@@ -293,7 +292,7 @@ namespace MinimalChess
         //** MOVE GENERATION ***
         //**********************
 
-        public bool CanPlay(Move move)
+        public bool IsPlayable(Move move)
         {
             bool found = false;
             CollectMoves(move.FromSquare, m => found |= (m == move));

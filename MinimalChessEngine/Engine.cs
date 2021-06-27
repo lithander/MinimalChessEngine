@@ -14,7 +14,7 @@ namespace MinimalChessEngine
         int _maxSearchDepth;
         TimeControl _time = new TimeControl();
         Board _board = new Board(Board.STARTING_POS_FEN);
-        HashSet<Board> _history = new HashSet<Board>();
+        List<Board> _history = new List<Board>();
 
         public bool Running { get; private set; }
         public Color SideToMove => _board.SideToMove;
@@ -44,17 +44,13 @@ namespace MinimalChessEngine
             Stop();
             _board = new Board(board);//make a copy
             _history.Clear();
-            _history.Add(new Board(_board));
         }
 
         internal void Play(Move move)
         {
             Stop();
-            Piece captured = _board.Play(move);
-            if (captured != Piece.None)
-                _history.Clear();//after capture the previous positions can't be replicated anyway so we don't need to remember them
-
             _history.Add(new Board(_board));
+            _board.Play(move);
         }
 
         //**************
@@ -95,8 +91,12 @@ namespace MinimalChessEngine
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
 
-            Transpositions.Clear();
-            _search = new IterativeSearch(_board, maxNodes, _history);
+            //add all history positions with a score of 0 (Draw through 3-fold repetition)
+            Transpositions.REPETITION++;//unfreeze old repetitions
+            foreach (var position in _history)
+                Transpositions.Store(position.ZobristHash, Transpositions.REPETITION, SearchWindow.Infinite, 0, default);
+            
+            _search = new IterativeSearch(_board, maxNodes);
             _time.StartInterval();
             _search.SearchDeeper();
             Collect();

@@ -68,7 +68,7 @@ namespace MinimalChess
 
         public void Truncate(int depth)
         {
-            for (int i = 1; i <= Math.Max(depth, 1); i++)
+            for (int i = 1; i <= depth; i++)
                 this[i] = default;
         }
     }

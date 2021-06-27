@@ -13,9 +13,14 @@ namespace MinimalChess
 
     public static class Transpositions
     {
+        public static long HashOverwrites = 0;
+        public static long HashWrites = 0;
+
+        public static short REPETITION = 9999;
+
         const int ENTRY_SIZE = 16; //BYTES
         const int HASH_MEMORY = 256; //Megabytes
-        const int TT_SIZE = (HASH_MEMORY * 1024 * 1024) / ENTRY_SIZE;
+        public const int TT_SIZE = (HASH_MEMORY * 1024 * 1024) / ENTRY_SIZE;
 
         static HashEntry[] _table = new HashEntry[TT_SIZE];
 
@@ -34,8 +39,15 @@ namespace MinimalChess
         {
             int slot = (int)(zobristHash % TT_SIZE);
 
-            if(_table[slot].ZobristHash != zobristHash 
-                || depth >= _table[slot].Depth && bestMove != default)
+            if (_table[slot].Depth == REPETITION)
+                return;
+
+            HashWrites++;
+            if (_table[slot].ZobristHash != default && _table[slot].ZobristHash != zobristHash)
+                HashOverwrites++;
+
+            //don't overwrite a bestmove unless it's a new position OR the new bestMove is explored to a greater depth
+            if (_table[slot].ZobristHash != zobristHash || (bestMove != default && depth >= _table[slot].Depth))
                 _table[slot].BestMove = bestMove;
 
             _table[slot].ZobristHash = zobristHash;

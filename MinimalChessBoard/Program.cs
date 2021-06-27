@@ -298,7 +298,6 @@ namespace MinimalChessBoard
 
         private static void CompareBestMove(int depth, string filePath, int maxCount)
         {
-            Transpositions.Clear();
             var file = File.OpenText(filePath);
             double freq = (double)Stopwatch.Frequency;
             long totalTime = 0;
@@ -309,6 +308,7 @@ namespace MinimalChessBoard
             while (!file.EndOfStream && count < maxCount)
             {
                 ParseEpd(file.ReadLine(), out Board board, ref bestMoves);
+                Transpositions.Clear();
                 IterativeSearch search = new IterativeSearch(board);
                 long t0 = Stopwatch.GetTimestamp();
                 search.Search(depth);
@@ -322,10 +322,12 @@ namespace MinimalChessBoard
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
-                Console.WriteLine($"PV Played: {Playmaker.CanPlayPV} = {(100 * Playmaker.CanPlayPV) / (Playmaker.Expansions)}% BestMove Played: {Playmaker.BestMove} = {(100 * Playmaker.BestMove) / (Playmaker.Expansions)}%");
+                Console.WriteLine($"    PV Played: {(100 * Playmaker.CanPlayPV) / (Playmaker.Expansions)}% BestMove Played: {(100 * Playmaker.BestMove) / (Playmaker.Expansions)}%, BestMove Cuts: {(100 * Playmaker.BestMoveCuts) / (Playmaker.Expansions)}%, TT Overwrites: {(100 * Transpositions.HashOverwrites) / Transpositions.HashWrites}%");
                 Playmaker.CanPlayPV = 0;
                 Playmaker.Expansions = 0;
                 Playmaker.BestMove = 0;
+                Playmaker.BestMoveCuts = 0;
+                Transpositions.HashOverwrites = 0;
             }
             Console.WriteLine();
             Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");

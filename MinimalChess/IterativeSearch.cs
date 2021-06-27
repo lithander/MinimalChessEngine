@@ -17,18 +17,16 @@ namespace MinimalChess
         public bool GameOver => Evaluation.IsCheckmate(Score);
 
         Board _root = null;
-        HashSet<Board> _history = null;
         PrincipalVariation _pv;
         KillerMoves _killers;
         KillSwitch _killSwitch;
         long _maxNodes;
 
-        public IterativeSearch(Board board, long maxNodes = long.MaxValue, HashSet<Board> history = null)
+        public IterativeSearch(Board board, long maxNodes = long.MaxValue)
         {
             _root = new Board(board);
             _pv = new PrincipalVariation();
             _killers = new KillerMoves(4);
-            _history = history ?? new HashSet<Board>();
             _maxNodes = maxNodes;
         }
 
@@ -76,13 +74,6 @@ namespace MinimalChess
             NodesVisited++;
             if (Aborted)
                 return 0;
-
-            //is this position a repetition?
-            if (depth < Depth && _history.Contains(position))
-            {
-                _pv[depth] = default;
-                return 0; //draw through 3-fold repetition
-            }
 
             Color color = position.SideToMove;
             //should we try null move pruning?
