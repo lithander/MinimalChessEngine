@@ -77,14 +77,12 @@ namespace MinimalChess
 
         public void Copy(Board board)
         {
-            board.ValidateZobristHash();
             //Array.Copy(board._state, _state, 64);
             board._state.AsSpan().CopyTo(_state.AsSpan());
             _sideToMove = board._sideToMove;
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
             _zobristHash = board._zobristHash;
-            ValidateZobristHash();
         }
 
         public Piece this[int square]
@@ -159,21 +157,14 @@ namespace MinimalChess
 
         public void PlayNullMove()
         {
-            ValidateZobristHash();
-
             SideToMove = Pieces.Flip(_sideToMove);
             //Clear en passent
             _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
             _enPassantSquare = -1;
-
-            ValidateZobristHash();
         }
 
         public void Play(Move move)
         {
-            ValidateZobristHash();
-
-            Piece capturedPiece = this[move.ToSquare];
             Piece movingPiece = this[move.FromSquare];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_sideToMove);
@@ -186,7 +177,6 @@ namespace MinimalChess
             if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
-                capturedPiece = this[captureIndex];
                 this[captureIndex] = Piece.None;
             }
 
@@ -205,8 +195,6 @@ namespace MinimalChess
 
             //toggle active color!
             SideToMove = Pieces.Flip(_sideToMove);
-
-            ValidateZobristHash();
         }
 
         private void UpdateCastlingRights(int square)
@@ -692,24 +680,21 @@ namespace MinimalChess
             return hash;
         }
 
-        [Conditional("DEBUG")]
-        private void ValidateZobristHash()
-        {
-            ulong zobrist = GetZobristHash();
-            Debug.Assert(zobrist == _zobristHash);
-        }
-
         public override int GetHashCode()
         {
             //perft 5 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
             //Moves: 193,690,690
             //Unique Positions:  30,216,804
             //Unique HashCodes:  30,111,082
-            //HashCollisions: 105,722
-            //Collision Rate: 0 %
-            //Duration: 114.7461
-            ValidateZobristHash();
+            //HashCollisions: 105,722 (0 with 64bit)
             return (int)_zobristHash;
         }
+
+        //[Conditional("DEBUG")]
+        //private void ValidateZobristHash()
+        //{
+        //    ulong zobrist = GetZobristHash();
+        //    Debug.Assert(zobrist == _zobristHash);
+        //}
     }
 }

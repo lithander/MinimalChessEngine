@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.4.8";
+        const string NAME_VERSION = "MinimalChess 0.4.9";
 
         static Engine _engine = new Engine();
         static async Task Main()
@@ -48,6 +48,7 @@ namespace MinimalChessEngine
                     UciGo(tokens);
                     break;
                 case "ucinewgame":
+                    Transpositions.Clear();
                     break;
                 case "stop":
                     _engine.Stop();

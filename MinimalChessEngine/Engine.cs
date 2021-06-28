@@ -44,13 +44,14 @@ namespace MinimalChessEngine
             Stop();
             _board = new Board(board);//make a copy
             _history.Clear();
+            _history.Add(new Board(_board));
         }
 
         internal void Play(Move move)
         {
             Stop();
-            _history.Add(new Board(_board));
             _board.Play(move);
+            _history.Add(new Board(_board));
         }
 
         //**************
@@ -91,10 +92,10 @@ namespace MinimalChessEngine
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
 
-            //add all history positions with a score of 0 (Draw through 3-fold repetition)
-            Transpositions.REPETITION++;//unfreeze old repetitions
+            Transpositions.PERSISTENT++;//unfreeze old repetitions
+            //add all history positions with a score of 0 (Draw through 3-fold repetition) and freeze them by setting a depth that is never going to be overwritten
             foreach (var position in _history)
-                Transpositions.Store(position.ZobristHash, Transpositions.REPETITION, SearchWindow.Infinite, 0, default);
+                Transpositions.Store(position.ZobristHash, Transpositions.PERSISTENT, SearchWindow.Infinite, 0, default);
             
             _search = new IterativeSearch(_board, maxNodes);
             _time.StartInterval();

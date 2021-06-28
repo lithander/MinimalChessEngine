@@ -299,7 +299,7 @@ namespace MinimalChessBoard
         private static void CompareBestMove(int depth, string filePath, int maxCount)
         {
             var file = File.OpenText(filePath);
-            double freq = (double)Stopwatch.Frequency;
+            double freq = Stopwatch.Frequency;
             long totalTime = 0;
             long totalNodes = 0;
             int count = 0;
@@ -322,12 +322,6 @@ namespace MinimalChessBoard
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
-                Console.WriteLine($"    PV Played: {(100 * Playmaker.CanPlayPV) / (Playmaker.Expansions)}% BestMove Played: {(100 * Playmaker.BestMove) / (Playmaker.Expansions)}%, BestMove Cuts: {(100 * Playmaker.BestMoveCuts) / (Playmaker.Expansions)}%, TT Overwrites: {(100 * Transpositions.HashOverwrites) / Transpositions.HashWrites}%");
-                Playmaker.CanPlayPV = 0;
-                Playmaker.Expansions = 0;
-                Playmaker.BestMove = 0;
-                Playmaker.BestMoveCuts = 0;
-                Transpositions.HashOverwrites = 0;
             }
             Console.WriteLine();
             Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");

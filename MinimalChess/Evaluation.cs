@@ -241,7 +241,7 @@ namespace MinimalChess
             {
                 Piece targetPiece = board[square];
                 int offset = targetPiece.IsColor(piece) ? 6 : 0;
-                result += MobilityValues[row + offset + Pieces.Rank(targetPiece)];
+                result += MobilityValues[row + offset + Pieces.Order(targetPiece)];
             }
             //we return negative values if piece is black (black minimizes)
             return (int)piece.Color() * result;
@@ -256,7 +256,7 @@ namespace MinimalChess
                 {
                     Piece targetPiece = board[square];
                     int offset = targetPiece.IsColor(piece) ? 6 : 0;
-                    result += MobilityValues[row + offset + Pieces.Rank(targetPiece)];
+                    result += MobilityValues[row + offset + Pieces.Order(targetPiece)];
                     if (targetPiece != Piece.None)
                         break;
                 }

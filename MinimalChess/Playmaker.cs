@@ -5,29 +5,19 @@ namespace MinimalChess
 {
     public static class Playmaker
     {
-        public static long CanPlayPV = 0;
-        public static long Expansions = 0;
-        public static long BestMove = 0;
-        public static long BestMoveCuts = 0;
-
         internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, PrincipalVariation pv, KillerMoves killers)
         {
-            Expansions++;
-
-            if (Transpositions.GetBestMove(position, out Move bestMove))
+            Move bestMove = Transpositions.GetBestMove(position);
+            if (bestMove != default)
             {
-                BestMove++;
-                BestMoveCuts++;
                 var nextPosition = new Board(position, bestMove);
                 yield return (bestMove, nextPosition);
-                BestMoveCuts--;
             }
 
             //1. PV if available
             Move pvMove = pv[depth];
             if (pvMove != bestMove && position.IsPlayable(pvMove))
             {
-                CanPlayPV++;
                 var nextPosition = new Board(position, pvMove);
                 if (!nextPosition.IsChecked(position.SideToMove))
                     yield return (pvMove, nextPosition);

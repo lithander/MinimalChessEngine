@@ -32,7 +32,6 @@ namespace MinimalChess
 
         public void Search(int maxDepth)
         {
-            Transpositions.Clear();
             while (!GameOver && Depth < maxDepth)
                 SearchDeeper();
         }
