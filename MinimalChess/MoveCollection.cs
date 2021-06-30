@@ -66,7 +66,7 @@ namespace MinimalChess
             {
                 Piece victim = context[move.ToSquare];
                 Piece attacker = context[move.FromSquare];
-                return Pieces.MaxOrder * Pieces.Order(victim) - Pieces.Order(attacker) + Pieces.Order(move.Promotion);
+                return Pieces.MaxOrder * Pieces.Order(victim) - Pieces.Order(attacker);
             }
             Sort((a, b) => Score(b).CompareTo(Score(a)));
         }
