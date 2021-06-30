@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.4.9";
+        const string NAME_VERSION = "MinimalChess 0.5";
 
         static Engine _engine = new Engine();
         static async Task Main()
@@ -36,6 +36,7 @@ namespace MinimalChessEngine
                 case "uci":
                     Console.WriteLine($"id name {NAME_VERSION}");
                     Console.WriteLine($"id author Thomas Jahn");
+                    Console.WriteLine($"option name Hash type spin default {Transpositions.DEFAULT_SIZE_MB} min 1 max 2047");//consider gcAllowVeryLargeObjects if larger TT is needed
                     Console.WriteLine("uciok");
                     break;
                 case "isready":
@@ -67,7 +68,8 @@ namespace MinimalChessEngine
 
         private static void UciSetOption(string[] tokens)
         {
-            //No options currently supported
+            if (tokens[1] == "name" && tokens[2] == "Hash" && tokens[3] == "value" && int.TryParse(tokens[4], out int hashSizeMBytes))
+                Transpositions.Resize(hashSizeMBytes);
         }
 
         private static void UciPosition(string[] tokens)

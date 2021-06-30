@@ -25,23 +25,38 @@ namespace MinimalChess
         }
 
         public static short PERSISTENT = 9999;
-
+        public const int DEFAULT_SIZE_MB = 50;
         const int ENTRY_SIZE = 16; //BYTES
-        const int HASH_MEMORY = 256; //Megabytes
-        const int TT_SIZE = (HASH_MEMORY * 1024 * 1024) / ENTRY_SIZE;
+        static HashEntry[] _table;
 
-        static HashEntry[] _table = new HashEntry[TT_SIZE];
+        static int Index(in ulong hash) => (int)(hash % (ulong)_table.Length);
+
+        static Transpositions()
+        {
+            Resize(DEFAULT_SIZE_MB);
+        }
+
+        public static void Resize(int hashSizeMBytes)
+        {
+            int length = (hashSizeMBytes * 1024 * 1024) / ENTRY_SIZE;
+            _table = new HashEntry[length];
+        }
+
+        public static void Clear()
+        {
+            Array.Clear(_table, 0, _table.Length);
+        }
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            int slot = (int)(zobristHash % TT_SIZE);
-            ref HashEntry entry = ref _table[slot];
+            int index = Index(zobristHash);
+            ref HashEntry entry = ref _table[index];
             if (entry.Depth == PERSISTENT)
                 return;
 
             //don't overwrite a bestmove unless it's a new position OR the new bestMove is explored to a greater depth
             if (entry.Hash != zobristHash || (depth >= entry.Depth && bestMove != default))
-                _table[slot].BestMove = bestMove;
+                _table[index].BestMove = bestMove;
 
             entry.Hash = zobristHash;
             entry.Depth = (short)Math.Max(0, depth);
@@ -66,9 +81,9 @@ namespace MinimalChess
         internal static Move GetBestMove(Board position)
         {
             ulong zobristHash = position.ZobristHash;
-            int slot = (int)(zobristHash % TT_SIZE);
-            if (_table[slot].Hash == zobristHash)
-                return _table[slot].BestMove;
+            int index = Index(zobristHash);
+            if (_table[index].Hash == zobristHash)
+                return _table[index].BestMove;
             else
                 return default;
         }
@@ -76,8 +91,8 @@ namespace MinimalChess
         public static bool GetScore(Board position, int depth, SearchWindow window, out int score)
         {
             ulong zobristHash = position.ZobristHash;
-            int slot = (int)(zobristHash % TT_SIZE);
-            ref HashEntry entry = ref _table[slot];
+            int index = Index(zobristHash);
+            ref HashEntry entry = ref _table[index];
 
             score = entry.Score;
             if (entry.Hash != zobristHash || entry.Depth < depth)
@@ -94,11 +109,6 @@ namespace MinimalChess
                 return true; //failHigh
 
             return false;
-        }
-
-        public static void Clear()
-        {
-            Array.Clear(_table, 0, TT_SIZE);
         }
     }
 }

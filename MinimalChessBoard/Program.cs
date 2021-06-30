@@ -14,11 +14,6 @@ namespace MinimalChessBoard
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
-            unsafe{
-                Console.WriteLine($"Move: {sizeof(Move)} bytes");
-                Console.WriteLine($"Transpositions.HashEntry: {sizeof(Transpositions.HashEntry)} bytes");
-            }
-
             bool running = true;
             Board board = new Board(Board.STARTING_POS_FEN);
             Move move = default;
@@ -46,7 +41,7 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                //try
+                try
                 {
                     if (command == "reset")
                     {
@@ -94,7 +89,7 @@ namespace MinimalChessBoard
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 0;
                         ListMoves(board, depth);
                     }
-                    else if(command == "m")
+                    else if (command == "m")
                     {
                         PrintMobility(board);
                     }
@@ -108,10 +103,10 @@ namespace MinimalChessBoard
                     if (dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                //catch (Exception error)
-                //{
-                //    Console.WriteLine("ERROR: " + error.Message);
-                //}
+                catch (Exception error)
+                {
+                    Console.WriteLine("ERROR: " + error.Message);
+                }
             }
         }
 
