@@ -45,8 +45,20 @@ namespace MinimalChess
             _pv.Grow(Depth);
             _killers.Grow(Depth);
             _killSwitch = new KillSwitch(killSwitch);
+            PrepareTranspositions(Depth);
             var window = SearchWindow.Infinite;
             Score = EvalPosition(_root, Depth, window);
+        }
+
+        private void PrepareTranspositions(int depth)
+        {
+            //make sure the PV is in the TT
+            Board position = new Board(_root);
+            foreach (Move move in _pv.GetLine(depth))
+            {
+                Transpositions.Store(position.ZobristHash, --depth, SearchWindow.Infinite, Score, move);
+                position.Play(move);
+            }
         }
 
         private int EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
@@ -91,7 +103,7 @@ namespace MinimalChess
 
             //do a regular expansion...
             int expandedNodes = 0;
-            foreach ((Move move, Board child) in Playmaker.Play(position, depth, _pv, _killers))
+            foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
             {
                 expandedNodes++;
 

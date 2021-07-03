@@ -5,8 +5,9 @@ namespace MinimalChess
 {
     public static class Playmaker
     {
-        internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, PrincipalVariation pv, KillerMoves killers)
+        internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers)
         {
+            //1. Captures Mvv-Lva, PV excluded
             Move bestMove = Transpositions.GetBestMove(position);
             if (bestMove != default)
             {
@@ -14,21 +15,8 @@ namespace MinimalChess
                 yield return (bestMove, nextPosition);
             }
 
-            //1. PV if available
-            Move pvMove = pv[depth];
-            if (pvMove != bestMove && position.IsPlayable(pvMove))
-            {
-                var nextPosition = new Board(position, pvMove);
-                if (!nextPosition.IsChecked(position.SideToMove))
-                    yield return (pvMove, nextPosition);
-            }
-
             //2. Captures Mvv-Lva, PV excluded
-            MoveList captures = MoveList.Captures(position);
-            captures.Remove(pvMove);
-            captures.Remove(bestMove);
-            captures.SortMvvLva(position);
-            foreach (var capture in captures)
+            foreach (var capture in MoveList.SortedCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.SideToMove))
@@ -37,7 +25,7 @@ namespace MinimalChess
 
             //3. Killers if available
             foreach (Move killer in killers.Get(depth))
-                if (killer != pvMove && killer != bestMove && position[killer.ToSquare] == Piece.None && position.IsPlayable(killer))
+                if (position[killer.ToSquare] == Piece.None && position.IsPlayable(killer))
                 {
                     var nextPosition = new Board(position, killer);
                     if (!nextPosition.IsChecked(position.SideToMove))
@@ -46,7 +34,7 @@ namespace MinimalChess
 
             //4. Play quiet moves that aren't known killers
             foreach (var move in MoveList.Quiets(position))
-                if (move != pvMove && move != bestMove && !killers.Contains(depth, move))
+                if (!killers.Contains(depth, move))
                 {
                     var nextPosition = new Board(position, move);
                     if (!nextPosition.IsChecked(position.SideToMove))

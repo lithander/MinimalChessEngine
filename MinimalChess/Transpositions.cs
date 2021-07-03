@@ -6,6 +6,10 @@ namespace MinimalChess
 {
     public static class Transpositions
     {
+
+        public static long HashOverwrites = 0;
+        public static long HashWrites = 0;
+
         public enum ScoreType : byte
         {
             GreaterOrEqual,
@@ -53,7 +57,7 @@ namespace MinimalChess
             ref HashEntry entry = ref _table[index];
             if (entry.Depth == PERSISTENT)
                 return;
-
+            
             //don't overwrite a bestmove unless it's a new position OR the new bestMove is explored to a greater depth
             if (entry.Hash != zobristHash || (depth >= entry.Depth && bestMove != default))
                 _table[index].BestMove = bestMove;
