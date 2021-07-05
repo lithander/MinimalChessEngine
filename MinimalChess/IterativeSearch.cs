@@ -12,12 +12,11 @@ namespace MinimalChess
         public long NodesVisited { get; private set; }
         public int Depth { get; private set; }
         public int Score { get; private set; }
-        public Move[] PrincipalVariation => _pv.GetLine(Depth);
+        public Move[] PrincipalVariation => Transpositions.ExtractPV(new Board(_root), new List<Move>());
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
         public bool GameOver => Evaluation.IsCheckmate(Score);
 
         Board _root = null;
-        PrincipalVariation _pv;
         KillerMoves _killers;
         KillSwitch _killSwitch;
         long _maxNodes;
@@ -25,7 +24,6 @@ namespace MinimalChess
         public IterativeSearch(Board board, long maxNodes = long.MaxValue)
         {
             _root = new Board(board);
-            _pv = new PrincipalVariation();
             _killers = new KillerMoves(4);
             _maxNodes = maxNodes;
         }
@@ -42,32 +40,15 @@ namespace MinimalChess
                 return;
 
             Depth++;
-            _pv.Grow(Depth);
             _killers.Grow(Depth);
             _killSwitch = new KillSwitch(killSwitch);
-            PrepareTranspositions(Depth);
-            var window = SearchWindow.Infinite;
-            Score = EvalPosition(_root, Depth, window);
-        }
-
-        private void PrepareTranspositions(int depth)
-        {
-            //make sure the PV is in the TT
-            Board position = new Board(_root);
-            foreach (Move move in _pv.GetLine(depth))
-            {
-                Transpositions.Store(position.ZobristHash, --depth, SearchWindow.Infinite, Score, move);
-                position.Play(move);
-            }
+            Score = EvalPosition(_root, Depth, SearchWindow.Infinite);
         }
 
         private int EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
             if (Transpositions.GetScore(position, depth, window, out int score))
-            {
-                _pv.Truncate(depth);
                 return score;
-            }
 
             score = EvalPosition(position, depth, window, isNullMove);
             Transpositions.Store(position.ZobristHash, depth, window, score, default);
@@ -122,7 +103,6 @@ namespace MinimalChess
                 if (window.Inside(score, color))
                 {
                     Transpositions.Store(position.ZobristHash, depth, window, score, move);
-                    _pv[depth] = move;
                     //...and maybe get a beta cutoff
                     if (window.Cut(score, color))
                     {
@@ -139,8 +119,6 @@ namespace MinimalChess
             if (expandedNodes == 0)
             {
                 //clear PV because the game is over
-                _pv[depth] = default;
-
                 if (position.IsChecked(color))
                     return Evaluation.Checkmate(color); //lost!
                 else

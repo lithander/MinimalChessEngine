@@ -1,14 +1,17 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace MinimalChess
 {
     public static class Transpositions
     {
-
         public static long HashOverwrites = 0;
         public static long HashWrites = 0;
+        public static int Count => _table.Length;
+        public static int Empty => _table.Count(entry => entry.Hash == default);
+
 
         public enum ScoreType : byte
         {
@@ -33,7 +36,22 @@ namespace MinimalChess
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
 
-        static int Index(in ulong hash) => (int)(hash % (ulong)_table.Length);
+        static int Index(in ulong hash)
+        {
+            int i0 = (int)(hash % (ulong)_table.Length);
+            return i0;
+
+            if (_table[i0].Hash == hash)
+                return i0;
+
+            //try other entry in 'bucket' if not in first one
+            int i1 = i0 ^ 1;
+            if (_table[i1].Hash == hash)
+                return i1;
+
+            //return the 'bucket' with less depth
+            return (_table[i0].Depth < _table[i1].Depth) ? i0 : i1;
+        }
 
         static Transpositions()
         {
@@ -51,13 +69,27 @@ namespace MinimalChess
             Array.Clear(_table, 0, _table.Length);
         }
 
+        public static Move[] ExtractPV(Board position, List<Move> pv)
+        {
+            ulong zobristHash = position.ZobristHash;
+            ref HashEntry entry = ref _table[Index(zobristHash)];
+            if (entry.Hash != zobristHash || entry.BestMove == default)
+                return pv.Count > 0 ? pv.ToArray() : new Move[1] { default };
+
+            pv.Add(entry.BestMove);
+            position.Play(entry.BestMove);
+            return ExtractPV(position, pv);
+        }
+
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
             int index = Index(zobristHash);
             ref HashEntry entry = ref _table[index];
-            if (entry.Depth == PERSISTENT)
-                return;
-            
+
+            HashWrites++;
+            if (entry.Hash != default && entry.Hash != zobristHash)
+                HashOverwrites++;
+
             //don't overwrite a bestmove unless it's a new position OR the new bestMove is explored to a greater depth
             if (entry.Hash != zobristHash || (depth >= entry.Depth && bestMove != default))
                 _table[index].BestMove = bestMove;

@@ -41,7 +41,7 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
+                //try
                 {
                     if (command == "reset")
                     {
@@ -103,10 +103,10 @@ namespace MinimalChessBoard
                     if (dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -128,8 +128,9 @@ namespace MinimalChessBoard
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine(" '----------------'");
-            int score = Evaluation.Evaluate(board)  + Evaluation.ComputeMobility(board);
-            Console.WriteLine($"  A B C D E F G H {score:+0.00;-0.00}");
+            int pstScore = Evaluation.Evaluate(board);
+            int mobScore = Evaluation.ComputeMobility(board);
+            Console.WriteLine($"  A B C D E F G H {(pstScore + mobScore):+0.00;-0.00} (PST:{pstScore:+0.00;-0.00}, Mobility:{mobScore})");
         }
 
         private static void PrintMobility(Board board)
@@ -317,6 +318,9 @@ namespace MinimalChessBoard
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
+                Console.WriteLine($"    TT Density: {(100 * (Transpositions.Count - Transpositions.Empty)) / Transpositions.Count}% TT Overwrites: {(100 * Transpositions.HashOverwrites) / Transpositions.HashWrites}%");
+                Transpositions.HashOverwrites = 0;
+                Transpositions.HashWrites = 0;
             }
             Console.WriteLine();
             Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");
