@@ -7,11 +7,6 @@ namespace MinimalChess
 {
     public static class Transpositions
     {
-        public static long HashOverwrites = 0;
-        public static long HashWrites = 0;
-        public static int Count => _table.Length;
-        public static int Empty => _table.Count(entry => entry.Hash == default);
-
         public enum ScoreType : byte
         {
             GreaterOrEqual,
@@ -107,10 +102,6 @@ namespace MinimalChess
         {
             int index = Index(zobristHash);
             ref HashEntry entry = ref _table[index];
-
-            HashWrites++;
-            if (entry.Hash != default && entry.Hash != zobristHash)
-                HashOverwrites++;
 
             //don't overwrite a bestmove with 'default' unless it's a new position
             if (entry.Hash != zobristHash || bestMove != default)
