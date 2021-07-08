@@ -72,8 +72,7 @@ namespace MinimalChessBoard
                     else if (command == "!")
                     {
                         int depth = tokens.Length > 1 ? int.Parse(tokens[1]) : 4;
-                        IterativeSearch search = new IterativeSearch(board);
-                        search.Search(depth);
+                        IterativeSearch search = new IterativeSearch(depth, board);
                         move = search.PrincipalVariation[0];
                         Console.WriteLine($"{board.SideToMove} >> {move}");
                         board.Play(move);
@@ -171,8 +170,7 @@ namespace MinimalChessBoard
 
         private static void ListMoves(Board board, int depth)
         {
-            IterativeSearch search = new IterativeSearch(board);
-            search.Search(depth);
+            IterativeSearch search = new IterativeSearch(depth, board);
             Move[] line = search.PrincipalVariation;
 
             int i = 1;
@@ -305,9 +303,8 @@ namespace MinimalChessBoard
             {
                 ParseEpd(file.ReadLine(), out Board board, ref bestMoves);
                 Transpositions.Clear();
-                IterativeSearch search = new IterativeSearch(board);
                 long t0 = Stopwatch.GetTimestamp();
-                search.Search(depth);
+                IterativeSearch search = new IterativeSearch(depth, board);
                 long t1 = Stopwatch.GetTimestamp();
                 long dt = t1 - t0;
                 totalTime += dt;

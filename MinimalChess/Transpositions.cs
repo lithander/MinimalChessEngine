@@ -12,7 +12,6 @@ namespace MinimalChess
         public static int Count => _table.Length;
         public static int Empty => _table.Count(entry => entry.Hash == default);
 
-
         public enum ScoreType : byte
         {
             GreaterOrEqual,
@@ -31,7 +30,8 @@ namespace MinimalChess
             //                        16 Bytes
         }
 
-        public static short PERSISTENT = 9999;
+        public const short ROOT = 9999;
+        public const short HISTORY = 9998;
         public const int DEFAULT_SIZE_MB = 50;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
@@ -39,12 +39,10 @@ namespace MinimalChess
         static int Index(in ulong hash)
         {
             int i0 = (int)(hash % (ulong)_table.Length);
-            return i0;
-
             if (_table[i0].Hash == hash)
                 return i0;
 
-            //try other entry in 'bucket' if not in first one
+            //try other 'bucket' if not in first one
             int i1 = i0 ^ 1;
             if (_table[i1].Hash == hash)
                 return i1;
@@ -69,16 +67,40 @@ namespace MinimalChess
             Array.Clear(_table, 0, _table.Length);
         }
 
-        public static Move[] ExtractPV(Board position, List<Move> pv)
+        public static void ClearChunk(int counter, int count)
+        {
+            int chunk = counter % count;
+            int stride = _table.Length / count; //a 'remainder' will never be cleared!
+            Array.Clear(_table, chunk * stride, stride);
+        }
+
+        public static Move[] ExtractPV(Board root, int depth, out bool repeatsHistory)
+        {
+            var pv = new List<Move>();
+            repeatsHistory = ExtractPV(new Board(root), pv, depth);
+            return pv.ToArray();
+        }
+
+        public static bool ExtractPV(Board position, List<Move> pv, int depth)
         {
             ulong zobristHash = position.ZobristHash;
             ref HashEntry entry = ref _table[Index(zobristHash)];
-            if (entry.Hash != zobristHash || entry.BestMove == default)
-                return pv.Count > 0 ? pv.ToArray() : new Move[1] { default };
+            
+            //Quit because entry is not about this position
+            if (entry.Hash != zobristHash)
+                return false;
+
+            //Quit because this position is flagged as a repetition
+            if (entry.Depth == HISTORY)
+                return true;
+
+            //Quit because the requested depth has been reached or no best move available
+            if (depth == 0 || entry.BestMove == default)
+                return false;
 
             pv.Add(entry.BestMove);
             position.Play(entry.BestMove);
-            return ExtractPV(position, pv);
+            return ExtractPV(position, pv, --depth);
         }
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
@@ -90,9 +112,9 @@ namespace MinimalChess
             if (entry.Hash != default && entry.Hash != zobristHash)
                 HashOverwrites++;
 
-            //don't overwrite a bestmove unless it's a new position OR the new bestMove is explored to a greater depth
-            if (entry.Hash != zobristHash || (depth >= entry.Depth && bestMove != default))
-                _table[index].BestMove = bestMove;
+            //don't overwrite a bestmove with 'default' unless it's a new position
+            if (entry.Hash != zobristHash || bestMove != default)
+                entry.BestMove = bestMove;
 
             entry.Hash = zobristHash;
             entry.Depth = (short)Math.Max(0, depth);

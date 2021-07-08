@@ -16,7 +16,7 @@ namespace MinimalChess
             _width = width;
         }
 
-        public void Grow(int depth)
+        public void Resize(int depth)
         {
             _depth = Math.Max(_depth, depth);
             Array.Resize(ref _moves, _depth * _width);
