@@ -10,10 +10,11 @@ The didactic nature of the project is reinforced by it's open source license (MI
 
 * A simple 8x8 Board representation: Just an array to represent the 64 squares and keep track of the pieces.
 * A triangular PV-Table to keep track of the Principal Variation of best moves.
-* Staged move generation: PV move first, then MVV-LVA sorted captures, followed by known killer moves and finally the remaining quiet moves.
-* Iterative Deepening Search with Alpha-Beta pruning and Quiescence Search.
-* Tapered Piece-Square Tables with values tuned on a set of 725000 quiet, labeled positions.
-* No bitboards, hash tables, not even an undo-move method, just the essentials.
+* A Transposition Table to store the score and best move of previously visited positions.
+* Staged move generation: TT first, followed by the PV move, then MVV-LVA sorted captures, followed by known killer moves and finally the remaining quiet moves.
+* Iterative Deepening Search with PVS, null-move pruning and Quiescence Search.
+* Tapered PSTs with values tuned on a set of 725000 quiet, labeled positions.
+* A 13th auto-tuned table for a dynamic, mobility-based evaluation component.
 
 ## How to play
 
@@ -32,13 +33,23 @@ After this you should be ready to select MinimalChess as a player!
 
 ## Version History
 ```
+Version:   0.5
+Size:      707 LOC
+Strength:  2200 ELO
+```
+[__Version 0.5__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.5) adds a 13th tuned table for a mobility-based evaluation term, null-move pruning and a simple transposition table. I also changed the target framework to .NET 5.
+With these changes MinimalChess gains about 350 ELO in playing strength over the previous version.
+
+```
 Version:   0.4
 Size:      610 LOC
-Strength:  1900 ELO
+Strength:  1883 ELO
 ```
 [__Version 0.4__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I found values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
 I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation so that MinimalChess does not generate moves which will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. 
 A new time control logic now allocates the given time budget smarter, especially in modes where there's an increment each move, and the 'nodes' and 'depth' constraints are now supported in all modes.
+MinimalChess 0.4.1 is listed at [1883 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.4.1%2064-bit#MinimalChess_0_4_1_64-bit) on the CCRL.
+
 
 ```
 Version:   0.3
@@ -46,7 +57,7 @@ Size:      641 LOC
 Strength:  1575 ELO
 ```
 [__Version 0.3__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.3) adds MVV-LVA move ordering, Quiescence Search and replaces material-only evaluation with Piece-Square Tables.
-With these changes MinimalChess gains about 500 ELO in playing strength over the previous version and achieved at [1571 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
+With these changes MinimalChess gains about 500 ELO in playing strength over the previous version and achieved [1571 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
 This version also introduces a rather unique feature: Sets of PSTs are defined in separate files and can be selected via an UCI option. This allows the user to tweak the values or write their own tables from scratch and by this alter the playstyle of the engine considerably. No programming experience required!
 
 ```
