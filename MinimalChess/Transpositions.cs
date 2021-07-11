@@ -1,7 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace MinimalChess
 {
@@ -25,8 +22,7 @@ namespace MinimalChess
             //                        16 Bytes
         }
 
-        public const short ROOT = 9999;
-        public const short HISTORY = 9998;
+        public const short HISTORY = 9999;
         public const int DEFAULT_SIZE_MB = 50;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
@@ -67,35 +63,6 @@ namespace MinimalChess
             int chunk = counter % count;
             int stride = _table.Length / count; //a 'remainder' will never be cleared!
             Array.Clear(_table, chunk * stride, stride);
-        }
-
-        public static Move[] ExtractPV(Board root, int depth, out bool repeatsHistory)
-        {
-            var pv = new List<Move>();
-            repeatsHistory = ExtractPV(new Board(root), pv, depth);
-            return pv.ToArray();
-        }
-
-        public static bool ExtractPV(Board position, List<Move> pv, int depth)
-        {
-            ulong zobristHash = position.ZobristHash;
-            ref HashEntry entry = ref _table[Index(zobristHash)];
-            
-            //Quit because entry is not about this position
-            if (entry.Hash != zobristHash)
-                return false;
-
-            //Quit because this position is flagged as a repetition
-            if (entry.Depth == HISTORY)
-                return true;
-
-            //Quit because the requested depth has been reached or no best move available
-            if (depth == 0 || entry.BestMove == default)
-                return false;
-
-            pv.Add(entry.BestMove);
-            position.Play(entry.BestMove);
-            return ExtractPV(position, pv, --depth);
         }
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)

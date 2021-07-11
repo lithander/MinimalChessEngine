@@ -4,6 +4,7 @@ using System.Linq;
 
 namespace MinimalChess
 {
+
     public class IterativeSearch
     {
         const int QUERY_TC_FREQUENCY = 25;
@@ -11,9 +12,9 @@ namespace MinimalChess
         public long NodesVisited { get; private set; }
         public int Depth { get; private set; }
         public int Score { get; private set; }
-        public bool GameOver { get; private set; }
-        public Move[] PrincipalVariation { get; private set; }
+        public Move[] PrincipalVariation { get; private set; } = Array.Empty<Move>();
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
+        public bool GameOver => Evaluation.IsCheckmate(Score);
 
         Board _root = null;
         KillerMoves _killers;
@@ -35,26 +36,41 @@ namespace MinimalChess
         
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
-            if (GameOver || Aborted) 
+            if (GameOver)
                 return;
 
             Depth++;
             _killers.Resize(Depth);
+            TriangularTable.Init(Depth);
+            StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
+
             int score = EvalPosition(_root, Depth, SearchWindow.Infinite);
 
             if (!Aborted)
             {
-                PrincipalVariation = Transpositions.ExtractPV(_root, Depth, out bool isDraw);
-                GameOver = Evaluation.IsCheckmate(score) || isDraw;
                 Score = score;
+                PrincipalVariation = TriangularTable.GetLine(Depth);
+            }
+        }
+
+        private void StorePVinTT(Move[] pv, int depth)
+        {
+            Board position = new Board(_root);
+            foreach (Move move in pv)
+            {
+                Transpositions.Store(position.ZobristHash, --depth, SearchWindow.Infinite, Score, move);
+                position.Play(move);
             }
         }
 
         private int EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
             if (Transpositions.GetScore(position, depth, window, out int score))
+            {
+                TriangularTable.Truncate(depth);
                 return score;
+            }
 
             score = EvalPosition(position, depth, window, isNullMove);
             Transpositions.Store(position.ZobristHash, depth, window, score, default);
@@ -108,9 +124,8 @@ namespace MinimalChess
                 int score = EvalPositionTT(child, depth - 1, window);
                 if (window.Inside(score, color))
                 {
-                    //store move & score in TT. For root nodes a special depth is used to protect them against replacement (ROOT > HISTORY)
-                    int ttDepth = depth == Depth ? Transpositions.ROOT : depth;
-                    Transpositions.Store(position.ZobristHash, ttDepth, window, score, move);
+                    Transpositions.Store(position.ZobristHash, depth, window, score, move);
+                    TriangularTable.Store(depth, move);
                     //...and maybe get a beta cutoff
                     if (window.Cut(score, color))
                     {
@@ -127,6 +142,7 @@ namespace MinimalChess
             if (expandedNodes == 0)
             {
                 //clear PV because the game is over
+                TriangularTable.Truncate(depth);
                 if (position.IsChecked(color))
                     return Evaluation.Checkmate(color); //lost!
                 else
