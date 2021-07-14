@@ -5,9 +5,9 @@ namespace MinimalChessEngine
 {
     class TimeControl
     {
-        const int BASE_MARGIN = 20;
+        const int TIME_MARGIN = 20;
         const int BRANCHING_FACTOR_ESTIMATE = 5;
-        const int MAX_TIME_REMAINING = int.MaxValue / 3; //large but not too large to cause overlow issues
+        const int MAX_TIME_REMAINING = int.MaxValue / 3; //large but not too large to cause overflow issues
 
         private int _movesToGo;
         private int _increment;
@@ -15,14 +15,12 @@ namespace MinimalChessEngine
         private long _t0 = -1;
         private long _tN = -1;
 
-        public int TimePerMove => (_remaining + (_movesToGo - 1) * _increment) / _movesToGo;
-        public int TimePerMoveWithMargin => WithMargin(TimePerMove);
-        public int TimeRemainingWithMargin => WithMargin(_remaining);
-        public int Elapsed => MilliSeconds(Now - _t0);
-        public int ElapsedInterval => MilliSeconds(Now - _tN);
+        public int TimePerMoveWithMargin => (_remaining + (_movesToGo - 1) * _increment) / _movesToGo - TIME_MARGIN;
+        public int TimeRemainingWithMargin => _remaining - TIME_MARGIN;
 
         private long Now => Stopwatch.GetTimestamp();
-        private int WithMargin(int time) => time - BASE_MARGIN - (int)Math.Sqrt(time);
+        public int Elapsed => MilliSeconds(Now - _t0);
+        public int ElapsedInterval => MilliSeconds(Now - _tN);
 
         private int MilliSeconds(long ticks)
         {

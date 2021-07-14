@@ -36,20 +36,5 @@ namespace MinimalChessEngine
         {
             Console.WriteLine($"info string {message}");
         }
-
-        static public void OptionPieceSquareTables(IEnumerable<string> pstFiles, string defaultNameIfPresent)
-        {
-            if (pstFiles == null || !pstFiles.Any())
-                return;
-
-            List<string> pstNames = pstFiles.Select(file => Path.GetFileNameWithoutExtension(file)).ToList();
-
-            string defaultName = pstNames.Contains(defaultNameIfPresent) ? defaultNameIfPresent : pstNames[0];
-            string uciOption = $"option name PieceSquareTables type combo default {defaultName}";
-            foreach (string pstName in pstNames)
-                uciOption += $" var {pstName}";
-
-            Console.WriteLine(uciOption);
-        }
     }
 }

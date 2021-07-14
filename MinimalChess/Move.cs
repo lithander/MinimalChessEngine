@@ -4,9 +4,9 @@ namespace MinimalChess
 {
     public struct Move
     {
-        public byte FromSquare;
-        public byte ToSquare;
-        public Piece Promotion;
+        public readonly byte FromSquare;
+        public readonly byte ToSquare;
+        public readonly Piece Promotion;
 
         public Move(int fromIndex, int toIndex)
         {

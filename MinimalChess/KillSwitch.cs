@@ -10,7 +10,7 @@ namespace MinimalChess
         public KillSwitch(Func<bool> killSwitch = null)
         {
             _killSwitch = killSwitch;
-            _aborted = _killSwitch == null ? false : _killSwitch();
+            _aborted = _killSwitch != null && _killSwitch();
         }
 
         public bool Get(bool update)

@@ -38,7 +38,7 @@
 
                 Ceiling = score;
                 return Ceiling <= Floor; //Cutoff?
-            };
+            }
         }
 
         public bool Inside(int score, Color color)

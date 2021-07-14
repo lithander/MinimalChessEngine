@@ -1,13 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
 
 namespace MinimalChess
 {
     class KillerMoves
     {
         Move[] _moves;
-        int _depth = 0;
-        int _width = 0;
+        int _depth;
+        int _width;
 
         public KillerMoves(int width)
         {

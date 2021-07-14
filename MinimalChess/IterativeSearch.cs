@@ -1,6 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
 
 namespace MinimalChess
 {
@@ -16,7 +14,7 @@ namespace MinimalChess
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
         public bool GameOver => Evaluation.IsCheckmate(Score);
 
-        Board _root = null;
+        Board _root;
         KillerMoves _killers;
         KillSwitch _killSwitch;
         long _maxNodes;
@@ -41,17 +39,9 @@ namespace MinimalChess
 
             Depth++;
             _killers.Resize(Depth);
-            TriangularTable.Init(Depth);
             StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
-
-            int score = EvalPosition(_root, Depth, SearchWindow.Infinite);
-
-            if (!Aborted)
-            {
-                Score = score;
-                PrincipalVariation = TriangularTable.GetLine(Depth);
-            }
+            (Score, PrincipalVariation) = EvalPosition(_root, Depth, SearchWindow.Infinite);
         }
 
         private void StorePVinTT(Move[] pv, int depth)
@@ -64,30 +54,27 @@ namespace MinimalChess
             }
         }
 
-        private int EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
+        private (int Score, Move[] PV) EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
-            if (Transpositions.GetScore(position, depth, window, out int score))
-            {
-                TriangularTable.Truncate(depth);
-                return score;
-            }
+            if (Transpositions.GetScore(position, depth, window, out int ttScore))
+                return (ttScore, Array.Empty<Move>());
 
-            score = EvalPosition(position, depth, window, isNullMove);
-            Transpositions.Store(position.ZobristHash, depth, window, score, default);
-            return score;
+            var result = EvalPosition(position, depth, window, isNullMove);
+            Transpositions.Store(position.ZobristHash, depth, window, result.Score, default);
+            return result;
         }
 
-        private int EvalPosition(Board position, int depth, SearchWindow window, bool isNullMove = false)
+        private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
             if (depth <= 0)
             {
                 Evaluation.DynamicScore = Evaluation.ComputeMobility(position);
-                return QEval(position, window);
+                return (QEval(position, window), Array.Empty<Move>());
             }
 
             NodesVisited++;
             if (Aborted)
-                return 0;
+                return (0, Array.Empty<Move>());
 
             Color color = position.SideToMove;
             //should we try null move pruning?
@@ -98,13 +85,14 @@ namespace MinimalChess
                 Board nullChild = Playmaker.PlayNullMove(position);
                 //evaluate the position at reduced depth with a null-window around beta
                 SearchWindow nullWindow = window.GetUpperBound(color);
-                int nullScore = EvalPositionTT(nullChild, depth - R - 1, nullWindow, true);
+                (int nullScore, _) = EvalPositionTT(nullChild, depth - R - 1, nullWindow, true);
                 //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
                 if (nullWindow.Cut(nullScore, color))
-                    return nullScore;
+                    return (nullScore, Array.Empty<Move>());
             }
 
             //do a regular expansion...
+            Move[] pv = Array.Empty<Move>();
             int expandedNodes = 0;
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
             {
@@ -115,41 +103,37 @@ namespace MinimalChess
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
-                    int nullScore = EvalPositionTT(child, depth - 1, nullWindow);
-                    if (!nullWindow.Inside(nullScore, color))
+                    var nullResult = EvalPositionTT(child, depth - 1, nullWindow);
+                    if (!nullWindow.Inside(nullResult.Score, color))
                         continue;
                 }
 
                 //this node may raise alpha!
-                int score = EvalPositionTT(child, depth - 1, window);
-                if (window.Inside(score, color))
+                var eval = EvalPositionTT(child, depth - 1, window);
+                if (window.Inside(eval.Score, color))
                 {
-                    Transpositions.Store(position.ZobristHash, depth, window, score, move);
-                    TriangularTable.Store(depth, move);
+                    Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
+                    //store the PV beginning with move, followed by the PV of the childnode
+                    pv = new Move[eval.PV.Length + 1];
+                    pv[0] = move;
+                    Array.Copy(eval.PV, 0, pv, 1, eval.PV.Length);
                     //...and maybe get a beta cutoff
-                    if (window.Cut(score, color))
+                    if (window.Cut(eval.Score, color))
                     {
                         //we remember killers like hat!
                         if (position[move.ToSquare] == Piece.None)
                             _killers.Add(move, depth);
 
-                        return window.GetScore(color);
+                        return (window.GetScore(color), pv);
                     }
                 }
             }
 
-            //no playable moves in this position?
+            //checkmate or draw?
             if (expandedNodes == 0)
-            {
-                //clear PV because the game is over
-                TriangularTable.Truncate(depth);
-                if (position.IsChecked(color))
-                    return Evaluation.Checkmate(color); //lost!
-                else
-                    return 0; //draw!
-            }
+                return (position.IsChecked(color) ? Evaluation.Checkmate(color) : 0, Array.Empty<Move>());
 
-            return window.GetScore(color);
+            return (window.GetScore(color), pv);
         }
 
         private int QEval(Board position, SearchWindow window)

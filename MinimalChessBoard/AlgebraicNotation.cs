@@ -92,7 +92,7 @@ namespace MinimalChessBoard
 
                 return move; //this is the move!
             }
-            throw new ArgumentException($"No move meeting all requirements could be found!");
+            throw new ArgumentException("No move meeting all requirements could be found!");
         }
     }
 }

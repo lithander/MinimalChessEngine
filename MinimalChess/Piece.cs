@@ -1,4 +1,6 @@
-﻿namespace MinimalChess
+﻿using System;
+
+namespace MinimalChess
 {
     public enum Color
     {
@@ -6,6 +8,7 @@
         White = +1
     }
 
+    [Flags]
     public enum Piece : sbyte
     {
         //1st Bit = Piece or None?
@@ -49,7 +52,7 @@
         public const int MaxOrder = 6;
 
         //Pawn = 1, Knight = 2, Bishop = 3; Rook = 4, Queen = 5, King = 6
-        public static int Order(Piece piece) => ((int)piece >> 2);
+        public static int Order(Piece piece) => (int)piece >> 2;
 
         public static Piece Type(Piece piece) => piece & Piece.TypeMask;
 

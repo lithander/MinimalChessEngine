@@ -89,7 +89,7 @@ namespace MinimalChess
         private static void TryAddSquare(this List<byte> buffer, int rank, int file)
         {
             if (IsLegalSquare(rank, file))
-                IndexBuffer.AddSquare(rank, file);
+                buffer.AddSquare(rank, file);
         }
 
         private static void AddSquare(this List<byte> buffer, int rank, int file) => buffer.Add((byte)(rank * 8 + file));

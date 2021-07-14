@@ -45,13 +45,6 @@ namespace MinimalChess
             return quietMoves;
         }
 
-        internal static MoveList Captures(Board position)
-        {
-            MoveList captures = new MoveList();
-            position.CollectCaptures(captures.Add);
-            return captures;
-        }
-
         internal static MoveList SortedCaptures(Board position)
         {
             MoveList captures = new MoveList();

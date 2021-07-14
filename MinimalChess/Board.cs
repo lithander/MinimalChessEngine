@@ -679,22 +679,5 @@ namespace MinimalChess
             hash ^= Zobrist.EnPassant(_enPassantSquare);
             return hash;
         }
-
-        public override int GetHashCode()
-        {
-            //perft 5 on Kiwipete r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1
-            //Moves: 193,690,690
-            //Unique Positions:  30,216,804
-            //Unique HashCodes:  30,111,082
-            //HashCollisions: 105,722 (0 with 64bit)
-            return (int)_zobristHash;
-        }
-
-        //[Conditional("DEBUG")]
-        //private void ValidateZobristHash()
-        //{
-        //    ulong zobrist = GetZobristHash();
-        //    Debug.Assert(zobrist == _zobristHash);
-        //}
     }
 }

@@ -19,10 +19,6 @@ namespace MinimalChessEngine
         public bool Running { get; private set; }
         public Color SideToMove => _board.SideToMove;
 
-        public Engine()
-        {
-        }
-
         public void Start()
         {
             Stop();
@@ -105,8 +101,7 @@ namespace MinimalChessEngine
 
             //start the search thread
             _maxSearchDepth = maxDepth;
-            _searching = new Thread(Search);
-            _searching.Priority = ThreadPriority.Highest;
+            _searching = new Thread(Search) {Priority = ThreadPriority.Highest};
             _searching.Start();
         }
 
