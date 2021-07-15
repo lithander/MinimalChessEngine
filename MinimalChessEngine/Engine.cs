@@ -88,8 +88,6 @@ namespace MinimalChessEngine
             //do the first iteration. it's cheap, no time check, no thread
             Uci.Log($"Search scheduled to take {_time.TimePerMoveWithMargin}ms!");
 
-            //clear a rolling quarter of the TT so that it doesn't get filled with high-depth but obsolete old positions
-            Transpositions.ClearChunk(_history.Count, 8);
             //add all history positions with a score of 0 (Draw through 3-fold repetition) and freeze them by setting a depth that is never going to be overwritten
             foreach (var position in _history)
                 Transpositions.Store(position.ZobristHash, Transpositions.HISTORY, SearchWindow.Infinite, 0, default);

@@ -27,21 +27,6 @@ namespace MinimalChess
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
 
-        static int Index(in ulong hash)
-        {
-            int i0 = (int)(hash % (ulong)_table.Length);
-            if (_table[i0].Hash == hash)
-                return i0;
-
-            //try other 'bucket' if not in first one
-            int i1 = i0 ^ 1;
-            if (_table[i1].Hash == hash)
-                return i1;
-
-            //return the 'bucket' with less depth
-            return (_table[i0].Depth < _table[i1].Depth) ? i0 : i1;
-        }
-
         static Transpositions()
         {
             Resize(DEFAULT_SIZE_MB);
@@ -58,16 +43,9 @@ namespace MinimalChess
             Array.Clear(_table, 0, _table.Length);
         }
 
-        public static void ClearChunk(int counter, int count)
-        {
-            int chunk = counter % count;
-            int stride = _table.Length / count; //a 'remainder' will never be cleared!
-            Array.Clear(_table, chunk * stride, stride);
-        }
-
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            int index = Index(zobristHash);
+            int index = (int)(zobristHash % (ulong)_table.Length);
             ref HashEntry entry = ref _table[index];
 
             //don't overwrite a bestmove with 'default' unless it's a new position
@@ -96,9 +74,9 @@ namespace MinimalChess
 
         internal static Move GetBestMove(Board position)
         {
-            ulong zobristHash = position.ZobristHash;
-            int index = Index(zobristHash);
-            if (_table[index].Hash == zobristHash)
+            ulong hash = position.ZobristHash;
+            int index = (int)(hash % (ulong)_table.Length);
+            if (_table[index].Hash == hash)
                 return _table[index].BestMove;
             else
                 return default;
@@ -106,12 +84,12 @@ namespace MinimalChess
 
         public static bool GetScore(Board position, int depth, SearchWindow window, out int score)
         {
-            ulong zobristHash = position.ZobristHash;
-            int index = Index(zobristHash);
+            ulong hash = position.ZobristHash;
+            int index = (int)(hash % (ulong)_table.Length);
             ref HashEntry entry = ref _table[index];
 
             score = entry.Score;
-            if (entry.Hash != zobristHash || entry.Depth < depth)
+            if (entry.Hash != hash || entry.Depth < depth)
                 return false;
 
             //1.) score is exact and within window
