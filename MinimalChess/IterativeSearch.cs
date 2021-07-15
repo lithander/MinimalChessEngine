@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -141,7 +142,7 @@ namespace MinimalChess
             NodesVisited++;
             if (Aborted)
                 return 0;
-
+            
             Color color = position.SideToMove;
             bool inCheck = position.IsChecked(color);
             //if inCheck we can't use standPat, need to escape check!
@@ -150,7 +151,7 @@ namespace MinimalChess
                 int standPatScore = Evaluation.DynamicScore + Evaluation.Evaluate(position);
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
-                    return window.GetScore(color);
+                    return standPatScore;
             }
 
             int expandedNodes = 0;
@@ -158,8 +159,13 @@ namespace MinimalChess
             foreach (Board child in inCheck ? Playmaker.Play(position) : Playmaker.PlayCaptures(position))
             {
                 expandedNodes++;
-                //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(child, window);
+
+                //if (!Transpositions.GetScore(child, 0, window, out int score))
+                //{
+                    //recursively evaluate the resulting position (after the capture) with QEval
+                    int score = QEval(child, window);
+                //    Transpositions.Store(child.ZobristHash, 0, window, score, default);
+                //}
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))

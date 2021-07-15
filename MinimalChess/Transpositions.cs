@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -22,24 +23,50 @@ namespace MinimalChess
             //                        16 Bytes
         }
 
-        public const short HISTORY = 9999;
+        public const short HISTORY = 99;
         public const int DEFAULT_SIZE_MB = 50;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
+        public static long[] _count = new long[100];
 
-        static int Index(in ulong hash)
+        static bool Index(in ulong hash, out int index)
         {
+            index = (int)(hash % (ulong)_table.Length);
+            if (_table[index].Hash == hash)
+                return true;
+
+            //try other 'bucket' if not in first one
+            index ^= 1;
+            if (_table[index].Hash == hash)
+                return true;
+
+            return false;
+        }
+
+        static int Index(in ulong hash, int depth)
+        {
+            _count[depth]++;
+
             int i0 = (int)(hash % (ulong)_table.Length);
+
+            int d0 = _table[i0].Depth;
             if (_table[i0].Hash == hash)
+            {
+                _count[d0]--;
                 return i0;
+            }
 
             //try other 'bucket' if not in first one
             int i1 = i0 ^ 1;
-            if (_table[i1].Hash == hash)
+            int d1 = _table[i1].Depth;
+            if (_table[i1].Hash == hash || _count[d1] > _count[d0])
+            {
+                _count[d1]--;
                 return i1;
+            }
 
-            //return the 'bucket' with less depth
-            return (_table[i0].Depth < _table[i1].Depth) ? i0 : i1;
+            _count[d0]--;
+            return i0;
         }
 
         static Transpositions()
@@ -51,23 +78,21 @@ namespace MinimalChess
         {
             int length = (hashSizeMBytes * 1024 * 1024) / ENTRY_SIZE;
             _table = new HashEntry[length];
+            Array.Clear(_count, 0, _count.Length);
+            _count[0] = _table.Length;
         }
 
         public static void Clear()
         {
             Array.Clear(_table, 0, _table.Length);
-        }
-
-        public static void ClearChunk(int counter, int count)
-        {
-            int chunk = counter % count;
-            int stride = _table.Length / count; //a 'remainder' will never be cleared!
-            Array.Clear(_table, chunk * stride, stride);
+            Array.Clear(_count, 0, _count.Length);
+            _count[0] = _table.Length;
         }
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            int index = Index(zobristHash);
+            depth = Math.Max(depth, 0);
+            int index = Index(zobristHash, depth);
             ref HashEntry entry = ref _table[index];
 
             //don't overwrite a bestmove with 'default' unless it's a new position
@@ -75,7 +100,7 @@ namespace MinimalChess
                 entry.BestMove = bestMove;
 
             entry.Hash = zobristHash;
-            entry.Depth = (short)Math.Max(0, depth);
+            entry.Depth = (short)depth;
 
             if (score >= window.Ceiling)
             {
@@ -96,22 +121,21 @@ namespace MinimalChess
 
         internal static Move GetBestMove(Board position)
         {
-            ulong zobristHash = position.ZobristHash;
-            int index = Index(zobristHash);
-            if (_table[index].Hash == zobristHash)
+            if(Index(position.ZobristHash, out int index))
                 return _table[index].BestMove;
-            else
-                return default;
+
+            return default;
         }
 
         public static bool GetScore(Board position, int depth, SearchWindow window, out int score)
         {
-            ulong zobristHash = position.ZobristHash;
-            int index = Index(zobristHash);
-            ref HashEntry entry = ref _table[index];
+            score = 0;
+            if (!Index(position.ZobristHash, out int index))
+                return false;
 
+            ref HashEntry entry = ref _table[index];
             score = entry.Score;
-            if (entry.Hash != zobristHash || entry.Depth < depth)
+            if (entry.Depth < depth)
                 return false;
 
             //1.) score is exact and within window
