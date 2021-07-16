@@ -29,7 +29,7 @@ namespace MinimalChessEngine
 
         private static void ParseUciCommand(string input)
         {
-            //remove leading & trailing whitecases and split using ' ' as delimiter
+            //remove leading & trailing whitespaces and split using ' ' as delimiter
             string[] tokens = input.Trim().Split();
             switch (tokens[0])
             {

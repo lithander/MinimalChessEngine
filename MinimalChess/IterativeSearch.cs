@@ -57,7 +57,8 @@ namespace MinimalChess
 
         private (int Score, Move[] PV) EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
         {
-            if (Transpositions.GetScore(position, depth, window, out int ttScore))
+            depth = Math.Max(depth, 0);
+            if (Transpositions.GetScore(position.ZobristHash, depth, window, out int ttScore))
                 return (ttScore, Array.Empty<Move>());
 
             var result = EvalPosition(position, depth, window, isNullMove);
@@ -160,12 +161,12 @@ namespace MinimalChess
             {
                 expandedNodes++;
 
-                //if (!Transpositions.GetScore(child, 0, window, out int score))
-                //{
+                if (!Transpositions.GetQScore(child.ZobristHash, window, out int score))
+                {
                     //recursively evaluate the resulting position (after the capture) with QEval
-                    int score = QEval(child, window);
-                //    Transpositions.Store(child.ZobristHash, 0, window, score, default);
-                //}
+                    score = QEval(child, window);
+                    Transpositions.QStore(child.ZobristHash, window, score);
+                }
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))

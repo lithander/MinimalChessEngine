@@ -23,50 +23,52 @@ namespace MinimalChess
             //                        16 Bytes
         }
 
+        public const short MAX_DEPTH = 99;
         public const short HISTORY = 99;
         public const int DEFAULT_SIZE_MB = 50;
+        
+        const short BUCKETS = 4;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
-        public static long[] _count = new long[100];
+        public static int[] _count = new int[MAX_DEPTH+2];//MAX_DEPTH + QSEARCH_OFFSET=1 must be legal index
 
         static bool Index(in ulong hash, out int index)
         {
-            index = (int)(hash % (ulong)_table.Length);
-            if (_table[index].Hash == hash)
-                return true;
-
-            //try other 'bucket' if not in first one
-            index ^= 1;
-            if (_table[index].Hash == hash)
-                return true;
+            //four indices form a cluster of buckets. All 4 indices serve as entry point into the cluster
+            int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
+            for (index = i0; index < i0 + BUCKETS; index++)
+                if (_table[index].Hash == hash)
+                    return true;
 
             return false;
         }
 
         static int Index(in ulong hash, int depth)
         {
+            //four indices form a cluster of buckets. All 4 indices serve as entry point into the cluster
+            int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
+            int max = 0;
+            int index = 0;
+            for (int i = i0; i < i0 + BUCKETS; i++)
+            {
+                if (_table[i].Hash == hash)
+                {
+                    index = i;
+                    break;
+                }
+
+                int count = _count[_table[i].Depth];
+                if (count > max)
+                {
+                    index = i;
+                    max = count;
+                }
+            }
+
+            //hash wasn't found! 
             _count[depth]++;
-
-            int i0 = (int)(hash % (ulong)_table.Length);
-
-            int d0 = _table[i0].Depth;
-            if (_table[i0].Hash == hash)
-            {
-                _count[d0]--;
-                return i0;
-            }
-
-            //try other 'bucket' if not in first one
-            int i1 = i0 ^ 1;
-            int d1 = _table[i1].Depth;
-            if (_table[i1].Hash == hash || _count[d1] > _count[d0])
-            {
-                _count[d1]--;
-                return i1;
-            }
-
-            _count[d0]--;
-            return i0;
+            _count[_table[index].Depth]--;
+            return index;
         }
 
         static Transpositions()
@@ -91,7 +93,7 @@ namespace MinimalChess
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            depth = Math.Max(depth, 0);
+            depth++;
             int index = Index(zobristHash, depth);
             ref HashEntry entry = ref _table[index];
 
@@ -127,10 +129,11 @@ namespace MinimalChess
             return default;
         }
 
-        public static bool GetScore(Board position, int depth, SearchWindow window, out int score)
+        public static bool GetScore(ulong zobristHash, int depth, SearchWindow window, out int score)
         {
+            depth++;
             score = 0;
-            if (!Index(position.ZobristHash, out int index))
+            if (!Index(zobristHash, out int index))
                 return false;
 
             ref HashEntry entry = ref _table[index];
@@ -149,6 +152,16 @@ namespace MinimalChess
                 return true; //failHigh
 
             return false;
+        }
+
+        public static bool GetQScore(ulong zobristHash, SearchWindow window, out int score)
+        {
+            return GetScore(zobristHash, -1, window, out score);
+        }
+        
+        public static void QStore(in ulong zobristHash, SearchWindow window, in int score)
+        {
+            Store(zobristHash, -1, window, score, default);
         }
     }
 }
