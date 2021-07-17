@@ -160,13 +160,8 @@ namespace MinimalChess
             {
                 expandedNodes++;
 
-                if (!Transpositions.GetScore(child.ZobristHash, 0, window, out int score))
-                {
-                    //recursively evaluate the resulting position (after the capture) with QEval
-                    score = QEval(child, window);
-                    Transpositions.Store(child.ZobristHash, 0, window, score, default);
-                }
-
+                //recursively evaluate the resulting position (after the capture) with QEval
+                int score = QEval(child, window);
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))
                     break;

@@ -16,7 +16,8 @@ namespace MinimalChess
         {
             public ulong Hash;       //8 Bytes
             public short Score;      //2 Bytes
-            public ushort Depth;     //2 Bytes
+            public byte Depth;       //1 Byte
+            public byte Age;         //1 Byte
             public ScoreType Type;   //1 Byte
             public Move BestMove;    //3 Bytes
             //==================================
@@ -38,7 +39,10 @@ namespace MinimalChess
             int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
             for (index = i0; index < i0 + BUCKETS; index++)
                 if (_table[index].Hash == hash)
+                {
+                    _table[index].Age = 0;
                     return true;
+                }
 
             return false;
         }
@@ -57,10 +61,9 @@ namespace MinimalChess
                     break;
                 }
 
-                //positions at depth 10 get 1/(1+10) = 9% of the hash slots than leaf nodes.
-                int draft = _table[i].Depth;
-                int load = (1 + draft) * _count[draft];
-                //Console.WriteLine($"(1 + {draft}) * {_count[draft]} = {load}");
+                int age = ++_table[i].Age;
+                int load = age * _count[_table[i].Depth];
+                //Console.WriteLine($"{age} * {_count[draft]} = {load}");
                 if (load > max)
                 {
                     index = i;
@@ -105,7 +108,8 @@ namespace MinimalChess
                 entry.BestMove = bestMove;
 
             entry.Hash = zobristHash;
-            entry.Depth = (ushort)depth;
+            entry.Depth = (byte)depth;
+            entry.Age = 0;
 
             if (score >= window.Ceiling)
             {
