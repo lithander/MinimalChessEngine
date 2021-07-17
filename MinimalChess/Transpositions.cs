@@ -16,7 +16,7 @@ namespace MinimalChess
         {
             public ulong Hash;       //8 Bytes
             public short Score;      //2 Bytes
-            public short Depth;      //2 Bytes
+            public ushort Depth;     //2 Bytes
             public ScoreType Type;   //1 Byte
             public Move BestMove;    //3 Bytes
             //==================================
@@ -30,7 +30,7 @@ namespace MinimalChess
         const short BUCKETS = 4;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
-        public static int[] _count = new int[MAX_DEPTH+2];//MAX_DEPTH + QSEARCH_OFFSET=1 must be legal index
+        public static int[] _count = new int[MAX_DEPTH+1];//MAX_DEPTH must be legal index
 
         static bool Index(in ulong hash, out int index)
         {
@@ -43,7 +43,7 @@ namespace MinimalChess
             return false;
         }
 
-        static int Index(in ulong hash, int depth)
+        static int Index(in ulong hash, ushort depth)
         {
             //four indices form a cluster of buckets. All 4 indices serve as entry point into the cluster
             int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
@@ -57,11 +57,14 @@ namespace MinimalChess
                     break;
                 }
 
-                int count = _count[_table[i].Depth];
-                if (count > max)
+                //positions at depth 10 get 1/(1+10) = 9% of the hash slots than leaf nodes.
+                int draft = _table[i].Depth;
+                int load = (1 + draft) * _count[draft];
+                //Console.WriteLine($"(1 + {draft}) * {_count[draft]} = {load}");
+                if (load > max)
                 {
                     index = i;
-                    max = count;
+                    max = load;
                 }
             }
 
@@ -93,8 +96,8 @@ namespace MinimalChess
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            depth++;
-            int index = Index(zobristHash, depth);
+            depth = Math.Max(depth, 0);
+            int index = Index(zobristHash, (ushort)depth);
             ref HashEntry entry = ref _table[index];
 
             //don't overwrite a bestmove with 'default' unless it's a new position
@@ -102,7 +105,7 @@ namespace MinimalChess
                 entry.BestMove = bestMove;
 
             entry.Hash = zobristHash;
-            entry.Depth = (short)depth;
+            entry.Depth = (ushort)depth;
 
             if (score >= window.Ceiling)
             {
@@ -131,16 +134,15 @@ namespace MinimalChess
 
         public static bool GetScore(ulong zobristHash, int depth, SearchWindow window, out int score)
         {
-            depth++;
             score = 0;
             if (!Index(zobristHash, out int index))
                 return false;
 
             ref HashEntry entry = ref _table[index];
-            score = entry.Score;
             if (entry.Depth < depth)
                 return false;
 
+            score = entry.Score;
             //1.) score is exact and within window
             if (entry.Type == ScoreType.Exact)
                 return true;
@@ -152,16 +154,6 @@ namespace MinimalChess
                 return true; //failHigh
 
             return false;
-        }
-
-        public static bool GetQScore(ulong zobristHash, SearchWindow window, out int score)
-        {
-            return GetScore(zobristHash, -1, window, out score);
-        }
-        
-        public static void QStore(in ulong zobristHash, SearchWindow window, in int score)
-        {
-            Store(zobristHash, -1, window, score, default);
         }
     }
 }

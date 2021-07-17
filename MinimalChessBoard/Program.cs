@@ -323,7 +323,7 @@ namespace MinimalChessBoard
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
                 int sum = 0;
-                for (int i = 0; i <= (depth+1); i++)
+                for (int i = 0; i <= depth; i++)
                 {
                     int cnt = Transpositions._count[i];
                     Console.Write($"{i}: {cnt}, ");
