@@ -28,52 +28,43 @@ namespace MinimalChess
         public const short HISTORY = 99;
         public const int DEFAULT_SIZE_MB = 50;
         
-        const short BUCKETS = 4;
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
         public static int[] _count = new int[MAX_DEPTH+1];//MAX_DEPTH must be legal index
 
         static bool Index(in ulong hash, out int index)
         {
-            //four indices form a cluster of buckets. All 4 indices serve as entry point into the cluster
-            int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
-            for (index = i0; index < i0 + BUCKETS; index++)
-                if (_table[index].Hash == hash)
-                {
-                    _table[index].Age = 0;
-                    return true;
-                }
+            index = (int)(hash % (ulong)_table.Length);
+            if (_table[index].Hash != hash)
+                index ^= 1;
 
-            return false;
+            if (_table[index].Hash != hash)
+                return false;
+
+            _table[index].Age = 0;
+            return true;
         }
 
         static int Index(in ulong hash, ushort depth)
         {
-            //four indices form a cluster of buckets. All 4 indices serve as entry point into the cluster
-            int i0 = (int)(hash % (ulong)_table.Length) & ~3; //"& ~3" discards the last 2 bits to get i0
-            int max = 0;
-            int index = 0;
-            for (int i = i0; i < i0 + BUCKETS; i++)
-            {
-                if (_table[i].Hash == hash)
-                {
-                    index = i;
-                    break;
-                }
+            _count[depth]++;
+            int index = (int) (hash % (ulong) _table.Length);
+            ref HashEntry e0 = ref _table[index];
+            ref HashEntry e1 = ref _table[index^1];
 
-                int age = ++_table[i].Age;
-                int load = age * _count[_table[i].Depth];
-                //Console.WriteLine($"{age} * {_count[draft]} = {load}");
-                if (load > max)
-                {
-                    index = i;
-                    max = load;
-                }
+            if (e0.Hash == hash)
+            {
+                _count[e0.Depth]--;
+                return index;
             }
 
-            //hash wasn't found! 
-            _count[depth]++;
-            _count[_table[index].Depth]--;
+            if (e1.Hash == hash || (++e0.Age) * _count[e0.Depth] < (++e1.Age) * _count[e1.Depth])
+            {
+                _count[e1.Depth]--;
+                return index^1;
+            }
+
+            _count[e0.Depth]--;
             return index;
         }
 
