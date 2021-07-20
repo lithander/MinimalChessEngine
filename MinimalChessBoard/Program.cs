@@ -315,6 +315,7 @@ namespace MinimalChessBoard
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
+                Console.WriteLine($"{totalNodes,14} nodes, { (int)(totalTime / freq)} seconds, {foundBest} solved.");
             }
             Console.WriteLine();
             Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");

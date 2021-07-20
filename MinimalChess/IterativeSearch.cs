@@ -54,17 +54,17 @@ namespace MinimalChess
             }
         }
 
-        private (int Score, Move[] PV) EvalPositionTT(Board position, int depth, SearchWindow window, bool isNullMove = false)
+        private (int Score, Move[] PV) EvalPositionTT(Board position, int depth, SearchWindow window)
         {
-            if (Transpositions.GetScore(position, depth, window, out int ttScore))
+            if (Transpositions.GetScore(position.ZobristHash, depth, window, out int ttScore))
                 return (ttScore, Array.Empty<Move>());
 
-            var result = EvalPosition(position, depth, window, isNullMove);
+            var result = EvalPosition(position, depth, window);
             Transpositions.Store(position.ZobristHash, depth, window, result.Score, default);
             return result;
         }
 
-        private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window, bool isNullMove = false)
+        private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth <= 0)
             {
@@ -78,14 +78,14 @@ namespace MinimalChess
 
             Color color = position.SideToMove;
             //should we try null move pruning?
-            if (depth >= 2 && !isNullMove && !position.IsChecked(color))
+            if (depth >= 2 && !position.IsChecked(color))
             {
                 const int R = 2;
                 //skip making a move
                 Board nullChild = Playmaker.PlayNullMove(position);
                 //evaluate the position at reduced depth with a null-window around beta
                 SearchWindow nullWindow = window.GetUpperBound(color);
-                (int nullScore, _) = EvalPositionTT(nullChild, depth - R - 1, nullWindow, true);
+                (int nullScore, _) = EvalPositionTT(nullChild, depth - R - 1, nullWindow);
                 //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
                 if (nullWindow.Cut(nullScore, color))
                     return (nullScore, Array.Empty<Move>());
