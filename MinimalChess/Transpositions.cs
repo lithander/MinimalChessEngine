@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -24,48 +23,39 @@ namespace MinimalChess
             //                        16 Bytes
         }
 
-        public const short MAX_DEPTH = 99;
-        public const short HISTORY = 99;
+        public const short HISTORY = 255;
         public const int DEFAULT_SIZE_MB = 50;
-        
         const int ENTRY_SIZE = 16; //BYTES
         static HashEntry[] _table;
-        public static int[] _count = new int[MAX_DEPTH+1];//MAX_DEPTH must be legal index
 
         static bool Index(in ulong hash, out int index)
         {
             index = (int)(hash % (ulong)_table.Length);
             if (_table[index].Hash != hash)
-                index ^= 1;
+                index ^= 1; //try other slot
 
             if (_table[index].Hash != hash)
-                return false;
+                return false; //both slots missed
 
+            //a table hit resets the age
             _table[index].Age = 0;
             return true;
         }
 
-        static int Index(in ulong hash, ushort depth)
+        static int Index(in ulong hash)
         {
-            _count[depth]++;
-            int index = (int) (hash % (ulong) _table.Length);
+            int index = (int)(hash % (ulong)_table.Length);
             ref HashEntry e0 = ref _table[index];
-            ref HashEntry e1 = ref _table[index^1];
+            ref HashEntry e1 = ref _table[index ^ 1];
 
             if (e0.Hash == hash)
-            {
-                _count[e0.Depth]--;
                 return index;
-            }
 
-            if (e1.Hash == hash || (++e0.Age) * _count[e0.Depth] < (++e1.Age) * _count[e1.Depth])
-            {
-                _count[e1.Depth]--;
-                return index^1;
-            }
+            if (e1.Hash == hash)
+                return index ^ 1;
 
-            _count[e0.Depth]--;
-            return index;
+            //raise age of both and chose the older, shallower one!
+            return (e0.Depth - ++e0.Age) < (e1.Depth - ++e1.Age) ? index : index ^ 1;
         }
 
         static Transpositions()
@@ -77,21 +67,17 @@ namespace MinimalChess
         {
             int length = (hashSizeMBytes * 1024 * 1024) / ENTRY_SIZE;
             _table = new HashEntry[length];
-            Array.Clear(_count, 0, _count.Length);
-            _count[0] = _table.Length;
         }
 
         public static void Clear()
         {
             Array.Clear(_table, 0, _table.Length);
-            Array.Clear(_count, 0, _count.Length);
-            _count[0] = _table.Length;
         }
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
             depth = Math.Max(depth, 0);
-            int index = Index(zobristHash, (ushort)depth);
+            int index = Index(zobristHash);
             ref HashEntry entry = ref _table[index];
 
             //don't overwrite a bestmove with 'default' unless it's a new position
@@ -107,7 +93,7 @@ namespace MinimalChess
                 entry.Type = ScoreType.GreaterOrEqual;
                 entry.Score = (short)window.Ceiling;
             }
-            else if(score <= window.Floor)
+            else if (score <= window.Floor)
             {
                 entry.Type = ScoreType.LessOrEqual;
                 entry.Score = (short)window.Floor;
@@ -121,7 +107,7 @@ namespace MinimalChess
 
         internal static Move GetBestMove(Board position)
         {
-            if(Index(position.ZobristHash, out int index))
+            if (Index(position.ZobristHash, out int index))
                 return _table[index].BestMove;
 
             return default;
