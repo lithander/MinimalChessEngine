@@ -6,7 +6,7 @@ namespace MinimalChess
     {
         internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers)
         {
-            //1. Captures Mvv-Lva, PV excluded
+            //1. Best move from the TT if available
             Move bestMove = Transpositions.GetBestMove(position);
             if (bestMove != default)
             {
@@ -14,8 +14,9 @@ namespace MinimalChess
                 yield return (bestMove, nextPosition);
             }
 
-            //2. Captures Mvv-Lva, PV excluded
-            foreach (var capture in MoveList.SortedCaptures(position))
+            //2. Blind ("Better, or Lower If Not Defended") captures ordered Mvv-Lva
+            MoveList badCaptures;
+            foreach (var capture in MoveList.SortedCapturesBlind(position, out badCaptures))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.SideToMove))
@@ -30,6 +31,14 @@ namespace MinimalChess
                     if (!nextPosition.IsChecked(position.SideToMove))
                         yield return (killer, nextPosition);
                 }
+
+            //2a. The bad captures not played yet
+            foreach (var capture in badCaptures)
+            {
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.SideToMove))
+                    yield return (capture, nextPosition);
+            }
 
             //4. Play quiet moves that aren't known killers
             foreach (var move in MoveList.Quiets(position))
@@ -60,7 +69,7 @@ namespace MinimalChess
 
         internal static IEnumerable<Board> PlayCaptures(Board position)
         {
-            foreach (var capture in MoveList.SortedCaptures(position))
+            foreach (var capture in MoveList.SortedCapturesSEE(position, out _))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.SideToMove))

@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace MinimalChess
 {
@@ -51,6 +52,84 @@ namespace MinimalChess
             position.CollectCaptures(captures.Add);
             captures.SortMvvLva(position);
             return captures;
+        }
+
+        internal static MoveList SortedCapturesSEE(Board position)
+        {
+            MoveList captures = new MoveList();
+            MoveList bad = new MoveList();
+            position.CollectCaptures(m => (IsBadCaptureSEE(position, m) ? bad : captures).Add(m));
+            captures.SortMvvLva(position);
+            captures.AddRange(bad);
+            return captures;
+        }
+
+        internal static MoveList SortedCapturesSEE(Board position, out MoveList badCaptures)
+        {
+            MoveList captures = new MoveList();
+            MoveList bad = new MoveList();
+            position.CollectCaptures(m => (IsBadCaptureSEE(position, m) ? bad : captures).Add(m));
+            captures.SortMvvLva(position);
+            //captures.AddRange(bad);
+            badCaptures = bad;
+            return captures;
+        }
+
+        internal static MoveList SortedCapturesBlind(Board position, out MoveList badCaptures)
+        {
+            //BLIND stands for 'Better, or Lower If Not Defended'.
+            //You initially only try those captures from the MVV/ LVA ordering that are Low x High or Equal x Equal, and High x Low only if the victim is completely unprotected.
+            //Other captures are returned as 'badCaptures'.
+            //http://www.talkchess.com/forum3/viewtopic.php?f=7&t=48609
+            MoveList captures = new MoveList();
+            MoveList bad = new MoveList();
+            position.CollectCaptures(m => (IsBadCaptureBlind(position, m) ? bad : captures).Add(m));
+            captures.SortMvvLva(position);
+            //captures.AddRange(bad);
+            badCaptures = bad;
+            return captures;
+        }
+
+        internal static MoveList SortedCapturesBlind(Board position)
+        {
+            //BLIND stands for 'Better, or Lower If Not Defended'.
+            //You initially only try those captures from the MVV/ LVA ordering that are Low x High or Equal x Equal, and High x Low only if the victim is completely unprotected.
+            //Other captures are returned as 'badCaptures'.
+            //http://www.talkchess.com/forum3/viewtopic.php?f=7&t=48609
+            MoveList captures = new MoveList();
+            void AddGood(Move move)
+            {
+                if (!IsBadCaptureBlind(position, move))
+                    captures.Add(move);
+            }
+            position.CollectCaptures(AddGood);
+            captures.SortMvvLva(position);
+            //captures.AddRange(bad);
+            return captures;
+        }
+
+        public static bool IsBadCaptureBlind(Board position, Move move)
+        {
+            Piece victim = position[move.ToSquare];
+            Piece attacker = position[move.FromSquare];
+            if (Pieces.Order(victim) >= Pieces.Order(attacker))
+                return false;
+
+            //is victim protected? (square "attacked" by victim's color
+            int protector = position.GetLeastValuableAttacker(move.ToSquare, victim.Color());
+            return protector >= 0;
+        }
+
+        public static bool IsBadCaptureSEE(Board position, Move move)
+        {
+            Piece victim = position[move.ToSquare];
+            Piece attacker = position[move.FromSquare];
+            if (Pieces.Order(victim) >= Pieces.Order(attacker))
+                return false;
+
+            int see = SEE.Evaluate(position, move);
+            int color = (int)attacker.Color();
+            return (color * see) < 0;
         }
 
         public void SortMvvLva(Board context)

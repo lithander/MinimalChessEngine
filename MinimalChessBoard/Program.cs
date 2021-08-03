@@ -92,6 +92,10 @@ namespace MinimalChessBoard
                     {
                         PrintMobility(board);
                     }
+                    else if (command == "see")
+                    {
+                        CompareSee(tokens[1]);
+                    }
                     else
                     {
                         ApplyMoves(board, tokens);
@@ -337,10 +341,37 @@ namespace MinimalChessBoard
             bestMoves.Clear();
             foreach (var token in bmString.Split())
             {
-                Move bestMove = AlgebraicNotation.ToMove(board, token);
+                Move bestMove = AlgebraicNotation.ToMove(board, token.Trim());
                 //Console.WriteLine($"{bmString} => {bestMove}");
                 bestMoves.Add(bestMove);
             }
         }
+
+        private static void CompareSee(string filePath)
+        {
+            var file = File.OpenText(filePath);
+            int count = 0;
+            int correct = 0;
+            while (!file.EndOfStream)
+            {
+                //Example: 2r1r1k1/pp1bppbp/3p1np1/q3P3/2P2P2/1P2B3/P1N1B1PP/2RQ1RK1 b - -; dxe5; 100; Pawn;
+                count++;
+                var tokens = file.ReadLine().Split(';');
+                string fen = tokens[0];             
+                Board position = new Board(fen);
+                string moveString = tokens[1].Trim();
+                Move move = AlgebraicNotation.ToMove(position, moveString);
+                Print(position, move);
+                Console.WriteLine(fen);
+                int seeRef = int.Parse(tokens[2]);
+                int seeValue = (int)position.SideToMove * SEE.Evaluate(position, move);
+                Console.WriteLine($"[{(seeRef == seeValue ? "X" : " ")}] SEE({move}) = {seeValue} vs {seeRef} ({tokens[3]})");
+                if (seeRef == seeValue)
+                    correct++;
+                Console.WriteLine();
+            }
+            Console.WriteLine($"Correct SEE in {correct} / {count} positions!");
+        }
+
     }
 }
