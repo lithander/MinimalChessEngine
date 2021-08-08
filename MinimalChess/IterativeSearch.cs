@@ -77,8 +77,9 @@ namespace MinimalChess
                 return (0, Array.Empty<Move>());
 
             Color color = position.SideToMove;
+            bool isChecked = position.IsChecked(color);
             //should we try null move pruning?
-            if (depth >= 2 && !position.IsChecked(color))
+            if (depth >= 2 && !isChecked)
             {
                 const int R = 2;
                 //skip making a move
@@ -94,9 +95,21 @@ namespace MinimalChess
             //do a regular expansion...
             Move[] pv = Array.Empty<Move>();
             int expandedNodes = 0;
+            bool futileNode = false;
+            int futileNodeScore = 0;
+            if(!isChecked && depth == 2)
+            {
+                futileNodeScore = Evaluation.Evaluate(position);
+                if (!window.Inside(futileNodeScore + (int)color * 200, color))
+                    futileNode = true;
+            }
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
             {
                 expandedNodes++;
+
+                //0.5.8g --- Score of MinimalChess 0.5.8g vs zahak300: 1412 - 1405 - 1183  [0.501] 4000
+                if (futileNode && expandedNodes > 1 && !window.Inside(futileNodeScore + SEE.Evaluate(position, move), color))
+                    continue;
 
                 // 0.5.8f --- 1568 - 1748 - 684  [0.477] 4000 vs AbsoluteZero
                 //if (depth > 1)
@@ -104,14 +117,6 @@ namespace MinimalChess
                 //    int see = (int)position.SideToMove * SEE.EvaluateSign(position, move);
                 //    if (see < 0)
                 //        R = 1;
-                //}
-
-                // 0.5.8g --- 186 - 250 - 84  [0.438] 520 vs AbsoluteZero
-                //if (depth <= 2 && expandedNodes > 1 && !isChecked && !child.IsChecked(child.SideToMove))
-                //{
-                //    int see = (int)position.SideToMove * SEE.EvaluateSign(position, move);
-                //    if (see < 0)
-                //        continue;
                 //}
 
                 //moves after the PV node are unlikely to raise alpha.
