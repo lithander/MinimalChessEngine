@@ -79,5 +79,49 @@ namespace MinimalChess
             material -= PieceValue(victim);
             return Eval(position, window, toSquare, material);
         }
+
+        public static int EvaluateSign(Board position, Move move)
+        {
+            position = new Board(position);
+            int material = 0;
+            if (move.Promotion != Piece.None)
+            {
+                material -= PieceValue(position[move.FromSquare]);
+                material += PieceValue(move.Promotion);
+            }
+            int toSquare = move.ToSquare;
+            Piece victim = position.Play(move);
+            material -= PieceValue(victim);
+            SearchWindow window = SearchWindow.Infinite;
+            while (true)
+            {
+                Color color = position.SideToMove;
+                //raise alpha and perform beta cutoff when standPatScore is too good
+                if (window.Cut(material, color) || window.Ceiling < 0 || window.Floor > 0)
+                    return Math.Sign(window.GetScore(color));
+
+                int fromSquare = position.GetLeastValuableAttacker(toSquare, position.SideToMove);
+                //can't capture. We return the 'alpha'
+                if (fromSquare == -1)
+                    return Math.Sign(window.GetScore(color));
+
+                Piece attacker = position[fromSquare];
+                Piece promotion = Piece.None;
+                if (attacker == Piece.WhitePawn && Board.Rank(toSquare) == 7)
+                {
+                    promotion = Piece.WhiteQueen;
+                    material -= PieceValue(attacker);
+                    material += PieceValue(Piece.WhiteQueen);
+                }
+                else if (attacker == Piece.BlackPawn && Board.Rank(toSquare) == 0)
+                {
+                    promotion = Piece.BlackQueen;
+                    material -= PieceValue(attacker);
+                    material += PieceValue(Piece.BlackQueen);
+                }
+                victim = position.Play(new Move(fromSquare, toSquare, promotion));
+                material -= PieceValue(victim);
+            }
+        }
     }
 }

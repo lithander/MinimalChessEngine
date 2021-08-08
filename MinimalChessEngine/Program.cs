@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.5.7";
+        const string NAME_VERSION = "MinimalChess 0.5.8c (Bad captures after Killers and no bad captures in QSearch)";
 
         static Engine _engine = new Engine();
         static async Task Main()

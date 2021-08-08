@@ -98,6 +98,22 @@ namespace MinimalChess
             {
                 expandedNodes++;
 
+                // 0.5.8f --- 1568 - 1748 - 684  [0.477] 4000 vs AbsoluteZero
+                //if (depth > 1)
+                //{
+                //    int see = (int)position.SideToMove * SEE.EvaluateSign(position, move);
+                //    if (see < 0)
+                //        R = 1;
+                //}
+
+                // 0.5.8g --- 186 - 250 - 84  [0.438] 520 vs AbsoluteZero
+                //if (depth <= 2 && expandedNodes > 1 && !isChecked && !child.IsChecked(child.SideToMove))
+                //{
+                //    int see = (int)position.SideToMove * SEE.EvaluateSign(position, move);
+                //    if (see < 0)
+                //        continue;
+                //}
+
                 //moves after the PV node are unlikely to raise alpha.
                 if (expandedNodes > 1 && depth >= 3 && window.Width > 0)
                 {
@@ -143,36 +159,56 @@ namespace MinimalChess
                 return 0;
 
             Color color = position.SideToMove;
-            bool inCheck = position.IsChecked(color);
-            //if inCheck we can't use standPat, need to escape check!
-            if (!inCheck)
+            int expandedNodes = 0;
+            if (position.IsChecked(color))
+            {
+                //if inCheck we can't use standPat, play any move to escape check!
+                foreach (Board child in Playmaker.Play(position))
+                {
+                    expandedNodes++;
+                    //recursively evaluate the resulting position (after the capture) with QEval
+                    int score = QEval(child, window);
+
+                    //Cut will raise alpha and perform beta cutoff when the move is too good
+                    if (window.Cut(score, color))
+                        break;
+                }
+
+                //checkmate?
+                if (expandedNodes == 0)
+                    return Evaluation.Checkmate(color);
+            }
+            else
             {
                 int standPatScore = Evaluation.DynamicScore + Evaluation.Evaluate(position);
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);
+
+                //play remaining captures
+                foreach (Board child in Playmaker.PlayGoodCaptures(position))
+                {
+                    expandedNodes++;
+
+                    //int margin = (int)color * 150;
+                    //if (!window.Inside(standPatScore + see + margin, color))
+                    //    continue;
+
+                    //if (window.Cut(standPatScore + see, color))
+                    //    break;
+
+                    //recursively evaluate the resulting position (after the capture) with QEval
+                    int score = QEval(child, window);
+
+                    //Cut will raise alpha and perform beta cutoff when the move is too good
+                    if (window.Cut(score, color))
+                        break;
+                }
+
+                //stalemate?
+                if (expandedNodes == 0 && !LegalMoves.HasMoves(position))
+                    return 0;
             }
-
-            int expandedNodes = 0;
-            //play remaining captures (or any moves if king is in check)
-            foreach (Board child in inCheck ? Playmaker.Play(position) : Playmaker.PlayCaptures(position))
-            {
-                expandedNodes++;
-                //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(child, window);
-
-                //Cut will raise alpha and perform beta cutoff when the move is too good
-                if (window.Cut(score, color))
-                    break;
-            }
-
-            //checkmate?
-            if (expandedNodes == 0 && inCheck)
-                return Evaluation.Checkmate(color);
-
-            //stalemate?
-            if (expandedNodes == 0 && !LegalMoves.HasMoves(position))
-                return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"
             return window.GetScore(color);

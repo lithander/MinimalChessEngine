@@ -41,7 +41,7 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
+                //try
                 {
                     if (command == "reset")
                     {
@@ -106,10 +106,10 @@ namespace MinimalChessBoard
                     if (dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -355,8 +355,14 @@ namespace MinimalChessBoard
             while (!file.EndOfStream)
             {
                 //Example: 2r1r1k1/pp1bppbp/3p1np1/q3P3/2P2P2/1P2B3/P1N1B1PP/2RQ1RK1 b - -; dxe5; 100; Pawn;
+                string line = file.ReadLine();
+                if (line.Length == 0)
+                    break;
+                if (line.StartsWith("//"))
+                    continue;
+
                 count++;
-                var tokens = file.ReadLine().Split(';');
+                var tokens = line.Split(';');
                 string fen = tokens[0];             
                 Board position = new Board(fen);
                 string moveString = tokens[1].Trim();
@@ -365,7 +371,12 @@ namespace MinimalChessBoard
                 Console.WriteLine(fen);
                 int seeRef = int.Parse(tokens[2]);
                 int seeValue = (int)position.SideToMove * SEE.Evaluate(position, move);
-                Console.WriteLine($"[{(seeRef == seeValue ? "X" : " ")}] SEE({move}) = {seeValue} vs {seeRef} ({tokens[3]})");
+                bool isBad = seeValue < 0;
+                string quality = isBad ? "BAD" : "GOOD";
+                bool isBad2 = (int)position.SideToMove * SEE.EvaluateSign(position, move) < 0;
+                Debug.Assert(seeRef == seeValue);
+                Debug.Assert(isBad == isBad2);
+                Console.WriteLine($"{count,4}. [{(seeRef == seeValue ? "X" : " ")}] {quality}, SEE({move}) = {seeValue}, Solution: {seeRef} ({tokens[3]})");
                 if (seeRef == seeValue)
                     correct++;
                 Console.WriteLine();

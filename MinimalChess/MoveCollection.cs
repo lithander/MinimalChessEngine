@@ -127,7 +127,7 @@ namespace MinimalChess
             if (Pieces.Order(victim) >= Pieces.Order(attacker))
                 return false;
 
-            int see = SEE.Evaluate(position, move);
+            int see = SEE.EvaluateSign(position, move);
             int color = (int)attacker.Color();
             return (color * see) < 0;
         }

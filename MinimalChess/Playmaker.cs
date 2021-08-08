@@ -15,9 +15,15 @@ namespace MinimalChess
             }
 
             //2. Blind ("Better, or Lower If Not Defended") captures ordered Mvv-Lva
-            MoveList badCaptures;
-            foreach (var capture in MoveList.SortedCapturesBlind(position, out badCaptures))
+            MoveList badCaptures = new MoveList();
+            foreach (var capture in MoveList.SortedCaptures(position))
             {
+                if (MoveList.IsBadCaptureSEE(position, capture))
+                {
+                    badCaptures.Add(capture);
+                    continue;
+                }
+
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.SideToMove))
                     yield return (capture, nextPosition);
@@ -69,11 +75,34 @@ namespace MinimalChess
 
         internal static IEnumerable<Board> PlayCaptures(Board position)
         {
-            foreach (var capture in MoveList.SortedCapturesSEE(position, out _))
+            foreach (var capture in MoveList.SortedCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
                 if (!nextPosition.IsChecked(position.SideToMove))
                     yield return nextPosition;
+            }
+        }
+
+        internal static IEnumerable<Board> PlayGoodCaptures(Board position)
+        {
+            foreach (var capture in MoveList.SortedCaptures(position))
+            {
+                if (MoveList.IsBadCaptureSEE(position, capture))
+                    continue;
+
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.SideToMove))
+                    yield return nextPosition;
+            }
+        }
+
+        internal static IEnumerable<(Board Board, int SEE)> PlayCapturesWithSEE(Board position)
+        {
+            foreach (var capture in MoveList.SortedCaptures(position))
+            {                
+                var nextPosition = new Board(position, capture);
+                if (!nextPosition.IsChecked(position.SideToMove))
+                    yield return (nextPosition, SEE.Evaluate(position, capture));
             }
         }
 
