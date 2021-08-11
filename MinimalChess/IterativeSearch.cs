@@ -64,6 +64,11 @@ namespace MinimalChess
             return result;
         }
 
+        public long FutileNodes = 0;
+        public long NonFutileNodes = 0;
+        public long FalsePositive = 0;
+        public long FalseNegative = 0;
+
         private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window)
         {
             if (depth <= 0)
@@ -97,18 +102,20 @@ namespace MinimalChess
             int expandedNodes = 0;
             bool futileNode = false;
             int futileNodeScore = 0;
-            if(!isChecked && depth == 2)
+            bool doFutilityPruning = !isChecked && depth <= 3;
+            if (doFutilityPruning)
             {
-                futileNodeScore = Evaluation.Evaluate(position);
-                if (!window.Inside(futileNodeScore + (int)color * 200, color))
+                futileNodeScore = Evaluation.Evaluate(position) + (int)color * depth * 80;
+                if (!window.Inside(futileNodeScore , color))
                     futileNode = true;
             }
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
             {
                 expandedNodes++;
 
-                //0.5.8g --- Score of MinimalChess 0.5.8g vs zahak300: 1412 - 1405 - 1183  [0.501] 4000
-                if (futileNode && expandedNodes > 1 && !window.Inside(futileNodeScore + SEE.Evaluate(position, move), color))
+                //bool isFutile = (!isChecked && depth <= 3 && expandedNodes > 1 && !window.Inside(Evaluation.Evaluate(child) + (int)color * depth * 80, color) && !child.IsChecked(child.SideToMove));
+                bool isFutile = (futileNode && expandedNodes > 1 && !window.Inside(futileNodeScore + Evaluation.Estimate(position, move), color) && !child.IsChecked(child.SideToMove));
+                if(isFutile)
                     continue;
 
                 // 0.5.8f --- 1568 - 1748 - 684  [0.477] 4000 vs AbsoluteZero
@@ -120,19 +127,32 @@ namespace MinimalChess
                 //}
 
                 //moves after the PV node are unlikely to raise alpha.
-                if (expandedNodes > 1 && depth >= 3 && window.Width > 0)
+                if (expandedNodes > 1 && depth >= 3)
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
                     var nullResult = EvalPositionTT(child, depth - 1, nullWindow);
                     if (!nullWindow.Inside(nullResult.Score, color))
+                    {
+                        if (doFutilityPruning)
+                        {
+                            if (!isFutile) FalseNegative++;
+                            FutileNodes++;
+                        }
                         continue;
+                    }
                 }
 
                 //this node may raise alpha!
                 var eval = EvalPositionTT(child, depth - 1, window);
                 if (window.Inside(eval.Score, color))
                 {
+                    if (doFutilityPruning)
+                    {
+                        if (isFutile) FalsePositive++;
+                        NonFutileNodes++;
+                    }
+
                     Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
                     //store the PV beginning with move, followed by the PV of the childnode
                     pv = new Move[eval.PV.Length + 1];
@@ -147,6 +167,12 @@ namespace MinimalChess
 
                         return (window.GetScore(color), pv);
                     }
+                }
+
+                if (doFutilityPruning)
+                {
+                    if (!isFutile) FalseNegative++;
+                    FutileNodes++;
                 }
             }
 

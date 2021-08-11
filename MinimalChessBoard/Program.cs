@@ -302,6 +302,8 @@ namespace MinimalChessBoard
             long totalNodes = 0;
             int count = 0;
             int foundBest = 0;
+            float falsePositiveSum = 0;
+            float falseNegativeSum = 0;
             List<Move> bestMoves = new List<Move>();
             while (!file.EndOfStream && count < maxCount)
             {
@@ -310,6 +312,14 @@ namespace MinimalChessBoard
                 long t0 = Stopwatch.GetTimestamp();
                 IterativeSearch search = new IterativeSearch(depth, board);
                 long t1 = Stopwatch.GetTimestamp();
+
+                float futilePercent = search.FutileNodes / (float)(search.FutileNodes + search.NonFutileNodes + 1);
+                float falseNegativePercent = search.FalseNegative / (float)(search.FutileNodes+1);
+                falseNegativeSum += falseNegativePercent;
+                float falsePositivePercent = search.FalsePositive / (float)(search.NonFutileNodes+1);
+                falsePositiveSum += falsePositivePercent;
+                Console.WriteLine($"{falsePositivePercent * 100:00.00}% false futile, Ø{falsePositiveSum / count * 100:00.00}%), {falseNegativePercent * 100:00.00}% missed futile, Ø{falseNegativeSum / count * 100:00.00}%, {search.FutileNodes} futile, {search.NonFutileNodes} raise alpha, {futilePercent * 100}% futile");
+
                 long dt = t1 - t0;
                 totalTime += dt;
                 totalNodes += search.NodesVisited;

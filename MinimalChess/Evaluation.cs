@@ -35,6 +35,32 @@ namespace MinimalChess
             return (int)score;
         }
 
+        public static int Estimate(Board position, Move move)
+        {
+            Piece movingPiece = position[move.FromSquare];
+            Piece capturedPiece = position[move.ToSquare];
+            int gain = 0;
+            gain -= MaxEval(movingPiece, move.FromSquare);
+            gain -= MaxEval(capturedPiece, move.ToSquare);
+            gain += MaxEval(move.Promotion == Piece.None ? movingPiece : move.Promotion, move.ToSquare);
+            return gain;
+        }
+
+        public static int MaxEval(Piece piece, int square)
+        {
+            if (piece == Piece.None)
+                return 0;
+
+            int sign = (int)piece.Color();
+            int pieceIndex = PieceTableIndex(piece);
+            int squareIndex = SquareTableIndex(square, piece);
+            int midGame = MidgameTables[pieceIndex, squareIndex];
+            int endGame = EndgameTables[pieceIndex, squareIndex];
+            double score = sign * Math.Max(endGame, midGame);
+            return (int)score;
+        }
+
+
         public static double Linstep(double edge0, double edge1, double value)
         {
             return Math.Min(1, Math.Max(0, (value - edge0) / (edge1 - edge0)));
