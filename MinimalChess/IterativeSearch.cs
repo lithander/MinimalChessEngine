@@ -77,8 +77,9 @@ namespace MinimalChess
                 return (0, Array.Empty<Move>());
 
             Color color = position.SideToMove;
+            bool isChecked = position.IsChecked(color);
             //should we try null move pruning?
-            if (depth >= 2 && !position.IsChecked(color))
+            if (depth >= 2 && !isChecked)
             {
                 const int R = 2;
                 //skip making a move
@@ -98,8 +99,13 @@ namespace MinimalChess
             {
                 expandedNodes++;
 
-                //moves after the PV node are unlikely to raise alpha.
-                if (expandedNodes > 1 && depth >= 3 && window.Width > 0)
+                //moves after the PV node are unlikely to raise alpha. skip those that appear clearly futile!
+                int futilityMargin = (int)color * depth * 70;
+                if (expandedNodes > 1 && depth <= 4 && !isChecked && !window.Inside(Evaluation.Evaluate(child) + futilityMargin, color) && !child.IsChecked(child.SideToMove))
+                    continue;
+
+                //moves after the PV node are unlikely to raise alpha. searching with a null-sized window can save a lot of nodes
+                if (expandedNodes > 1 && depth >= 3)
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
@@ -114,9 +120,7 @@ namespace MinimalChess
                 {
                     Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
                     //store the PV beginning with move, followed by the PV of the childnode
-                    pv = new Move[eval.PV.Length + 1];
-                    pv[0] = move;
-                    Array.Copy(eval.PV, 0, pv, 1, eval.PV.Length);
+                    pv = Merge(move, eval.PV);
                     //...and maybe get a beta cutoff
                     if (window.Cut(eval.Score, color))
                     {
@@ -134,6 +138,14 @@ namespace MinimalChess
                 return (position.IsChecked(color) ? Evaluation.Checkmate(color) : 0, Array.Empty<Move>());
 
             return (window.GetScore(color), pv);
+        }
+
+        private static Move[] Merge(Move move, Move[] pv)
+        {
+            Move[] result = new Move[pv.Length + 1];
+            result[0] = move;
+            Array.Copy(pv, 0, result, 1, pv.Length);
+            return result;
         }
 
         private int QEval(Board position, SearchWindow window)
