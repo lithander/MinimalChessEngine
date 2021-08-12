@@ -42,7 +42,10 @@ namespace MinimalChess
         private Color _sideToMove = Color.White;
         private int _enPassantSquare = -1;
         private ulong _zobristHash = 0;
+        private Evaluation.Eval _eval;
         /*** STATE DATA ***/
+
+        public int Score => _eval.Score;
 
         public ulong ZobristHash => _zobristHash;
 
@@ -83,6 +86,7 @@ namespace MinimalChess
             _enPassantSquare = board._enPassantSquare;
             _castlingRights = board._castlingRights;
             _zobristHash = board._zobristHash;
+            _eval = board._eval;
         }
 
         public Piece this[int square]
@@ -90,9 +94,11 @@ namespace MinimalChess
             get => _state[square];
             private set
             {
+                _eval.Update(_state[square], value, square);
                 _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
                 _state[square] = value;
                 _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
+                Debug.Assert(Score == new Evaluation.Eval(this).Score);
             }
         }
 
@@ -146,8 +152,11 @@ namespace MinimalChess
             //Set en-passant square
             _enPassantSquare = fields[3] == "-" ? -1 : Notation.ToSquare(fields[3]);
 
+            //Init incremental eval
+            _eval = new Evaluation.Eval(this);
+
             //Initialze Hash
-            _zobristHash = GetZobristHash();
+            InitZobristHash();
         }
 
 
@@ -666,18 +675,17 @@ namespace MinimalChess
             return true;
         }
 
-        public ulong GetZobristHash()
+        private void InitZobristHash()
         {
             //Side to move
-            ulong hash = Zobrist.SideToMove(_sideToMove);
+            _zobristHash = Zobrist.SideToMove(_sideToMove);
             //Pieces
             for (int square = 0; square < 64; square++)
-                hash ^= Zobrist.PieceSquare(_state[square], square);
+                _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
             //En passent
-            hash ^= Zobrist.Castling(_castlingRights);
+            _zobristHash ^= Zobrist.Castling(_castlingRights);
             //Castling
-            hash ^= Zobrist.EnPassant(_enPassantSquare);
-            return hash;
+            _zobristHash ^= Zobrist.EnPassant(_enPassantSquare);
         }
     }
 }

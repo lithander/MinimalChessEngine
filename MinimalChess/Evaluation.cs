@@ -4,36 +4,63 @@ namespace MinimalChess
 {
     public class Evaluation
     {
+        public struct Eval
+        {
+            public short MidgameScore;
+            public short EndgameScore;
+            public short Phase;
+            public int Score
+            {
+                get
+                {
+                    //linearily interpolate between midGame and endGame score based on current phase (tapered eval)
+                    double phase = Linstep(Midgame, Endgame, Phase);
+                    double score = MidgameScore + phase * (EndgameScore - MidgameScore);
+                    return (int)score;
+                }
+            }
+
+            public Eval(Board board) : this()
+            {
+                for (int i = 0; i < 64; i++)
+                    if (board[i] != Piece.None)
+                        AddPiece(board[i], i);
+            }
+
+            public void Update(Piece oldPiece, Piece newPiece, int index)
+            {
+                if (oldPiece != Piece.None)
+                    RemovePiece(oldPiece, index);
+                if (newPiece != Piece.None)
+                    AddPiece(newPiece, index);
+            }
+
+            private void AddPiece(Piece piece, int squareIndex)
+            {
+                short color = (short)piece.Color();
+                int pieceIndex = PieceTableIndex(piece);
+                int tableIndex = SquareTableIndex(squareIndex, piece);
+                Phase += PhaseValues[pieceIndex];
+                MidgameScore += (short)(color * MidgameTables[pieceIndex, tableIndex]);
+                EndgameScore += (short)(color * EndgameTables[pieceIndex, tableIndex]);
+            }
+
+            private void RemovePiece(Piece piece, int squareIndex)
+            {
+                int color = (int)piece.Color();
+                int pieceIndex = PieceTableIndex(piece);
+                int tableIndex = SquareTableIndex(squareIndex, piece);
+                Phase -= PhaseValues[pieceIndex];
+                MidgameScore -= (short)(color * MidgameTables[pieceIndex, tableIndex]);
+                EndgameScore -= (short)(color * EndgameTables[pieceIndex, tableIndex]);
+            }
+        }
+
         const int CheckmateScore = 9999;
 
         public static bool IsCheckmate(int score) => Math.Abs(score) == CheckmateScore;
 
         public static int Checkmate(Color color) => (int)color * -CheckmateScore;
-
-        public static int Evaluate(Board board)
-        {
-            int midGame = 0;
-            int endGame = 0;
-            int phaseValue = 0;
-            for (int i = 0; i < 64; i++)
-            {
-                Piece piece = board[i];
-                if (piece == Piece.None)
-                    continue;
-
-                int sign = (int)piece.Color();
-                int pieceIndex = PieceTableIndex(piece);
-                int squareIndex = SquareTableIndex(i, piece);
-                phaseValue += PhaseValues[pieceIndex];
-                midGame += sign * MidgameTables[pieceIndex, squareIndex];
-                endGame += sign * EndgameTables[pieceIndex, squareIndex];
-            }
-
-            //linearily interpolate between midGame and endGame score based on current phase (tapered eval)
-            double phase = Linstep(Midgame, Endgame, phaseValue);
-            double score = midGame + phase * (endGame - midGame);
-            return (int)score;
-        }
 
         public static double Linstep(double edge0, double edge1, double value)
         {
@@ -50,13 +77,13 @@ namespace MinimalChess
         MeanSquareError(k=102): 0.23835033815795936
         */
 
-        const int Midgame = 5255;
-        const int Endgame = 435;
+        const short Midgame = 5255;
+        const short Endgame = 435;
 
         //Pawn = 0, Knight = 155, Bishop = 305; Rook = 405, Queen = 1050, King = 0
-        static readonly int[] PhaseValues = new int[6] { 0, 155, 305, 405, 1050, 0 };
+        static readonly short[] PhaseValues = new short[6] { 0, 155, 305, 405, 1050, 0 };
 
-        static readonly int[,] MidgameTables = new int[6, 64]{
+        static readonly short[,] MidgameTables = new short[6, 64]{
         {  //PAWN MG
           100,  100,  100,  100,  100,  100,  100,  100,
           176,  214,  147,  194,  189,  214,  132,   77,
@@ -119,7 +146,7 @@ namespace MinimalChess
         }
         };
 
-        static readonly int[,] EndgameTables = new int[6, 64]{
+        static readonly short[,] EndgameTables = new short[6, 64]{
         {  //PAWN EG
           100,  100,  100,  100,  100,  100,  100,  100,
           277,  270,  252,  229,  240,  233,  264,  285,
@@ -181,7 +208,7 @@ namespace MinimalChess
           -55,  -40,  -23,   -6,  -20,   -8,  -28,  -47,
         }};
 
-        public static int[] MobilityValues = new int[13 * 6]
+        public static short[] MobilityValues = new short[13 * 6]
         {
          //                 opponent                            friendly                  
          // -     P     N     B     R     Q     K      P      N     B     R     Q     K   

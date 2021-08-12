@@ -6,6 +6,7 @@ namespace MinimalChess
     public class IterativeSearch
     {
         const int QUERY_TC_FREQUENCY = 25;
+        const int MAX_GAIN_PER_PLY = 70;
 
         public long NodesVisited { get; private set; }
         public int Depth { get; private set; }
@@ -100,8 +101,8 @@ namespace MinimalChess
                 expandedNodes++;
 
                 //moves after the PV node are unlikely to raise alpha. skip those that appear clearly futile!
-                int futilityMargin = (int)color * depth * 70;
-                if (expandedNodes > 1 && depth <= 4 && !isChecked && !window.Inside(Evaluation.Evaluate(child) + futilityMargin, color) && !child.IsChecked(child.SideToMove))
+                int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
+                if (expandedNodes > 1 && depth <= 4 && !isChecked && !window.Inside(child.Score + futilityMargin, color) && !child.IsChecked(child.SideToMove))
                     continue;
 
                 //moves after the PV node are unlikely to raise alpha. searching with a null-sized window can save a lot of nodes
@@ -159,7 +160,7 @@ namespace MinimalChess
             //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
             {
-                int standPatScore = Evaluation.DynamicScore + Evaluation.Evaluate(position);
+                int standPatScore = Evaluation.DynamicScore + position.Score;
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);

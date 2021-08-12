@@ -127,7 +127,7 @@ namespace MinimalChessBoard
                 Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
             }
             Console.WriteLine(" '----------------'");
-            int pstScore = Evaluation.Evaluate(board);
+            int pstScore = board.Score;
             int mobScore = Evaluation.ComputeMobility(board);
             Console.WriteLine($"  A B C D E F G H {(pstScore + mobScore):+0.00;-0.00} (PST:{pstScore:+0.00;-0.00}, Mobility:{mobScore})");
         }
