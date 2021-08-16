@@ -302,8 +302,8 @@ namespace MinimalChessBoard
             long totalNodes = 0;
             int count = 0;
             int foundBest = 0;
-            float falsePositiveSum = 0;
-            float falseNegativeSum = 0;
+            float[] falsePositiveSum = new float[5];
+            float[] falseNegativeSum = new float[5];
             List<Move> bestMoves = new List<Move>();
             while (!file.EndOfStream && count < maxCount)
             {
@@ -313,12 +313,16 @@ namespace MinimalChessBoard
                 IterativeSearch search = new IterativeSearch(depth, board);
                 long t1 = Stopwatch.GetTimestamp();
 
-                float futilePercent = search.FutileNodes / (float)(search.FutileNodes + search.NonFutileNodes + 1);
-                float falseNegativePercent = search.FalseNegative / (float)(search.FutileNodes+1);
-                falseNegativeSum += falseNegativePercent;
-                float falsePositivePercent = search.FalsePositive / (float)(search.NonFutileNodes+1);
-                falsePositiveSum += falsePositivePercent;
-                Console.WriteLine($"{falsePositivePercent * 100:00.00}% false futile, Ø{falsePositiveSum / count * 100:00.00}%), {falseNegativePercent * 100:00.00}% missed futile, Ø{falseNegativeSum / count * 100:00.00}%, {search.FutileNodes} futile, {search.NonFutileNodes} raise alpha, {futilePercent * 100}% futile");
+                for(int i = 1; i <= 4; i++)
+                {
+                    float futilePercent = search.FutileNodes[i] / (float)(search.FutileNodes[i] + search.NonFutileNodes[i] + 1);
+                    float falseNegativePercent = search.FalseNegative[i] / (float)(search.FutileNodes[i] + 1);
+                    falseNegativeSum[i] += falseNegativePercent;
+                    float falsePositivePercent = search.FalsePositive[i] / (float)(search.NonFutileNodes[i] + 1);
+                    falsePositiveSum[i] += falsePositivePercent;
+                    Console.WriteLine($"Depth {i}: {falsePositivePercent * 100:00.00}% wrong, {falseNegativePercent * 100:00.00}% missed. Ø: {falsePositiveSum[i] / count * 100:00.00}% wrong, {falseNegativeSum[i] / count * 100:00.00}% missed. {search.FutileNodes[i]} futile, {search.NonFutileNodes[i]} raise alpha, {futilePercent * 100}% was futile");
+                }
+                Console.WriteLine();
 
                 long dt = t1 - t0;
                 totalTime += dt;
@@ -381,12 +385,13 @@ namespace MinimalChessBoard
                 Console.WriteLine(fen);
                 int seeRef = int.Parse(tokens[2]);
                 int seeValue = (int)position.SideToMove * SEE.Evaluate(position, move);
+                int seeValuePst = (int)position.SideToMove * SEE.EvalPST(position, move);
                 bool isBad = seeValue < 0;
                 string quality = isBad ? "BAD" : "GOOD";
                 bool isBad2 = (int)position.SideToMove * SEE.EvaluateSign(position, move) < 0;
                 Debug.Assert(seeRef == seeValue);
                 Debug.Assert(isBad == isBad2);
-                Console.WriteLine($"{count,4}. [{(seeRef == seeValue ? "X" : " ")}] {quality}, SEE({move}) = {seeValue}, Solution: {seeRef} ({tokens[3]})");
+                Console.WriteLine($"{count,4}. [{(seeRef == seeValue ? "X" : " ")}] {quality}, SEE({move}) = {seeValue}, SEE_PST({move}) = {seeValuePst} Solution: {seeRef} ({tokens[3]})");
                 if (seeRef == seeValue)
                     correct++;
                 Console.WriteLine();

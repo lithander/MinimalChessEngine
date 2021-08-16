@@ -34,7 +34,7 @@ namespace MinimalChess
 
         public static int PieceValue(Piece piece) => PieceValues[(int)piece >> 1];
 
-        public static int Evaluate(Board position, Move move)
+        public static int EvaluateRecursive(Board position, Move move)
         {
             position = new Board(position);
             int material = 0;
@@ -54,12 +54,12 @@ namespace MinimalChess
             //raise alpha to standPatScore and perform beta cutoff when standPatScore is too good
             if (window.Cut(material, color))
                 return window.GetScore(color);
-
+        
             int fromSquare = position.GetLeastValuableAttacker(toSquare, position.SideToMove);
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"
             if (fromSquare == -1)
                 return window.GetScore(color);
-
+        
             Piece attacker = position[fromSquare];
             Move move;
             if (attacker == Piece.WhitePawn && Board.Rank(toSquare) == 7)
@@ -68,16 +68,115 @@ namespace MinimalChess
                 move = new Move(fromSquare, toSquare, Piece.BlackQueen);
             else
                 move = new Move(fromSquare, toSquare);
-
+        
             if (move.Promotion != Piece.None)
             {
                 material -= PieceValue(attacker);
                 material += PieceValue(move.Promotion);
             }
-
+        
             Piece victim = position.Play(move);
             material -= PieceValue(victim);
             return Eval(position, window, toSquare, material);
+        }
+
+        public static int EvalPST(Board position, Move move)
+        {
+            SearchWindow window = SearchWindow.Infinite;
+            position = new Board(position);
+            int seeSquare = move.ToSquare;
+            int baseScore = Evaluation.Evaluate(position);
+            while (true)
+            {
+                var victim = position.Play(move);
+                if (victim == Piece.King.OfColor(position.SideToMove))
+                    return window.GetScore(position.SideToMove);
+
+                int score = Evaluation.Evaluate(position) - baseScore;
+                //raise alpha and perform beta cutoff when standPatScore is too good
+                if (window.Cut(score, position.SideToMove))
+                    return window.GetScore(position.SideToMove);
+
+                int fromSquare = position.GetLeastValuableAttacker(seeSquare, position.SideToMove);
+                //can't capture. We return the 'alpha'
+                if (fromSquare == -1)
+                    return window.GetScore(position.SideToMove);
+
+                if (position[fromSquare] == Piece.WhitePawn && Board.Rank(seeSquare) == 7)
+                    move = new Move(fromSquare, seeSquare, Piece.WhiteQueen);
+                else if (position[fromSquare] == Piece.BlackPawn && Board.Rank(seeSquare) == 0)
+                    move = new Move(fromSquare, seeSquare, Piece.BlackQueen);
+                else
+                    move = new Move(fromSquare, seeSquare);
+            }
+        }
+
+        //public static int EvaluateExchange(Board position, Move move)
+        //{
+        //    SearchWindow window = SearchWindow.Infinite;
+        //    Board board = new Board(position);
+        //    int seeSquare = move.ToSquare;
+        //    int baseScore = board.Score;
+        //    while (true)
+        //    {
+        //        var victim = board.Play(move);
+        //
+        //        //if we captured a KING the beta cutoff is guaranteed (but not automatic because the king is zero-valued in the PSTs)
+        //        if (victim == Piece.King.OfColor(board.SideToMove))
+        //            return window.GetScore(board.SideToMove);
+        //
+        //        //raise alpha and perform beta cutoff when standPatScore is too good
+        //        if (window.Cut(board.Score - baseScore, board.SideToMove))
+        //            return window.GetScore(board.SideToMove);
+        //
+        //        //can we capture again? if not we return 'alpha'
+        //        int fromSquare = board.GetLeastValuableAttacker(seeSquare, board.SideToMove);
+        //        if (fromSquare == -1)
+        //            return window.GetScore(board.SideToMove);
+        //
+        //        //generate the next capture on seeSquare
+        //        if (board[fromSquare] == Piece.WhitePawn && Board.Rank(seeSquare) == 7)
+        //            move = new Move(fromSquare, seeSquare, Piece.WhiteQueen);
+        //        else if (board[fromSquare] == Piece.BlackPawn && Board.Rank(seeSquare) == 0)
+        //            move = new Move(fromSquare, seeSquare, Piece.BlackQueen);
+        //        else
+        //            move = new Move(fromSquare, seeSquare);
+        //    }
+        //}
+
+        public static int Evaluate(Board position, Move move)
+        {
+            SearchWindow window = SearchWindow.Infinite;
+            position = new Board(position);
+            int seeSquare = move.ToSquare;
+            int material = 0;
+            while (true)
+            {
+                if (move.Promotion != Piece.None)
+                {
+                    material -= PieceValue(position[move.FromSquare]);
+                    material += PieceValue(move.Promotion);
+                }
+                Piece victim = position.Play(move);
+                material -= PieceValue(victim);
+                Color color = position.SideToMove;
+
+                //raise alpha and perform beta cutoff when standPatScore is too good
+                if (window.Cut(material, color))
+                    return window.GetScore(color);
+
+                int fromSquare = position.GetLeastValuableAttacker(seeSquare, color);
+                //can't capture. We return the 'alpha'
+                if (fromSquare == -1)
+                    return window.GetScore(color);
+
+                if (position[fromSquare] == Piece.WhitePawn && Board.Rank(seeSquare) == 7)
+                    move = new Move(fromSquare, seeSquare, Piece.WhiteQueen);
+                else if (position[fromSquare] == Piece.BlackPawn && Board.Rank(seeSquare) == 0)
+                    move = new Move(fromSquare, seeSquare, Piece.BlackQueen);
+                else
+                    move = new Move(fromSquare, seeSquare);
+            }
         }
 
         public static int EvaluateSign(Board position, Move move)

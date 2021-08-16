@@ -64,10 +64,10 @@ namespace MinimalChess
             return result;
         }
 
-        public long FutileNodes = 0;
-        public long NonFutileNodes = 0;
-        public long FalsePositive = 0;
-        public long FalseNegative = 0;
+        public long[] FutileNodes = new long[5];
+        public long[] NonFutileNodes = new long[5];
+        public long[] FalsePositive = new long[5];
+        public long[] FalseNegative = new long[5];
 
         private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window)
         {
@@ -100,31 +100,15 @@ namespace MinimalChess
             //do a regular expansion...
             Move[] pv = Array.Empty<Move>();
             int expandedNodes = 0;
-            bool futileNode = false;
-            int futileNodeScore = 0;
-            bool doFutilityPruning = !isChecked && depth <= 3;
-            if (doFutilityPruning)
-            {
-                futileNodeScore = Evaluation.Evaluate(position) + (int)color * depth * 80;
-                if (!window.Inside(futileNodeScore , color))
-                    futileNode = true;
-            }
+            int[] margins = {0, 70, 140, 210, 280 };
+            bool doFutilityPruning = depth <= 4;
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
             {
                 expandedNodes++;
 
-                //bool isFutile = (!isChecked && depth <= 3 && expandedNodes > 1 && !window.Inside(Evaluation.Evaluate(child) + (int)color * depth * 80, color) && !child.IsChecked(child.SideToMove));
-                bool isFutile = (futileNode && expandedNodes > 1 && !window.Inside(futileNodeScore + Evaluation.Estimate(position, move), color) && !child.IsChecked(child.SideToMove));
-                if(isFutile)
-                    continue;
-
-                // 0.5.8f --- 1568 - 1748 - 684  [0.477] 4000 vs AbsoluteZero
-                //if (depth > 1)
-                //{
-                //    int see = (int)position.SideToMove * SEE.EvaluateSign(position, move);
-                //    if (see < 0)
-                //        R = 1;
-                //}
+                bool isFutile = doFutilityPruning && expandedNodes > 1 && !isChecked && !window.Inside(Evaluation.Evaluate(child) + (int)color * margins[depth], color) && !child.IsChecked(child.SideToMove);
+                //if(isFutile)
+                //    continue;
 
                 //moves after the PV node are unlikely to raise alpha.
                 if (expandedNodes > 1 && depth >= 3)
@@ -136,8 +120,9 @@ namespace MinimalChess
                     {
                         if (doFutilityPruning)
                         {
-                            if (!isFutile) FalseNegative++;
-                            FutileNodes++;
+                            if (!isFutile) 
+                                FalseNegative[depth]++;
+                            FutileNodes[depth]++;
                         }
                         continue;
                     }
@@ -149,8 +134,9 @@ namespace MinimalChess
                 {
                     if (doFutilityPruning)
                     {
-                        if (isFutile) FalsePositive++;
-                        NonFutileNodes++;
+                        if (isFutile) 
+                            FalsePositive[depth]++;
+                        NonFutileNodes[depth]++;
                     }
 
                     Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
@@ -171,8 +157,9 @@ namespace MinimalChess
 
                 if (doFutilityPruning)
                 {
-                    if (!isFutile) FalseNegative++;
-                    FutileNodes++;
+                    if (!isFutile) 
+                        FalseNegative[depth]++;
+                    FutileNodes[depth]++;
                 }
             }
 
