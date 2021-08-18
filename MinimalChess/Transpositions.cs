@@ -54,8 +54,8 @@ namespace MinimalChess
             if (e1.Hash == hash)
                 return index ^ 1;
 
-            //raise age of both and chose the older, shallower one!
-            return (e0.Depth - ++e0.Age) < (e1.Depth - ++e1.Age) ? index : index ^ 1;
+            //raise age of both and choose the older, shallower entry!
+            return (++e0.Age - e0.Depth) > (++e1.Age - e1.Depth) ? index : index ^ 1;
         }
 
         static Transpositions()
@@ -76,16 +76,14 @@ namespace MinimalChess
 
         public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
         {
-            depth = Math.Max(depth, 0);
-            int index = Index(zobristHash);
-            ref HashEntry entry = ref _table[index];
+            ref HashEntry entry = ref _table[Index(zobristHash)];
 
             //don't overwrite a bestmove with 'default' unless it's a new position
             if (entry.Hash != zobristHash || bestMove != default)
                 entry.BestMove = bestMove;
 
             entry.Hash = zobristHash;
-            entry.Depth = (byte)depth;
+            entry.Depth = depth < 0 ? default : (byte)depth;
             entry.Age = 0;
 
             if (score >= window.Ceiling)
