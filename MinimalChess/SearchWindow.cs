@@ -6,7 +6,6 @@
 
         public int Floor;//Alpha
         public int Ceiling;//Beta
-        public int Width => Ceiling - Floor - 1;
 
         public SearchWindow UpperBound => new SearchWindow(Ceiling - 1, Ceiling);
         public SearchWindow LowerBound => new SearchWindow(Floor, Floor + 1);
@@ -41,13 +40,9 @@
             }
         }
 
-        public bool Inside(int score, Color color)
-        {
-            if (color == Color.White)
-                return score > Floor;
-            else
-                return score < Ceiling;
-        }
+        public bool FailLow(int score, Color color) => color == Color.White ? (score <= Floor) : (score >= Ceiling);
+
+        //public bool FailHigh(int score, Color color) => color == Color.White ? (score >= Ceiling) : (score <= Floor);
 
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
     }

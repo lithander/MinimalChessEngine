@@ -102,7 +102,7 @@ namespace MinimalChess
 
                 //moves after the PV node are unlikely to raise alpha. skip those that appear clearly futile!
                 int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
-                if (expandedNodes > 1 && depth <= 4 && !isChecked && !window.Inside(child.Score + futilityMargin, color) && !child.IsChecked(child.SideToMove))
+                if (expandedNodes > 1 && depth <= 4 && !isChecked && window.FailLow(child.Score + futilityMargin, color) && !child.IsChecked(child.SideToMove))
                     continue;
 
                 //moves after the PV node are unlikely to raise alpha. searching with a null-sized window can save a lot of nodes
@@ -111,26 +111,26 @@ namespace MinimalChess
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
                     SearchWindow nullWindow = window.GetLowerBound(color);
                     var nullResult = EvalPositionTT(child, depth - 1, nullWindow);
-                    if (!nullWindow.Inside(nullResult.Score, color))
+                    if (nullWindow.FailLow(nullResult.Score, color))
                         continue;
                 }
 
                 //this node may raise alpha!
                 var eval = EvalPositionTT(child, depth - 1, window);
-                if (window.Inside(eval.Score, color))
-                {
-                    Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
-                    //store the PV beginning with move, followed by the PV of the childnode
-                    pv = Merge(move, eval.PV);
-                    //...and maybe get a beta cutoff
-                    if (window.Cut(eval.Score, color))
-                    {
-                        //we remember killers like hat!
-                        if (position[move.ToSquare] == Piece.None)
-                            _killers.Add(move, depth);
+                if (window.FailLow(eval.Score, color))
+                    continue;
 
-                        return (window.GetScore(color), pv);
-                    }
+                Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
+                //store the PV beginning with move, followed by the PV of the childnode
+                pv = Merge(move, eval.PV);
+                //...and maybe get a beta cutoff
+                if (window.Cut(eval.Score, color))
+                {
+                    //we remember killers like hat!
+                    if (position[move.ToSquare] == Piece.None)
+                        _killers.Add(move, depth);
+
+                    return (window.GetScore(color), pv);
                 }
             }
 
