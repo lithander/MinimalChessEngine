@@ -63,5 +63,14 @@ namespace MinimalChess
             }
             Sort((a, b) => Score(b).CompareTo(Score(a)));
         }
+
+        public void SortHistory(Board context)
+        {
+            float Score(Move move)
+            {
+                return History.Value(context[move.FromSquare], move.ToSquare);
+            }
+            Sort((a, b) => Score(b).CompareTo(Score(a)));
+        }
     }
 }

@@ -6,7 +6,7 @@ namespace MinimalChessEngine
     class TimeControl
     {
         const int TIME_MARGIN = 20;
-        const int BRANCHING_FACTOR_ESTIMATE = 5;
+        const int BRANCHING_FACTOR_ESTIMATE = 3;
         const int MAX_TIME_REMAINING = int.MaxValue / 3; //large but not too large to cause overflow issues
 
         private int _movesToGo;
@@ -67,7 +67,7 @@ namespace MinimalChessEngine
             int elapsed = Elapsed;
 
             //estimate the branching factor, if only one move to go we yolo with a low estimate
-            int multi = (_movesToGo == 1) ? 3 : BRANCHING_FACTOR_ESTIMATE;
+            int multi = (_movesToGo == 1) ? 1 : BRANCHING_FACTOR_ESTIMATE;
             int estimate = multi * ElapsedInterval;
             int total = elapsed + estimate;
 

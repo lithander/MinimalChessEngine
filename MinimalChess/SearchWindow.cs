@@ -2,13 +2,13 @@
 {
     public struct SearchWindow
     {
-        public static SearchWindow Infinite = new SearchWindow(short.MinValue, short.MaxValue);
+        public static SearchWindow Infinite = new(short.MinValue, short.MaxValue);
 
         public int Floor;//Alpha
         public int Ceiling;//Beta
 
-        public SearchWindow UpperBound => new SearchWindow(Ceiling - 1, Ceiling);
-        public SearchWindow LowerBound => new SearchWindow(Floor, Floor + 1);
+        public SearchWindow UpperBound => new(Ceiling - 1, Ceiling);
+        public SearchWindow LowerBound => new(Floor, Floor + 1);
         //used to quickly determine that a move is not improving the score for color.
         public SearchWindow GetLowerBound(Color color) => color == Color.White ? LowerBound : UpperBound;
         //used to quickly determine that a move is too good and will not be allowed by the opponent .

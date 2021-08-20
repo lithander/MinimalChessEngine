@@ -25,6 +25,7 @@ namespace MinimalChess
             _root = new Board(board);
             _killers = new KillerMoves(4);
             _maxNodes = maxNodes;
+            History.Clear();
         }
 
         public IterativeSearch(int searchDepth, Board board) : this(board)
@@ -40,6 +41,7 @@ namespace MinimalChess
 
             Depth++;
             _killers.Resize(Depth);
+            History.Shrink();
             StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
             (Score, PrincipalVariation) = EvalPosition(_root, Depth, SearchWindow.Infinite);
@@ -79,6 +81,8 @@ namespace MinimalChess
 
             Color color = position.SideToMove;
             bool isChecked = position.IsChecked(color);
+            int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
+
             //should we try null move pruning?
             if (depth >= 2 && !isChecked)
             {
@@ -101,16 +105,17 @@ namespace MinimalChess
                 expandedNodes++;
 
                 //moves after the PV node are unlikely to raise alpha. skip those that appear clearly futile!
-                int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
-                if (expandedNodes > 1 && depth <= 4 && !isChecked && window.FailLow(child.Score + futilityMargin, color) && !child.IsChecked(child.SideToMove))
+                bool reduce = expandedNodes > 1 && !isChecked && (move.Promotion < Piece.Queen) && !child.IsChecked(child.SideToMove);
+                if (reduce && depth <= 4 && window.FailLow(child.Score + futilityMargin, color))
                     continue;
 
                 //moves after the PV node are unlikely to raise alpha. searching with a null-sized window can save a lot of nodes
                 if (expandedNodes > 1 && depth >= 3)
                 {
                     //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
+                    int R = reduce && expandedNodes >= 4 ? 1 : 0;
                     SearchWindow nullWindow = window.GetLowerBound(color);
-                    var nullResult = EvalPositionTT(child, depth - 1, nullWindow);
+                    var nullResult = EvalPositionTT(child, depth - 1 - R, nullWindow);
                     if (nullWindow.FailLow(nullResult.Score, color))
                         continue;
                 }
@@ -118,8 +123,12 @@ namespace MinimalChess
                 //this node may raise alpha!
                 var eval = EvalPositionTT(child, depth - 1, window);
                 if (window.FailLow(eval.Score, color))
+                {
+                    History.Bad(position[move.FromSquare], move.ToSquare, depth);
                     continue;
+                }
 
+                History.Good(position[move.FromSquare], move.ToSquare, depth);
                 Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
                 //store the PV beginning with move, followed by the PV of the childnode
                 pv = Merge(move, eval.PV);
