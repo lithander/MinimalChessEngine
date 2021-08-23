@@ -15,17 +15,18 @@ namespace MinimalChess
         public bool Aborted => NodesVisited >= _maxNodes || _killSwitch.Get(NodesVisited % QUERY_TC_FREQUENCY == 0);
         public bool GameOver => Evaluation.IsCheckmate(Score);
 
-        Board _root;
-        KillerMoves _killers;
-        KillSwitch _killSwitch;
-        long _maxNodes;
+        private Board _root;
+        private KillerMoves _killers;
+        private History _history;
+        private KillSwitch _killSwitch;
+        private long _maxNodes;
 
         public IterativeSearch(Board board, long maxNodes = long.MaxValue)
         {
             _root = new Board(board);
             _killers = new KillerMoves(4);
+            _history = new History();
             _maxNodes = maxNodes;
-            History.Clear();
         }
 
         public IterativeSearch(int searchDepth, Board board) : this(board)
@@ -36,12 +37,9 @@ namespace MinimalChess
         
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
-            if (GameOver)
-                return;
-
             Depth++;
             _killers.Resize(Depth);
-            History.Shrink();
+            _history.Scale();
             StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
             (Score, PrincipalVariation) = EvalPosition(_root, Depth, SearchWindow.Infinite);
@@ -100,7 +98,7 @@ namespace MinimalChess
             //do a regular expansion...
             Move[] pv = Array.Empty<Move>();
             int expandedNodes = 0;
-            foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers))
+            foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers, _history))
             {
                 expandedNodes++;
 
@@ -124,11 +122,10 @@ namespace MinimalChess
                 var eval = EvalPositionTT(child, depth - 1, window);
                 if (window.FailLow(eval.Score, color))
                 {
-                    History.Bad(position[move.FromSquare], move.ToSquare, depth);
+                    _history.Bad(position, move, depth);
                     continue;
                 }
 
-                History.Good(position[move.FromSquare], move.ToSquare, depth);
                 Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
                 //store the PV beginning with move, followed by the PV of the childnode
                 pv = Merge(move, eval.PV);
@@ -137,7 +134,10 @@ namespace MinimalChess
                 {
                     //we remember killers like hat!
                     if (position[move.ToSquare] == Piece.None)
+                    {
+                        _history.Good(position, move, depth);
                         _killers.Add(move, depth);
+                    }
 
                     return (window.GetScore(color), pv);
                 }

@@ -5,7 +5,7 @@ namespace MinimalChess
 {
     public static class Playmaker
     {
-        internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers)
+        internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers, History history)
         {
             //1. Captures Mvv-Lva, PV excluded
             Move bestMove = Transpositions.GetBestMove(position);
@@ -25,24 +25,28 @@ namespace MinimalChess
 
             //3. Killers if available
             foreach (Move killer in killers.Get(depth))
-                if (position[killer.ToSquare] == Piece.None && position.IsPlayable(killer))
-                {
-                    var nextPosition = new Board(position, killer);
-                    if (!nextPosition.IsChecked(position.SideToMove))
-                        yield return (killer, nextPosition);
-                }
+            {
+                if (position[killer.ToSquare] != Piece.None || !position.IsPlayable(killer))
+                    continue;
+
+                var nextPosition = new Board(position, killer);
+                if (!nextPosition.IsChecked(position.SideToMove))
+                    yield return (killer, nextPosition);
+            }
 
             //4. Play quiet moves that aren't known killers
             var quiets = MoveList.Quiets(position);
-            if(depth >= 3)
-                quiets.SortHistory(position);
+            if (depth >= 3)
+                quiets.SortHistory(position, history);
             foreach (var move in quiets)
-                if (!killers.Contains(depth, move))
-                {
-                    var nextPosition = new Board(position, move);
-                    if (!nextPosition.IsChecked(position.SideToMove))
-                        yield return (move, nextPosition);
-                }
+            {
+                if (killers.Contains(depth, move))
+                    continue;
+
+                var nextPosition = new Board(position, move);
+                if (!nextPosition.IsChecked(position.SideToMove))
+                    yield return (move, nextPosition);
+            }
         }
 
         internal static IEnumerable<Board> Play(Board position)

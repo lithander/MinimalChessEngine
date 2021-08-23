@@ -6,41 +6,14 @@ using System.Threading.Tasks;
 
 namespace MinimalChess
 {
-    public static class History
+    public class History
     {
         private const int Squares = 64;
         private const int Pieces = 12;
-        private static int[,] Positive = new int[Squares, Pieces];
-        private static int[,] Negative = new int[Squares, Pieces];
-
-        public static int Max
-        {
-            get
-            {
-                int max = 0;
-                for (int square = 0; square < Squares; square++)
-                for (int piece = 0; piece < Pieces; piece++)
-                {
-                    max = Math.Max(max, Positive[square, piece]);
-                    max = Math.Max(max, Negative[square, piece]);
-                }
-
-                return max;
-            }
-        }
-
-        public static void Clear()
-        {
-            for (int square = 0; square < Squares; square++)
-            for (int piece = 0; piece < Pieces; piece++)
-            {
-                Positive[square, piece] = 0;
-                Negative[square, piece] = 0;
-            }
-        }
-
-
-        public static void Shrink()
+        private readonly int[,] Positive = new int[Squares, Pieces];
+        private readonly int[,] Negative = new int[Squares, Pieces];
+        
+        public void Scale()
         {
             for (int square = 0; square < Squares; square++)
                 for(int piece = 0; piece < Pieces; piece++)
@@ -50,23 +23,28 @@ namespace MinimalChess
                 }
         }
 
-        public static void Good(Piece piece, int square, int depth)
+        private int PieceIndex(Piece piece)
         {
-            int iPiece = ((byte)piece >> 1) - 2; //BlackPawn = 0...
-            Positive[square, iPiece] += depth * depth;
+            return ((byte)piece >> 1) - 2; //BlackPawn = 0...
         }
 
-        public static void Bad(Piece piece, int square, int depth)
+        public void Good(Board context, Move move, int depth)
         {
-            int iPiece = ((byte)piece >> 1) - 2; //BlackPawn = 0...
-            Negative[square, iPiece] += depth * depth;
+            int iPiece = PieceIndex(context[move.FromSquare]);
+            Positive[move.ToSquare, iPiece] += depth * depth;
         }
 
-        public static float Value(Piece piece, int square)
+        public void Bad(Board context, Move move, int depth)
         {
-            int iPiece = ((byte)piece >> 1) - 2; //BlackPawn = 0...
-            float a = Positive[square, iPiece] + 1;
-            float b = Negative[square, iPiece] + 2;
+            int iPiece = PieceIndex(context[move.FromSquare]);
+            Negative[move.ToSquare, iPiece] += depth * depth;
+        }
+
+        public float Value(Board context, Move move)
+        {
+            int iPiece = PieceIndex(context[move.FromSquare]);
+            float a = Positive[move.ToSquare, iPiece] + 1;
+            float b = Negative[move.ToSquare, iPiece] + 2;
             return a / b;
         }
     }

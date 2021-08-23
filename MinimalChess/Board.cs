@@ -415,12 +415,12 @@ namespace MinimalChess
             Piece king = color == Color.Black ? Piece.BlackKing : Piece.WhiteKing;
             for (int square = 0; square < 64; square++)
                 if(_state[square] == king)
-                    return IsSquareAttacked(square, Pieces.Flip(color));
+                    return IsSquareAttackedBy(square, Pieces.Flip(color));
 
             throw new Exception($"No {color} King found!");
         }
 
-        private bool IsSquareAttacked(int square, Color color)
+        public bool IsSquareAttackedBy(int square, Color color)
         {
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = color == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
@@ -547,7 +547,7 @@ namespace MinimalChess
 
             //the king must not start, end or pass through a square that is attacked by an enemy piece. (but the rook and the square next to the rook on queenside may be attacked)
             for (int i = 0; i < 3; i++)
-                if (IsSquareAttacked(kingSquare + i * dir, enemyColor))
+                if (IsSquareAttackedBy(kingSquare + i * dir, enemyColor))
                     return false;
 
             return true;
