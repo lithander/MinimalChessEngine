@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 
 namespace MinimalChess
 {
@@ -53,7 +54,31 @@ namespace MinimalChess
             return captures;
         }
 
-        public void SortMvvLva(Board context)
+        internal static MoveList SortedQuiets(Board position, History history, float threshold)
+        {
+            MoveList quiets = new MoveList();
+            position.CollectQuiets(move =>
+            {
+                float score = history.Value(position, move);
+                //if score >= threshold insertion-sort else just add
+                int index = score >= threshold ? quiets.FindIndex(m => history.Value(position, m) <= score) : -1;
+                if (index >= 0)
+                    quiets.Insert(index, move);
+                else
+                    quiets.Add(move);
+            });
+            return quiets;
+        }
+
+        public static MoveList SortedQuiets(Board position, History history)
+        {
+            MoveList quiets = new MoveList();
+            position.CollectQuiets(quiets.Add);
+            quiets.SortHistory(position, history);
+            return quiets;
+        }
+
+        private void SortMvvLva(Board context)
         {
             int Score(Move move)
             {
@@ -64,7 +89,7 @@ namespace MinimalChess
             Sort((a, b) => Score(b).CompareTo(Score(a)));
         }
 
-        public void SortHistory(Board context, History history)
+        private void SortHistory(Board context, History history)
         {
             Sort((a, b) => history.Value(context, b).CompareTo(history.Value(context, a)));
         }

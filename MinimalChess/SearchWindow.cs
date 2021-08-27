@@ -42,7 +42,7 @@
 
         public bool FailLow(int score, Color color) => color == Color.White ? (score <= Floor) : (score >= Ceiling);
 
-        //public bool FailHigh(int score, Color color) => color == Color.White ? (score >= Ceiling) : (score <= Floor);
+        public bool FailHigh(int score, Color color) => color == Color.White ? (score >= Ceiling) : (score <= Floor);
 
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
     }

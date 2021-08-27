@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -35,10 +36,7 @@ namespace MinimalChess
             }
 
             //4. Play quiet moves that aren't known killers
-            var quiets = MoveList.Quiets(position);
-            if (depth >= 3)
-                quiets.SortHistory(position, history);
-            foreach (var move in quiets)
+            foreach (var move in MoveList.SortedQuiets(position, history))
             {
                 if (killers.Contains(depth, move))
                     continue;

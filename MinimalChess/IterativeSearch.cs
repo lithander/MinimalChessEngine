@@ -79,7 +79,6 @@ namespace MinimalChess
 
             Color color = position.SideToMove;
             bool isChecked = position.IsChecked(color);
-            int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
 
             //should we try null move pruning?
             if (depth >= 2 && !isChecked)
@@ -88,11 +87,10 @@ namespace MinimalChess
                 //skip making a move
                 Board nullChild = Playmaker.PlayNullMove(position);
                 //evaluate the position at reduced depth with a null-window around beta
-                SearchWindow nullWindow = window.GetUpperBound(color);
-                (int nullScore, _) = EvalPositionTT(nullChild, depth - R - 1, nullWindow);
+                (int score, _) = EvalPositionTT(nullChild, depth - R - 1, window.GetUpperBound(color));
                 //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
-                if (nullWindow.Cut(nullScore, color))
-                    return (nullScore, Array.Empty<Move>());
+                if (window.FailHigh(score, color))
+                    return (score, Array.Empty<Move>());
             }
 
             //do a regular expansion...
@@ -102,23 +100,31 @@ namespace MinimalChess
             {
                 expandedNodes++;
 
-                //moves after the PV node are unlikely to raise alpha. skip those that appear clearly futile!
-                bool reduce = expandedNodes > 1 && !isChecked && (move.Promotion < Piece.Queen) && !child.IsChecked(child.SideToMove);
-                if (reduce && depth <= 4 && window.FailLow(child.Score + futilityMargin, color))
-                    continue;
-
-                //moves after the PV node are unlikely to raise alpha. searching with a null-sized window can save a lot of nodes
-                if (expandedNodes > 1 && depth >= 3)
+                //moves after the PV node are unlikely to raise alpha. try to avoid a full evaluation!
+                if(expandedNodes > 1)
                 {
-                    //we can save a lot of nodes by searching with "null window" first, proving cheaply that the score is below alpha...
-                    int R = reduce && expandedNodes >= 4 ? 1 : 0;
-                    SearchWindow nullWindow = window.GetLowerBound(color);
-                    var nullResult = EvalPositionTT(child, depth - 1 - R, nullWindow);
-                    if (nullWindow.FailLow(nullResult.Score, color))
-                        continue;
+                    bool tactical = isChecked || (move.Promotion > Piece.Queen) || child.IsChecked(child.SideToMove);
+
+                    //some moves are hopeless and can be skipped without deeper evaluation
+                    if (depth <= 4 && !tactical)
+                    {
+                        int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
+                        if (window.FailLow(child.Score + futilityMargin, color))
+                            continue;
+                    }
+
+                    //other moves are searched with a null-sized window and skipped if they don't raise alpha
+                    if (depth >= 2)
+                    {
+                        //non-tactical late moves are searched at a reduced depth to make this test even faster!
+                        int R = (tactical || expandedNodes < 4) ? 0 : 2;
+                        (int score, _) = EvalPositionTT(child, depth - R - 1, window.GetLowerBound(color));
+                        if (window.FailLow(score, color))
+                            continue;
+                    }
                 }
 
-                //this node may raise alpha!
+                //this move is expected to raise alpha so we search at full depth!
                 var eval = EvalPositionTT(child, depth - 1, window);
                 if (window.FailLow(eval.Score, color))
                 {
@@ -126,10 +132,11 @@ namespace MinimalChess
                     continue;
                 }
 
+                //the position has a new best move and score!
                 Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
-                //store the PV beginning with move, followed by the PV of the childnode
+                //set the PV to this move, followed by the PV of the childnode
                 pv = Merge(move, eval.PV);
-                //...and maybe get a beta cutoff
+                //...and maybe we even get a beta cutoff
                 if (window.Cut(eval.Score, color))
                 {
                     //we remember killers like hat!

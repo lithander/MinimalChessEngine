@@ -43,9 +43,9 @@ namespace MinimalChess
         public float Value(Board context, Move move)
         {
             int iPiece = PieceIndex(context[move.FromSquare]);
-            float a = Positive[move.ToSquare, iPiece] + 1;
-            float b = Negative[move.ToSquare, iPiece] + 2;
-            return a / b;
+            float a = Positive[move.ToSquare, iPiece];
+            float b = Negative[move.ToSquare, iPiece];
+            return a / (a + b + 1);//Interval [0..1]
         }
     }
 }
