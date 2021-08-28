@@ -58,7 +58,7 @@ namespace MinimalChess
         public static byte ToSquare(string squareNotation)
         {
             //Each square has a unique identification of file letter followed by rank number.
-            https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+            //https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
             //Examples: White's king starts the game on square e1; Black's knight on b8 can move to open squares a6 or c6.
 
             //Map letters [a..h] to [0..7] with ASCII('a') == 97

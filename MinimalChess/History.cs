@@ -1,10 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-
-namespace MinimalChess
+﻿namespace MinimalChess
 {
     public class History
     {
@@ -45,7 +39,7 @@ namespace MinimalChess
             int iPiece = PieceIndex(context[move.FromSquare]);
             float a = Positive[move.ToSquare, iPiece];
             float b = Negative[move.ToSquare, iPiece];
-            return a / (a + b + 1);//Interval [0..1]
+            return a / (a + b + 1);//ratio of good increments in the range of [0..1]
         }
     }
 }

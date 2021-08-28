@@ -30,7 +30,7 @@ namespace MinimalChess
                 throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too long!");
 
             //expected format is the long algebraic notation without piece names
-            https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
+            //https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
             string fromSquare = uciMoveNotation.Substring(0, 2);
             string toSquare = uciMoveNotation.Substring(2, 2);

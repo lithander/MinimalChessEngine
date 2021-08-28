@@ -2,7 +2,7 @@
 
 namespace MinimalChess
 {
-    public struct KillSwitch
+    struct KillSwitch
     {
         Func<bool> _killSwitch;
         bool _aborted;

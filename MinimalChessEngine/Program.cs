@@ -7,10 +7,12 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.5.13";
+        const string NAME_VERSION = "MinimalChess 0.6";
+        const string AUTHOR = "Thomas Jahn";
 
         static Engine _engine = new Engine();
-        static async Task Main()
+
+        private static async Task Main()
         {
             Console.WriteLine(NAME_VERSION);
             Start();
@@ -35,7 +37,7 @@ namespace MinimalChessEngine
             {
                 case "uci":
                     Console.WriteLine($"id name {NAME_VERSION}");
-                    Console.WriteLine($"id author Thomas Jahn");
+                    Console.WriteLine($"id author {AUTHOR}");
                     Console.WriteLine($"option name Hash type spin default {Transpositions.DEFAULT_SIZE_MB} min 1 max 2047");//consider gcAllowVeryLargeObjects if larger TT is needed
                     Console.WriteLine("uciok");
                     break;

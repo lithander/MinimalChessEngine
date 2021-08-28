@@ -77,7 +77,7 @@ namespace MinimalChessBoard
             throw new ArgumentException($"Move notation {notation} could not be parsed!");
         }
 
-        private static Move SelectMove(Board board, Piece moving, int toSquare, Piece promotion, char? disambiguate = null)
+        private static Move SelectMove(Board board, Piece moving, int toSquare, Piece promotion, char? fileOrRank = null)
         {
             foreach (var move in new LegalMoves(board))
             {
@@ -87,7 +87,7 @@ namespace MinimalChessBoard
                     continue;
                 if (Pieces.Type(board[move.FromSquare]) != Pieces.Type(moving))
                     continue;
-                if (disambiguate is char fileOrRank && !Notation.ToSquareName(move.FromSquare).Contains(fileOrRank))
+                if (fileOrRank != null && !Notation.ToSquareName(move.FromSquare).Contains(fileOrRank.Value))
                     continue;
 
                 return move; //this is the move!

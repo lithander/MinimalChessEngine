@@ -14,10 +14,9 @@ namespace MinimalChessBoard
         {
             CultureInfo.CurrentCulture = CultureInfo.InvariantCulture;
 
-            bool running = true;
             Board board = new Board(Board.STARTING_POS_FEN);
             Move move = default;
-            while (running)
+            while (true)
             {
                 try
                 {
@@ -213,9 +212,8 @@ namespace MinimalChessBoard
             if (PerftTable.Retrieve(board.ZobristHash, depth, out long childCount))
                 return childCount;
 
-            var moves = new LegalMoves(board);
             long sum = 0;
-            foreach (var move in moves)
+            foreach (var move in new LegalMoves(board))
                 sum += Perft(new Board(board, move), depth - 1);
 
             PerftTable.Store(board.ZobristHash, depth, sum);
@@ -236,10 +234,9 @@ namespace MinimalChessBoard
 
         private static void RunDivide(Board board, int depth)
         {
-            var moves = new LegalMoves(board);
             long sum = 0;
             Board next = new Board(board);
-            foreach (var move in moves)
+            foreach (var move in new LegalMoves(board))
             {
                 next.Copy(board);
                 next.Play(move);

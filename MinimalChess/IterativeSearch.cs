@@ -20,6 +20,7 @@ namespace MinimalChess
         private History _history;
         private KillSwitch _killSwitch;
         private long _maxNodes;
+        private int _mobilityBonus;
 
         public IterativeSearch(Board board, long maxNodes = long.MaxValue)
         {
@@ -38,7 +39,7 @@ namespace MinimalChess
         public void SearchDeeper(Func<bool> killSwitch = null)
         {
             Depth++;
-            _killers.Resize(Depth);
+            _killers.Expand(Depth);
             _history.Scale();
             StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
@@ -69,7 +70,7 @@ namespace MinimalChess
         {
             if (depth <= 0)
             {
-                Evaluation.DynamicScore = Evaluation.ComputeMobility(position);
+                _mobilityBonus = Evaluation.ComputeMobility(position);
                 return (QEval(position, window), Array.Empty<Move>());
             }
 
@@ -103,7 +104,7 @@ namespace MinimalChess
                 //moves after the PV node are unlikely to raise alpha. try to avoid a full evaluation!
                 if(expandedNodes > 1)
                 {
-                    bool tactical = isChecked || (move.Promotion > Piece.Queen) || child.IsChecked(child.SideToMove);
+                    bool tactical = isChecked || child.IsChecked(child.SideToMove);
 
                     //some moves are hopeless and can be skipped without deeper evaluation
                     if (depth <= 4 && !tactical)
@@ -176,7 +177,7 @@ namespace MinimalChess
             //if inCheck we can't use standPat, need to escape check!
             if (!inCheck)
             {
-                int standPatScore = Evaluation.DynamicScore + position.Score;
+                int standPatScore = position.Score + _mobilityBonus;
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
                     return window.GetScore(color);

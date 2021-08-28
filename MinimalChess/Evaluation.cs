@@ -220,8 +220,6 @@ namespace MinimalChess
             0,   30,    3,   12,    5,  -99,    0,      6,    4,    7,   -8,    6,    0,  // K
         };
 
-        public static int DynamicScore;
-
         public static int ComputeMobility(Board board)
         {
             int mobility = 0;

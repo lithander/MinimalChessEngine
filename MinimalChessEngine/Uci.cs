@@ -1,19 +1,16 @@
 ﻿using MinimalChess;
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 
 namespace MinimalChessEngine
 {
     public static class Uci
     {
-        static public void BestMove(Move move)
+        public static void BestMove(Move move)
         {
             Console.WriteLine($"bestmove {move}");
         }
 
-        static internal void Info(int depth, int score, long nodes, int timeMs, Move[] pv)
+        public static void Info(int depth, int score, long nodes, int timeMs, Move[] pv)
         {
             double tS = Math.Max(1, timeMs) / 1000.0;
             int nps = (int)(nodes / tS);
@@ -32,7 +29,7 @@ namespace MinimalChessEngine
             return $"mate {Math.Sign(score) * moves}";
         }
 
-        static public void Log(string message)
+        public static void Log(string message)
         {
             Console.WriteLine($"info string {message}");
         }

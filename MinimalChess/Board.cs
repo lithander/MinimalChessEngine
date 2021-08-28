@@ -104,15 +104,12 @@ namespace MinimalChess
 
         //Rank - the eight horizontal rows of the chess board are called ranks.
         //File - the eight vertical columns of the chess board are called files.
-        public Piece this[int rank, int file]
-        {
-            get => _state[rank * 8 + file];
-        }
+        public Piece this[int rank, int file] => _state[rank * 8 + file];
 
         public void SetupPosition(string fen)
         {
             //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-            https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+            //https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
             string[] fields = fen.Split();
             if (fields.Length < 4)
                 throw new ArgumentException($"FEN needs at least 4 fields. Has only {fields.Length} fields.");
@@ -643,36 +640,6 @@ namespace MinimalChess
                 _castlingRights &= ~flag;
 
             _zobristHash ^= Zobrist.Castling(_castlingRights);
-        }
-
-        public override bool Equals(object obj)
-        {
-            if (obj is Board board)
-                return Equals(board);
-
-            return false;
-        }
-
-        public bool Equals(Board other)
-        {
-            //Used for detecting repetition
-            //From: https://en.wikipedia.org/wiki/Threefold_repetition
-            //Two positions are by definition "the same" if... 
-            //1.) the same player has the move 
-            if (other._sideToMove != _sideToMove)
-                return false;
-            //2.) the remaining castling rights are the same and 
-            if (other._castlingRights != _castlingRights)
-                return false;
-            //3.) the possibility to capture en passant is the same. 
-            if (other._enPassantSquare != _enPassantSquare)
-                return false;
-            //4.) the same types of pieces occupy the same squares
-            for (int square = 0; square < 64; square++)
-                if (other._state[square] != _state[square])
-                    return false;
-
-            return true;
         }
 
         private void InitZobristHash()

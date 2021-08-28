@@ -10,12 +10,12 @@ namespace MinimalChess
 
         public KillerMoves(int width)
         {
-            _moves = new Move[0];
+            _moves = Array.Empty<Move>();
             _depth = 0;
             _width = width;
         }
 
-        public void Resize(int depth)
+        public void Expand(int depth)
         {
             _depth = Math.Max(_depth, depth);
             Array.Resize(ref _moves, _depth * _width);
