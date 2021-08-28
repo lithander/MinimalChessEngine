@@ -37,61 +37,46 @@ namespace MinimalChess
         }
     }
 
-    public class MoveList : List<Move>
+    public struct SortedMove : IComparable<SortedMove>
+    {
+        public float Priority;
+        public Move Move;
+        public int CompareTo(SortedMove other) => other.Priority.CompareTo(Priority);
+        public static implicit operator Move(SortedMove m) => m.Move;
+    }
+
+    public class MoveList : List<SortedMove>
     {
         internal static MoveList Quiets(Board position)
         {
             MoveList quietMoves = new MoveList();
-            position.CollectQuiets(quietMoves.Add);
+            position.CollectQuiets(m => quietMoves.Add(m, 0));
             return quietMoves;
         }
 
         internal static MoveList SortedCaptures(Board position)
         {
             MoveList captures = new MoveList();
-            position.CollectCaptures(captures.Add);
-            captures.SortMvvLva(position);
+            position.CollectCaptures(m => captures.Add(m, ScoreMvvLva(m, position)));
+            captures.Sort();
             return captures;
-        }
-
-        internal static MoveList SortedQuiets(Board position, History history, float threshold)
-        {
-            MoveList quiets = new MoveList();
-            position.CollectQuiets(move =>
-            {
-                float score = history.Value(position, move);
-                //if score >= threshold insertion-sort else just add
-                int index = score >= threshold ? quiets.FindIndex(m => history.Value(position, m) <= score) : -1;
-                if (index >= 0)
-                    quiets.Insert(index, move);
-                else
-                    quiets.Add(move);
-            });
-            return quiets;
         }
 
         public static MoveList SortedQuiets(Board position, History history)
         {
             MoveList quiets = new MoveList();
-            position.CollectQuiets(quiets.Add);
-            quiets.SortHistory(position, history);
+            position.CollectQuiets(m => quiets.Add(m, history.Value(position, m)));
+            quiets.Sort();
             return quiets;
         }
 
-        private void SortMvvLva(Board context)
+        private static int ScoreMvvLva(Move move, Board context)
         {
-            int Score(Move move)
-            {
-                Piece victim = context[move.ToSquare];
-                Piece attacker = context[move.FromSquare];
-                return Pieces.MaxOrder * Pieces.Order(victim) - Pieces.Order(attacker);
-            }
-            Sort((a, b) => Score(b).CompareTo(Score(a)));
+            Piece victim = context[move.ToSquare];
+            Piece attacker = context[move.FromSquare];
+            return Pieces.MaxOrder * Pieces.Order(victim) - Pieces.Order(attacker);
         }
 
-        private void SortHistory(Board context, History history)
-        {
-            Sort((a, b) => history.Value(context, b).CompareTo(history.Value(context, a)));
-        }
+        private void Add(Move move, float priority) => Add(new SortedMove { Move = move, Priority = priority });
     }
 }
