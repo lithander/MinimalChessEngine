@@ -1,4 +1,5 @@
-﻿using MinimalChess;
+﻿using System;
+using MinimalChess;
 using System.Collections.Generic;
 using System.Threading;
 
@@ -133,8 +134,34 @@ namespace MinimalChessEngine
 
         private void Collect()
         {
-            Uci.Info(_search.Depth, (int)SideToMove * _search.Score, _search.NodesVisited, _time.Elapsed, _search.PrincipalVariation);
             _best = _search.PrincipalVariation[0];
+
+            Uci.Info(
+                depth:  _search.Depth, 
+                score:  (int)SideToMove * _search.Score, 
+                nodes:  _search.NodesVisited, 
+                timeMs: _time.Elapsed, 
+                pv:     GetPrintablePV(_search.PrincipalVariation, _search.Depth)
+            );
+        }
+
+        private Move[] GetPrintablePV(Move[] pv, int depth)
+        {
+            List<Move> result = new(pv);
+            //Try to extend from TT to reach the desired depth?
+            if (result.Count < depth)
+            {
+                Board position = new Board(_board);
+                foreach (Move move in pv)
+                    position.Play(move);
+
+                while (result.Count < depth && Transpositions.GetBestMove(position, out Move move))
+                {
+                    position.Play(move);
+                    result.Add(move);
+                }
+            }
+            return result.ToArray();
         }
     }
 }

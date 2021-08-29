@@ -103,12 +103,10 @@ namespace MinimalChess
             }
         }
 
-        internal static Move GetBestMove(Board position)
+        public static bool GetBestMove(Board position, out Move bestMove)
         {
-            if (Index(position.ZobristHash, out int index))
-                return _table[index].BestMove;
-
-            return default;
+            bestMove = Index(position.ZobristHash, out int index) ? _table[index].BestMove : default;
+            return bestMove != default;
         }
 
         public static bool GetScore(ulong zobristHash, int depth, SearchWindow window, out int score)

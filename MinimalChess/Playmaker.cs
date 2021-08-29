@@ -7,8 +7,7 @@ namespace MinimalChess
         internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers, History history)
         {
             //1. Captures Mvv-Lva, PV excluded
-            Move bestMove = Transpositions.GetBestMove(position);
-            if (bestMove != default)
+            if (Transpositions.GetBestMove(position, out Move bestMove))
             {
                 var nextPosition = new Board(position, bestMove);
                 yield return (bestMove, nextPosition);
