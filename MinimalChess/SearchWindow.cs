@@ -1,4 +1,6 @@
-﻿namespace MinimalChess
+﻿using System;
+
+namespace MinimalChess
 {
     public struct SearchWindow
     {
@@ -45,5 +47,7 @@
         public bool FailHigh(int score, Color color) => color == Color.White ? (score >= Ceiling) : (score <= Floor);
 
         public int GetScore(Color color) => color == Color.White ? Floor : Ceiling;
+
+        public bool CanFailHigh(Color color) => color == Color.White ? (Ceiling < short.MaxValue) : (Floor > short.MinValue);
     }
 }

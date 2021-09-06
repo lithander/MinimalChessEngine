@@ -32,7 +32,7 @@ namespace MinimalChess
 
         public IterativeSearch(int searchDepth, Board board) : this(board)
         {
-            while (!GameOver && Depth < searchDepth)
+            while (Depth < searchDepth)
                 SearchDeeper();
         }
         
@@ -43,35 +43,36 @@ namespace MinimalChess
             _history.Scale();
             StorePVinTT(PrincipalVariation, Depth);
             _killSwitch = new KillSwitch(killSwitch);
-            (Score, PrincipalVariation) = EvalPosition(_root, Depth, SearchWindow.Infinite);
+            (Score, PrincipalVariation) = EvalPosition(_root, 0, Depth, SearchWindow.Infinite);
         }
 
         private void StorePVinTT(Move[] pv, int depth)
         {
             Board position = new Board(_root);
-            foreach (Move move in pv)
+            for (int ply = 0; ply < pv.Length; ply++)
             {
-                Transpositions.Store(position.ZobristHash, --depth, SearchWindow.Infinite, Score, move);
+                Move move = pv[ply];
+                Transpositions.Store(position.ZobristHash, --depth, ply, SearchWindow.Infinite, Score, move);
                 position.Play(move);
             }
         }
 
-        private (int Score, Move[] PV) EvalPositionTT(Board position, int depth, SearchWindow window)
+        private (int Score, Move[] PV) EvalPositionTT(Board position, int ply, int depth, SearchWindow window)
         {
-            if (Transpositions.GetScore(position.ZobristHash, depth, window, out int ttScore))
+            if (Transpositions.GetScore(position.ZobristHash, depth, ply, window, out int ttScore))
                 return (ttScore, Array.Empty<Move>());
 
-            var result = EvalPosition(position, depth, window);
-            Transpositions.Store(position.ZobristHash, depth, window, result.Score, default);
+            var result = EvalPosition(position, ply, depth, window);
+            Transpositions.Store(position.ZobristHash, depth, ply, window, result.Score, result.PV.Length > 0 ? result.PV[0] : default);
             return result;
         }
 
-        private (int Score, Move[] PV) EvalPosition(Board position, int depth, SearchWindow window)
+        private (int Score, Move[] PV) EvalPosition(Board position, int ply, int depth, SearchWindow window)
         {
             if (depth <= 0)
             {
                 _mobilityBonus = Evaluation.ComputeMobility(position);
-                return (QEval(position, window), Array.Empty<Move>());
+                return (QEval(position, ply, window), Array.Empty<Move>());
             }
 
             NodesVisited++;
@@ -80,16 +81,20 @@ namespace MinimalChess
 
             Color color = position.SideToMove;
             bool isChecked = position.IsChecked(color);
+            //if the previous iteration found a mate we check the first few plys without null move to try and find the shortest mate or escape
+            bool allowNullMove = Evaluation.IsCheckmate(Score) ? (ply > Depth/4) : true;
 
-            //should we try null move pruning?
-            if (depth >= 2 && !isChecked)
+            //should we try null move pruning?           
+            if (allowNullMove && depth >= 2 && !isChecked && window.CanFailHigh(color))
             {
                 const int R = 2;
+                //evaluate the position at reduced depth with a null-window around beta
+                SearchWindow beta = window.GetUpperBound(color);
                 //skip making a move
                 Board nullChild = Playmaker.PlayNullMove(position);
-                //evaluate the position at reduced depth with a null-window around beta
-                (int score, _) = EvalPositionTT(nullChild, depth - R - 1, window.GetUpperBound(color));
+                (int score, _) = EvalPositionTT(nullChild, ply + 1, depth - R - 1, beta);
                 //is the evaluation "too good" despite null-move? then don't waste time on a branch that is likely going to fail-high
+                //if the static eval look much worse the alpha also skip it
                 if (window.FailHigh(score, color))
                     return (score, Array.Empty<Move>());
             }
@@ -100,33 +105,31 @@ namespace MinimalChess
             foreach ((Move move, Board child) in Playmaker.Play(position, depth, _killers, _history))
             {
                 expandedNodes++;
+                bool interesting = expandedNodes == 1 || isChecked || child.IsChecked(child.SideToMove);
 
-                //moves after the PV node are unlikely to raise alpha. try to avoid a full evaluation!
-                if(expandedNodes > 1)
+                //some near the leaves that appear hopeless can be skipped without evaluation
+                if (depth <= 4 && !interesting)
                 {
-                    bool tactical = isChecked || child.IsChecked(child.SideToMove);
-
-                    //some moves are hopeless and can be skipped without deeper evaluation
-                    if (depth <= 4 && !tactical)
-                    {
-                        int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
-                        if (window.FailLow(child.Score + futilityMargin, color))
-                            continue;
-                    }
-
-                    //other moves are searched with a null-sized window and skipped if they don't raise alpha
-                    if (depth >= 2)
-                    {
-                        //non-tactical late moves are searched at a reduced depth to make this test even faster!
-                        int R = (tactical || expandedNodes < 4) ? 0 : 2;
-                        (int score, _) = EvalPositionTT(child, depth - R - 1, window.GetLowerBound(color));
-                        if (window.FailLow(score, color))
-                            continue;
-                    }
+                    //if the static eval look much worse the alpha also skip it
+                    int futilityMargin = (int)color * depth * MAX_GAIN_PER_PLY;
+                    if (window.FailLow(child.Score + futilityMargin, color))
+                        continue;
+                }
+                
+                //moves after the PV node are unlikely to raise alpha. 
+                //avoid a full evaluation by searching with a null-sized window around alpha first
+                //...we expect it to fail low but if it does not we have to research it!
+                if (depth >= 2 && expandedNodes > 1)
+                {
+                    //non-tactical late moves are searched at a reduced depth to make this test even faster!
+                    int R = (interesting || expandedNodes < 4) ? 0 : 2;
+                    (int score, _) = EvalPositionTT(child, ply + 1, depth - R - 1, window.GetLowerBound(color));
+                    if (window.FailLow(score, color))
+                        continue;
                 }
 
-                //this move is expected to raise alpha so we search at full depth!
-                var eval = EvalPositionTT(child, depth - 1, window);
+                //this move is expected to raise alpha so we search it at full depth!
+                var eval = EvalPositionTT(child, ply + 1, depth - 1, window);
                 if (window.FailLow(eval.Score, color))
                 {
                     _history.Bad(position, move, depth);
@@ -134,7 +137,7 @@ namespace MinimalChess
                 }
 
                 //the position has a new best move and score!
-                Transpositions.Store(position.ZobristHash, depth, window, eval.Score, move);
+                Transpositions.Store(position.ZobristHash, depth, ply, window, eval.Score, move);
                 //set the PV to this move, followed by the PV of the childnode
                 pv = Merge(move, eval.PV);
                 //...and maybe we even get a beta cutoff
@@ -147,15 +150,21 @@ namespace MinimalChess
                         _killers.Add(move, depth);
                     }
 
-                    return (window.GetScore(color), pv);
+                    return (GetScore(window, color), pv);
                 }
             }
 
             //checkmate or draw?
             if (expandedNodes == 0)
-                return (position.IsChecked(color) ? Evaluation.Checkmate(color) : 0, Array.Empty<Move>());
+                return (position.IsChecked(color) ? Evaluation.Checkmate(color, ply) : 0, Array.Empty<Move>());
 
-            return (window.GetScore(color), pv);
+            return (GetScore(window, color), pv);
+        }
+
+        private static int GetScore(SearchWindow window, Color color)
+        {
+            int score = window.GetScore(color);
+            return score;
         }
 
         private static Move[] Merge(Move move, Move[] pv)
@@ -166,7 +175,7 @@ namespace MinimalChess
             return result;
         }
 
-        private int QEval(Board position, SearchWindow window)
+        private int QEval(Board position, int ply, SearchWindow window)
         {
             NodesVisited++;
             if (Aborted)
@@ -180,7 +189,7 @@ namespace MinimalChess
                 int standPatScore = position.Score + _mobilityBonus;
                 //Cut will raise alpha and perform beta cutoff when standPatScore is too good
                 if (window.Cut(standPatScore, color))
-                    return window.GetScore(color);
+                    return GetScore(window, color);
             }
 
             int expandedNodes = 0;
@@ -189,7 +198,7 @@ namespace MinimalChess
             {
                 expandedNodes++;
                 //recursively evaluate the resulting position (after the capture) with QEval
-                int score = QEval(child, window);
+                int score = QEval(child, ply + 1, window);
 
                 //Cut will raise alpha and perform beta cutoff when the move is too good
                 if (window.Cut(score, color))
@@ -198,14 +207,14 @@ namespace MinimalChess
 
             //checkmate?
             if (expandedNodes == 0 && inCheck)
-                return Evaluation.Checkmate(color);
+                return Evaluation.Checkmate(color, ply);
 
             //stalemate?
             if (expandedNodes == 0 && !LegalMoves.HasMoves(position))
                 return 0;
 
             //can't capture. We return the 'alpha' which may have been raised by "stand pat"
-            return window.GetScore(color);
+            return GetScore(window, color);
         }
     }
 }

@@ -7,7 +7,7 @@ namespace MinimalChessEngine
 {
     public static class Program
     {
-        const string NAME_VERSION = "MinimalChess 0.6";
+        const string NAME_VERSION = "MinimalChess 0.6.1";
         const string AUTHOR = "Thomas Jahn";
 
         static Engine _engine = new Engine();
@@ -110,7 +110,7 @@ namespace MinimalChessEngine
 
             TryParse(tokens, "depth", out int maxDepth, 99);
             TryParse(tokens, "movetime", out int maxTime, int.MaxValue);
-            TryParse(tokens, "nodes", out int maxNodes, int.MaxValue);
+            TryParse(tokens, "nodes", out long maxNodes, long.MaxValue);
             TryParse(tokens, "movestogo", out int movesToGo, 40); //assuming 30 e.g. spend 1/30th of total budget on the move
 
             if (_engine.SideToMove == Color.White && TryParse(tokens, "wtime", out int whiteTime))
@@ -132,15 +132,29 @@ namespace MinimalChessEngine
 
         private static bool TryParse(string[] tokens, string name, out int value, int defaultValue = 0)
         {
+            if (int.TryParse(Token(tokens, name), out value))
+                return true;
+            //token couldn't be parsed. use default value
             value = defaultValue;
-            int iParam = Array.IndexOf(tokens, name);
-            if (iParam < 0)
-                return false;
-            int iValue = iParam + 1;
-            if (iValue >= tokens.Length)
-                return false;
+            return false;
+        }
 
-            return int.TryParse(tokens[iValue], out value);
+        private static bool TryParse(string[] tokens, string name, out long value, long defaultValue = 0)
+        {
+            if (long.TryParse(Token(tokens, name), out value))
+                return true;
+            //token couldn't be parsed. use default value
+            value = defaultValue;
+            return false;
+        }
+
+        private static string Token(string[] tokens, string name)
+        {
+            int iParam = Array.IndexOf(tokens, name);
+            if (iParam < 0) return null;
+
+            int iValue = iParam + 1;
+            return (iValue < tokens.Length) ? tokens[iValue] : null;
         }
     }
 }

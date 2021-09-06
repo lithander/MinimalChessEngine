@@ -74,7 +74,7 @@ namespace MinimalChess
             Array.Clear(_table, 0, _table.Length);
         }
 
-        public static void Store(ulong zobristHash, int depth, SearchWindow window, int score, Move bestMove)
+        public static void Store(ulong zobristHash, int depth, int ply, SearchWindow window, int score, Move bestMove)
         {
             ref HashEntry entry = ref _table[Index(zobristHash)];
 
@@ -85,6 +85,12 @@ namespace MinimalChess
             entry.Hash = zobristHash;
             entry.Depth = depth < 0 ? default : (byte)depth;
             entry.Age = 0;
+
+            //a checkmate score is reduced by the number of plies from the root so that shorter mates are preferred
+            //but when we talk about a position being 'mate in X' then X is independent of the root distance. So we store
+            //the score relative to the position by adding the current ply to the encoded mate distance (from the root).
+            if (Evaluation.IsCheckmate(score))
+                score += Math.Sign(score) * ply;
 
             if (score >= window.Ceiling)
             {
@@ -109,7 +115,7 @@ namespace MinimalChess
             return bestMove != default;
         }
 
-        public static bool GetScore(ulong zobristHash, int depth, SearchWindow window, out int score)
+        public static bool GetScore(ulong zobristHash, int depth, int ply, SearchWindow window, out int score)
         {
             score = 0;
             if (!Index(zobristHash, out int index))
@@ -120,6 +126,13 @@ namespace MinimalChess
                 return false;
 
             score = entry.Score;
+
+            //a checkmate score is reduced by the number of plies from the root so that shorter mates are preferred
+            //but when we store it in the TT the score is made relative to the current position. So when we want to 
+            //retrieve the score we have to subtract the current ply to make it relative to the root again.
+            if (Evaluation.IsCheckmate(score))
+                score -= Math.Sign(score) * ply;
+
             //1.) score is exact and within window
             if (entry.Type == ScoreType.Exact)
                 return true;

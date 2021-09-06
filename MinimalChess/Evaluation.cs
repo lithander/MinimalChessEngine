@@ -56,11 +56,19 @@ namespace MinimalChess
             }
         }
 
+        const int CheckmateBase = 9000;
         const int CheckmateScore = 9999;
 
-        public static bool IsCheckmate(int score) => Math.Abs(score) == CheckmateScore;
+        public static int GetMateDistance(int score)
+        {
+            int plies = CheckmateScore - Math.Abs(score);
+            int moves = (plies + 1) / 2;
+            return moves;
+        }
 
-        public static int Checkmate(Color color) => (int)color * -CheckmateScore;
+        public static bool IsCheckmate(int score) => Math.Abs(score) > CheckmateBase;
+
+        public static int Checkmate(Color color, int ply) => (int)color * (ply - CheckmateScore);
 
         public static double Linstep(double edge0, double edge1, double value)
         {

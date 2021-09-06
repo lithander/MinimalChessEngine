@@ -15,18 +15,19 @@ namespace MinimalChessEngine
             double tS = Math.Max(1, timeMs) / 1000.0;
             int nps = (int)(nodes / tS);
             
-            Console.WriteLine($"info depth {depth} score {ScoreToString(score, pv.Length)} nodes {nodes} nps {nps} time {timeMs} pv {string.Join(' ', pv)}");
+            Console.WriteLine($"info depth {depth} score {ScoreToString(score)} nodes {nodes} nps {nps} time {timeMs} pv {string.Join(' ', pv)}");
         }
 
-        private static string ScoreToString(int score, int plies)
+        private static string ScoreToString(int score)
         {
-            if(!Evaluation.IsCheckmate(score))
-                return $"cp {score}";
+            if(Evaluation.IsCheckmate(score))
+            {
+                int sign = Math.Sign(score);
+                int moves = Evaluation.GetMateDistance(score);               
+                return $"mate {sign * moves}";
+            }
 
-            //return mate in Y moves, not plies.
-            int moves = (plies + 1) / 2;
-            //if the engine is getting mated use negative values for Y.
-            return $"mate {Math.Sign(score) * moves}";
+            return $"cp {score}";
         }
 
         public static void Log(string message)
