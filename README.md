@@ -79,10 +79,10 @@ Strength:  2400 ELO
 ```
 Version:   0.5
 Size:      707 LOC
-Strength:  2200 ELO
+Strength:  2268 ELO
 ```
 [__Version 0.5__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.5) adds a 13th tuned table for a mobility-based evaluation term, null-move pruning and a simple transposition table. I also changed the target framework to .NET 5.
-With these changes MinimalChess gains about 350 ELO in playing strength over the previous version and is listed at [2264 ELO](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.5%2064-bit#MinimalChess_0_5_64-bit) on the CCRL.
+With these changes MinimalChess gains about 350 ELO in playing strength over the previous version and is listed at [2268 ELO](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.5%2064-bit#MinimalChess_0_5_64-bit) on the CCRL.
 
 ### Version 0.4
 ```
