@@ -12,58 +12,23 @@ The didactic nature of the project is reinforced by it's open source license (MI
 * A Transposition Table to store the score and best move of previously visited positions.
 * Staged move generation: TT moves first, followed by MVV-LVA sorted captures, followed by killers and finally history-sorted quiet moves.
 * Iterative Deepening Search with PVS, null-move pruning, futility pruning and late move reductions.
-* Tapered PSTs with values tuned on a set of 725000 quiet, labeled positions.
-* A 13th auto-tuned table for a dynamic, mobility-based evaluation component.
+* An Evaluation based on 12 Piece-Square tables and a 13th table used to score the mobility and interplay of the pieces.
+* Tuned with a custom implementation of Texel's method on a set of 725000 quiet, labeled positions.
 
 ## How to play
 
-MinimalChess, just like most other chess programs, does not provide its own user interface. Instead it implements the [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol to make it compatible with most popular Chess GUIs such as:
+MinimalChess does not provide its own user interface. Instead it implements the [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) protocol to make it compatible with most popular Chess GUIs such as:
 * [Arena Chess GUI](http://www.playwitharena.de/) (free)
 * [BanksiaGUI](https://banksiagui.com/) (free)
 * [Cutechess](https://cutechess.com/) (free)
 * [Nibbler](https://github.com/fohristiwhirl/nibbler/releases) (free)
 * [Chessbase](https://chessbase.com/) (paid).
 
-Once you have a chess GUI installed you can download the prebuild [binaries for Mac, Linux and Windows](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) and extract the contents of the zip file into a location of your choice.
+Once you have a chess GUI installed you can download prebuild [binaries for Mac, Linux or Windows](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) and extract the contents of the zip file into a location of your choice.
 
-As a final step you have to register the engine with the GUI. The details depend on the GUI you chose but there should be something like "Add Engine..." somewhere in the settings.
+As a final step you have to register the engine with the GUI. The details depend on the GUI you chose but there's usually something like "Add Engine..." somewhere in the settings.
 
-After this you should be ready to select MinimalChess as a player!
-
-## Compiling the engine
-
-This repository contains 3 projects:
-1. **MinimalChessBoard** is a command-line based GUI  
-1. **MinimalChessEngine** is a [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) compatible chess engine
-1. ***MinimalChess*** is a library with shared chess logic and algorithms used by the other two applications
-
-### Windows
-
-To compile MinimalChess on Windows I suggest you install Visual Studio and open **MinimalChessEngine.sln** in it.
-You will need to have the [.NET Core 5.0 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed. 
-Hit the play button and it should compile and start!
-
-### Linux
-
-Read the official instructions on how to [Install .NET on Linux](https://docs.microsoft.com/en-us/dotnet/core/install/linux).
-There are also [Ubuntu Linux specific installations instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu).
-
-You can clone the repository and compile it like this:
-
-```
-$ wget https://packages.microsoft.com/config/ubuntu/20.10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
-$ sudo dpkg -i packages-microsoft-prod.deb
-
-$ sudo apt-get update; \
-    sudo apt-get install -y apt-transport-https && \
-    sudo apt-get update && \
-    sudo apt-get install -y dotnet-sdk-5.0
-
-$ git clone https://github.com/lithander/MinimalChessEngine.git
-$ cd MinimalChessEngine/
-
-$ dotnet build -c Release
-```
+Now you should be ready to select MinimalChess as a player!
 
 ## Version History
 
@@ -112,6 +77,41 @@ Size:      502 LOC
 Strength:  1070 ELO 
 ```
 [__Version 0.2__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.2) uses Iterative Deepening search with Alpha-Beta pruning. It collects the Principal Variation (PV) and when available plays PV moves first. Other than that there's no move ordering. Positions are evaluated by counting material only. This lack of sophistication causes it to play rather weak at [1059 ELO](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.2%2064-bit#MinimalChess_0_2_64-bit) on the CCRL. I tried to the write code to be as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than this version.
+
+## Compiling the engine
+
+This repository contains 3 projects:
+1. **MinimalChessBoard** is a command-line based GUI  
+1. **MinimalChessEngine** is a [UCI](https://en.wikipedia.org/wiki/Universal_Chess_Interface) compatible chess engine
+1. ***MinimalChess*** is a library with shared chess logic and algorithms used by the other two applications
+
+### Windows
+
+To compile MinimalChess on Windows I suggest you install Visual Studio and open **MinimalChessEngine.sln** in it.
+You will need to have the [.NET Core 5.0 SDK](https://dotnet.microsoft.com/download/dotnet/5.0) installed. 
+Hit the play button and it should compile and start!
+
+### Linux
+
+Read the official instructions on how to [Install .NET on Linux](https://docs.microsoft.com/en-us/dotnet/core/install/linux).
+There are also [Ubuntu Linux specific installations instructions](https://docs.microsoft.com/en-us/dotnet/core/install/linux-ubuntu).
+
+You can clone the repository and compile it like this:
+
+```
+$ wget https://packages.microsoft.com/config/ubuntu/20.10/packages-microsoft-prod.deb -O packages-microsoft-prod.deb
+$ sudo dpkg -i packages-microsoft-prod.deb
+
+$ sudo apt-get update; \
+    sudo apt-get install -y apt-transport-https && \
+    sudo apt-get update && \
+    sudo apt-get install -y dotnet-sdk-5.0
+
+$ git clone https://github.com/lithander/MinimalChessEngine.git
+$ cd MinimalChessEngine/
+
+$ dotnet build -c Release
+```
 
 ## Chess Programming Tutorial
 
