@@ -38,7 +38,7 @@ Version:   0.6
 Size:      708 LOC
 Strength:  2450 ELO
 ```
-[__Version 0.6__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) uses an improved transposition table with two buckets and aging. It also adds late move reductions and deep futility pruning. Quiet moves are now sorted based on a simple history heuristic which has a nice synergy with LMR. In total these changes allow MinimalChess to search much deeper (at the cost of accuracy) so that it gains about 200 ELO over the previous version and is listed at [2452 ELO](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.5%2064-bit#MinimalChess_0_6_64-bit) on the CCRL.
+[__Version 0.6__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) uses an improved transposition table with two buckets and aging. It also adds late move reductions and deep futility pruning. Quiet moves are now sorted based on a simple history heuristic which has a nice synergy with LMR. In total these changes allow MinimalChess to search much deeper (at the cost of accuracy) so that it gains about 200 ELO over the previous version and is listed at [2452 ELO](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.6%2064-bit#MinimalChess_0_6_64-bit) on the CCRL.
 
 ### Version 0.5
 ```
