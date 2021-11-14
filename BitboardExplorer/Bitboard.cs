@@ -66,7 +66,7 @@ namespace BitboardExplorer
         private static ulong MaskLow(in ulong bb) => bb ^ (bb - 1);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        //use sign of 'ranks' to decide between a left shift or right shift, then convert signed ranks to a positiver number of bits. each rank has 8 bits e.g. 1 << 3
+        //sign of 'ranks' decides between left shift or right shift. Then convert signed ranks to a positiver number of bits to shift by. Each rank has 8 bits e.g. 1 << 3 == 8
         private static ulong VerticalShift(in ulong bb, in int ranks) => ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
     }
 }

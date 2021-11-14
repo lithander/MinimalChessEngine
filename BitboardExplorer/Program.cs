@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Globalization;
+using System.Linq;
 using System.Runtime.Intrinsics.X86;
 
 namespace BitboardExplorer
@@ -40,7 +41,7 @@ namespace BitboardExplorer
                 }
                 else if (command == "//")
                 {
-                    PrintBitboardComment(bitboard);
+                    PrintBitboardAsComment(bitboard);
                 }
                 else if (command == ">>" && tokens.Length == 2)
                 {
@@ -55,21 +56,25 @@ namespace BitboardExplorer
                     if (!int.TryParse(tokens[1], out int square))
                         square = Notation.ToSquare(tokens[1]);
                     FindBishopTargetsAnnotated(bitboard, square);
-                    Console.WriteLine("Bitboard.GenBishop");
-                    PrintBitboard(Bitboard.GenBishop(bitboard, square));
+                    PrintBitboard(Bitboard.GenBishop(bitboard, square), "Bitboard.GenBishop");
                 }
                 else if(command == "rook" && tokens.Length == 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
                         square = Notation.ToSquare(tokens[1]);
                     FindRookTargetsAnnotated(bitboard, square);
-                    Console.WriteLine("Bitboard.GenRook");
-                    PrintBitboard(Bitboard.GenRook(bitboard, square));
+                    PrintBitboard(Bitboard.GenRook(bitboard, square), "Bitboard.GenRook");
                 }
                 else if(command == "Test")
                 {
                     for (int i = 0; i < 64; i++)
                         FindBishopTargetsAnnotated(bitboard, i);
+                }
+                else if (command.Count(c => c == '/') == 7) //Fen-string detection
+                {
+                    Board board = new Board(input);
+                    BoardState bitboards = BoardState.CopyFrom(board);
+                    PrintBoardState(bitboards);
                 }
                 else
                 {
@@ -94,8 +99,7 @@ namespace BitboardExplorer
         private static void FindBishopTargetsAnnotated(ulong bitboard, int square)
         {
             ulong bbPiece = 1UL << square;
-            Console.WriteLine("Piece:");
-            PrintBitboard(bbPiece);
+            PrintBitboard(bbPiece, "Piece:");
 
             //ulong bbBlocker = bitboard & ~bbPiece; /* remove the source square from the occupation */
             //Console.WriteLine("Blocker:");
@@ -116,8 +120,7 @@ namespace BitboardExplorer
             int north = -diag & (diag >> 31);
             int south = diag & (-diag >> 31);
             ulong bbDiag = (0x8040201008040201UL >> south) << north;
-            Console.WriteLine($"Diagonal diag {diag} north {north} south {south}");
-            PrintBitboard(bbDiag);
+            PrintBitboard(bbDiag, $"Diagonal diag {diag} north {north} south {south}");
 
             //************************
             //** ANTI-DIAGONAL TARGETS **
@@ -127,8 +130,7 @@ namespace BitboardExplorer
             north = -diag & (diag >> 31);
             south = diag & (-diag >> 31);
             ulong bbAntiDiag = (0x0102040810204080UL >> south) << north;
-            Console.WriteLine($"Anti-Diagonal diag {diag} north {north} south {south}");
-            PrintBitboard(bbAntiDiag);
+            PrintBitboard(bbAntiDiag, $"Anti-Diagonal diag {diag} north {north} south {south}");
 
             //************************
 
@@ -148,22 +150,20 @@ namespace BitboardExplorer
             ulong bbAntiDiag2 = bitShift > 0 ? ANTIDIAGONAL >> bitShift : ANTIDIAGONAL << -bitShift;
             Debug.Assert(bbAntiDiag == bbAntiDiag2);
 
+            //...the rest is like for the rooks
         }
 
         private static void FindRookTargetsAnnotated(ulong bitboard, int square)
         {
             ulong bbPiece = 1UL << square;
-            Console.WriteLine("Piece:");
-            PrintBitboard(bbPiece);
+            PrintBitboard(bbPiece, "Piece:");
 
             ulong bbBlocker = bitboard & ~bbPiece; /* remove the source square from the occupation */
-            Console.WriteLine("Blocker:");
-            PrintBitboard(bbBlocker);
+            PrintBitboard(bbBlocker, "Blocker:");
 
             //mask the bits below bbPiece
             ulong bbBelow = bbPiece - 1;
-            Console.WriteLine("Low bits:");
-            PrintBitboard(bbBelow);
+            PrintBitboard(bbBelow, "Low bits:");
 
             //************************
             //** HORIZONTAL TARGETS **
@@ -172,30 +172,25 @@ namespace BitboardExplorer
             //horizontal full line
             int file = square % 8;
             ulong bbHorizontal = 0x00000000000000FFUL << (square - file);
-            Console.WriteLine("Horizontal:");
-            PrintBitboard(bbHorizontal);
+            PrintBitboard(bbHorizontal, "Horizontal:");
 
             ulong bbBlockersAbove = (bbBlocker & bbHorizontal) & ~bbBelow;
-            Console.WriteLine("bbBlockersAbove");
-            PrintBitboard(bbBlockersAbove);
+            PrintBitboard(bbBlockersAbove, "bbBlockersAbove");
             //x^(x-1) sets all bits up to and including the first set bit, the rest are zeroed out.
             ulong bbMaskAbove = bbBlockersAbove ^ (bbBlockersAbove - 1);
             //mask above has now all bits up to the first blocker above origin set
-            Console.WriteLine("bbMaskAbove");
-            PrintBitboard(bbMaskAbove);
+            PrintBitboard(bbMaskAbove, "bbMaskAbove");
 
             //count the bits until the first blocker below origin
             ulong bbBlockersBelow = (bbBlocker & bbHorizontal) & bbBelow;
             int lzcnt = (int)Lzcnt.X64.LeadingZeroCount(bbBlockersBelow | 1);
             //and shift a mask from the top to clear all bits up to that blocker
             ulong bbMaskBelow = 0x7FFFFFFFFFFFFFFFUL >> lzcnt;
-            Console.WriteLine("bbMaskBelow");
-            PrintBitboard(bbMaskBelow);
+            PrintBitboard(bbMaskBelow, "bbMaskBelow");
 
             //the difference between the two masks is our horizontal attack line (including the first occupied square)
-            Console.WriteLine("hLine == (bbMaskAbove ^ bbMaskBelow) & bbHorizontal");
             ulong bbHorizontalAttacks = (bbMaskAbove ^ bbMaskBelow) & bbHorizontal;
-            PrintBitboard(bbHorizontalAttacks);
+            PrintBitboard(bbHorizontalAttacks, "hLine == (bbMaskAbove ^ bbMaskBelow) & bbHorizontal");
 
             //**********************
             //** VERTICAL TARGETS **
@@ -203,40 +198,58 @@ namespace BitboardExplorer
 
             //vertical full line
             ulong bbVertical = 0x0101010101010101UL << file;
-            Console.WriteLine("Vertical:");
-            PrintBitboard(bbVertical);
+            PrintBitboard(bbVertical, "Vertical:");
 
             bbBlockersAbove = (bbBlocker & bbVertical) & ~bbBelow;
-            Console.WriteLine("bbBlockersAbove");
-            PrintBitboard(bbBlockersAbove);
+            PrintBitboard(bbBlockersAbove, "bbBlockersAbove");
             //x^(x-1) sets all bits up to and including the first set bit, the rest are zeroed out.
             bbMaskAbove = bbBlockersAbove ^ (bbBlockersAbove - 1);
             //mask above has now all bits up to the first blocker above origin set
-            Console.WriteLine("bbMaskAbove");
-            PrintBitboard(bbMaskAbove);
+            PrintBitboard(bbMaskAbove, "bbMaskAbove");
 
             //count the bits until the first blocker below origin
             bbBlockersBelow = (bbBlocker & bbVertical) & bbBelow;
             lzcnt = (int)Lzcnt.X64.LeadingZeroCount(bbBlockersBelow | 1);
             //and shift a mask from the top to clear all bits up to that blocker
             bbMaskBelow = 0x7FFFFFFFFFFFFFFFUL >> lzcnt;
-            Console.WriteLine("bbMaskBelow");
-            PrintBitboard(bbMaskBelow);
+            PrintBitboard(bbMaskBelow, "bbMaskBelow");
 
             //the difference between the two masks is our horizontal attack line (including the first occupied square)
-            Console.WriteLine("vLine == (bbMaskAbove ^ bbMaskBelow) & bbVertical");
             ulong bbVerticalAttacks = (bbMaskAbove ^ bbMaskBelow) & bbVertical;
-            PrintBitboard(bbMaskAbove ^ bbMaskBelow);
+            PrintBitboard(bbMaskAbove ^ bbMaskBelow, "vLine == (bbMaskAbove ^ bbMaskBelow) & bbVertical");
 
-            Console.WriteLine("ROOK ATTACKS:");
-            PrintBitboard(bbVerticalAttacks | bbHorizontalAttacks);
+            PrintBitboard(bbVerticalAttacks | bbHorizontalAttacks, "ROOK ATTACKS:");
             Console.WriteLine("*****");
+        }
+
+        private static string ToHex(ulong bitboard)
+        {
+            return $"0x{Convert.ToString((long)bitboard, 16).PadLeft(16, '0').ToUpperInvariant()}UL";
         }
 
         private static void PrintHex(ulong bitboard)
         {
-            string result = Convert.ToString((long)bitboard, 16).PadLeft(16, '0').ToUpperInvariant();
-            Console.WriteLine($"0x{result}UL");
+            Console.WriteLine(ToHex(bitboard));
+        }
+
+        private static void PrintBitboard(ulong bitboard, string caption)
+        {
+            Console.WriteLine(caption);
+            PrintBitboard(bitboard);
+        }
+
+        private static void PrintBoardState(BoardState bitboards)
+        {
+            PrintBitboard(bitboards.Black, $"Black: {ToHex(bitboards.Black)}");
+            PrintBitboard(bitboards.White, $"White: {ToHex(bitboards.White)}");
+
+            PrintBitboard(bitboards.Pawns, $"Pawns: {ToHex(bitboards.Pawns)}");
+            PrintBitboard(bitboards.Knights, $"Knights: {ToHex(bitboards.Knights)}");
+            PrintBitboard(bitboards.Bishops, $"Bishops: {ToHex(bitboards.Bishops)}");
+            PrintBitboard(bitboards.Rooks, $"Rooks: {ToHex(bitboards.Rooks)}");
+            PrintBitboard(bitboards.Queens, $"Queens: {ToHex(bitboards.Queens)}");
+            PrintBitboard(bitboards.Kings, $"Kings: {ToHex(bitboards.Kings)}");
+            Console.WriteLine();
         }
 
         private static void PrintBitboard(ulong bitboard)
@@ -254,7 +267,7 @@ namespace BitboardExplorer
             }
         }
 
-        private static void PrintBitboardComment(ulong bitboard)
+        private static void PrintBitboardAsComment(ulong bitboard)
         {
             byte[] bbBytes = BitConverter.GetBytes(bitboard);
             Array.Reverse(bbBytes);
