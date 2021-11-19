@@ -4,12 +4,14 @@ namespace MinimalChess
 {
     public struct Move
     {
+        public readonly Piece Flags;
         public readonly byte FromSquare;
         public readonly byte ToSquare;
         public readonly Piece Promotion;
 
         public Move(int fromIndex, int toIndex)
         {
+            Flags = Piece.None;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
             Promotion = Piece.None;
@@ -17,13 +19,21 @@ namespace MinimalChess
 
         public Move(int fromIndex, int toIndex, Piece promotion)
         {
+            Flags = Piece.None;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
             Promotion = promotion;
         }
 
+        public Move(Move move, Piece flags)
+        {
+            this = move;
+            Flags = flags;
+        }
+
         public Move(string uciMoveNotation)
         {
+            Flags = Piece.None;
             if (uciMoveNotation.Length < 4)
                 throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too short!");
             if (uciMoveNotation.Length > 5)

@@ -1,9 +1,9 @@
 ﻿using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 
-namespace BitboardExplorer
+namespace MinimalChess
 {
-    static class Bitboard
+    public static class Bitboard
     {
         const ulong DIAGONAL = 0x8040201008040201UL;
         const ulong ANTIDIAGONAL = 0x0102040810204080UL;

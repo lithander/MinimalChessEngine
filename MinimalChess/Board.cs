@@ -161,6 +161,21 @@ namespace MinimalChess
         //** PLAY MOVES ***
         //*****************
 
+        public Move AddFlags(Move move)
+        {
+            Piece flags = this[move.FromSquare];
+            if (move.Promotion != Piece.None)
+                flags |= Piece.Promotion;
+            if(IsEnPassant(flags, move, out int captureIndex))
+                flags |= Piece.EnPassant;
+            if(IsCastling(flags, move, out Move rookMove))
+                flags |= Piece.Castle;
+            if (this[move.ToSquare] != Piece.None)
+                flags |= Piece.Capture;
+
+            return new Move(move, flags);
+        }
+
         public void PlayNullMove()
         {
             SideToMove = Pieces.Flip(_sideToMove);
@@ -171,6 +186,10 @@ namespace MinimalChess
 
         public void Play(Move move)
         {
+            move = AddFlags(move);
+            BoardState boardState = BoardState.CopyFrom(this);
+            boardState.Play(move);
+
             Piece movingPiece = this[move.FromSquare];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_sideToMove);
@@ -180,14 +199,14 @@ namespace MinimalChess
             //...and clear the square it was previously located
             this[move.FromSquare] = Piece.None;
 
-            if (IsEnPassant(movingPiece, move, out int captureIndex))
+            if ((move.Flags & Piece.EnPassant) != 0 && IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
                 this[captureIndex] = Piece.None;
             }
 
             //handle castling special case
-            if (IsCastling(movingPiece, move, out Move rookMove))
+            if ((move.Flags & Piece.Castle) != 0 && IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
                 this[rookMove.ToSquare] = this[rookMove.FromSquare];
@@ -201,6 +220,9 @@ namespace MinimalChess
 
             //toggle active color!
             SideToMove = Pieces.Flip(_sideToMove);
+
+            if (boardState != BoardState.CopyFrom(this))
+                throw new Exception("Board.Move and BoardState.Move async!");
         }
 
         private void UpdateCastlingRights(int square)
