@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 
 namespace MinimalChess
 {
@@ -13,11 +14,19 @@ namespace MinimalChess
         public ulong Queens;
         public ulong Kings;
 
+        public CastlingRights CastleFlags;
+        public Color SideToMove;
+        public int EnPassantSquare;
+
         public static BoardState CopyFrom(Board board)
         {
             BoardState result = new BoardState();
             for (int i = 0; i < 64; i++)
                 result.SetBit(i, board[i]);
+
+            result.CastleFlags = board.CastlingRights;
+            result.SideToMove = board.SideToMove;
+            result.EnPassantSquare = board.EnPassentSquare;
             return result;
         }
 
@@ -113,13 +122,32 @@ namespace MinimalChess
                    Bishops == other.Bishops &&
                    Rooks == other.Rooks &&
                    Queens == other.Queens &&
-                   Kings == other.Kings;
+                   Kings == other.Kings &&
+                   CastleFlags == other.CastleFlags &&
+                   SideToMove == other.SideToMove &&
+                   EnPassantSquare == other.EnPassantSquare;
+        }
+
+        public void AssertEquality(BoardState other)
+        {
+            Trace.Assert(White == other.White, "BB White not equal");
+            Trace.Assert(Black == other.Black, "BB Black not equal");
+            Trace.Assert(Pawns == other.Pawns, "BB Pawns not equal");
+            Trace.Assert(Knights == other.Knights, "BB Knights not equal");
+            Trace.Assert(Bishops == other.Bishops, "BB Bishops not equal");
+            Trace.Assert(Rooks == other.Rooks, "BB Rooks not equal");
+            Trace.Assert(Queens == other.Queens, "BB Queens not equal");
+            Trace.Assert(Kings == other.Kings, "BB Kings not equal");
+            Trace.Assert(CastleFlags == other.CastleFlags, "CastleFlags not equal");
+            Trace.Assert(SideToMove == other.SideToMove, "SideToMove not equal");
+            Trace.Assert(EnPassantSquare == other.EnPassantSquare, "EnPassantSquare not equal");
         }
 
         public static bool operator ==(BoardState a, BoardState b) => a.Equals(b);
         public static bool operator !=(BoardState a, BoardState b) => !a.Equals(b);
         public override bool Equals(object obj) => obj is BoardState bs && Equals(bs);
 
+        //TODO: use zobrist
         public override int GetHashCode()
         {
             return HashCode.Combine(White, Black, Pawns, Knights, Bishops, Rooks, Queens, Kings);
@@ -172,6 +200,51 @@ namespace MinimalChess
             {
                 SetBit(move.ToSquare, move.Flags);
             }
+
+            //update board state
+            UpdateEnPassent(move);
+            UpdateCastlingRights(move.FromSquare);
+            UpdateCastlingRights(move.ToSquare);
+
+            //toggle active color!
+            SideToMove = Pieces.Flip(SideToMove);
+        }
+
+        //TODO: use consts
+        static readonly int BlackKingSquare = Notation.ToSquare("e8");
+        static readonly int WhiteKingSquare = Notation.ToSquare("e1");
+        static readonly int BlackQueensideRookSquare = Notation.ToSquare("a8");
+        static readonly int BlackKingsideRookSquare = Notation.ToSquare("h8");
+        static readonly int WhiteQueensideRookSquare = Notation.ToSquare("a1");
+        static readonly int WhiteKingsideRookSquare = Notation.ToSquare("h1");
+
+        private void UpdateCastlingRights(int square)
+        {
+            //TODO: early out against bitmask. if it's none of the squares don't bother
+
+            //any move from or to king or rook squares will effect castling right
+            if (square == WhiteKingSquare || square == WhiteQueensideRookSquare)
+                CastleFlags &= ~CastlingRights.WhiteQueenside;
+            if (square == WhiteKingSquare || square == WhiteKingsideRookSquare)
+                CastleFlags &= ~CastlingRights.WhiteKingside;
+ 
+            if (square == BlackKingSquare || square == BlackQueensideRookSquare)
+                CastleFlags &= ~CastlingRights.BlackQueenside;
+            if (square == BlackKingSquare || square == BlackKingsideRookSquare)
+                CastleFlags &= ~CastlingRights.BlackKingside;
+        }
+
+        private void UpdateEnPassent(Move move)
+        {
+            //TODO: early out against pawn. if it's none of the squares don't bother 
+
+            //movingPiece needs to be either a BlackPawn...
+            if (move.Flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
+                EnPassantSquare = move.FromSquare - 8;
+            else if (move.Flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
+                EnPassantSquare = move.FromSquare + 8;
+            else
+                EnPassantSquare = -1;
         }
     }
 }

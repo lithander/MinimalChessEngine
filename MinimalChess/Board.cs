@@ -14,6 +14,17 @@ namespace MinimalChess
     // 1  00 01 02 03 04 05 06 07  1
     //    A  B  C  D  E  F  G  H        WHITE
 
+    [Flags]
+    public enum CastlingRights
+    {
+        None = 0,
+        WhiteKingside = 1,
+        WhiteQueenside = 2,
+        BlackKingside = 4,
+        BlackQueenside = 8,
+        All = 15
+    }
+
     public class Board
     {
         static readonly int BlackKingSquare = Notation.ToSquare("e8");
@@ -25,17 +36,6 @@ namespace MinimalChess
 
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
-        [Flags]
-        public enum CastlingRights
-        {
-            None = 0,
-            WhiteKingside = 1,
-            WhiteQueenside = 2,
-            BlackKingside = 4,
-            BlackQueenside = 8,
-            All = 15
-        }
-
         /*** STATE DATA ***/
         private Piece[] _state = new Piece[64];
         private CastlingRights _castlingRights = CastlingRights.All;
@@ -44,6 +44,8 @@ namespace MinimalChess
         private ulong _zobristHash = 0;
         private Evaluation.Eval _eval;
         /*** STATE DATA ***/
+
+        private BoardState _bbState;
 
         public int Score => _eval.Score;
 
@@ -59,6 +61,9 @@ namespace MinimalChess
                 _zobristHash ^= Zobrist.SideToMove(_sideToMove);
             }
         }
+
+        public CastlingRights CastlingRights => _castlingRights;
+        public int EnPassentSquare => _enPassantSquare;
 
         public Board() { }
 
@@ -87,6 +92,7 @@ namespace MinimalChess
             _castlingRights = board._castlingRights;
             _zobristHash = board._zobristHash;
             _eval = board._eval;
+            _bbState = board._bbState;
         }
 
         public Piece this[int square]
@@ -154,6 +160,8 @@ namespace MinimalChess
 
             //Initialze Hash
             InitZobristHash();
+
+            _bbState = BoardState.CopyFrom(this);
         }
 
 
@@ -187,8 +195,7 @@ namespace MinimalChess
         public void Play(Move move)
         {
             move = AddFlags(move);
-            BoardState boardState = BoardState.CopyFrom(this);
-            boardState.Play(move);
+            _bbState.Play(move);
 
             Piece movingPiece = this[move.FromSquare];
             if (move.Promotion != Piece.None)
@@ -221,8 +228,7 @@ namespace MinimalChess
             //toggle active color!
             SideToMove = Pieces.Flip(_sideToMove);
 
-            if (boardState != BoardState.CopyFrom(this))
-                throw new Exception("Board.Move and BoardState.Move async!");
+            _bbState.AssertEquality(BoardState.CopyFrom(this));
         }
 
         private void UpdateCastlingRights(int square)
