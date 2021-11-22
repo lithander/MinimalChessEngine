@@ -17,6 +17,7 @@ namespace BitboardExplorer
             ulong bitboard = 0;
             while(true)
             {
+                Console.WriteLine("A B C D E F G H");
                 PrintBitboard(bitboard);
                 PrintHex(bitboard);
                 string input = Console.ReadLine();
@@ -74,6 +75,7 @@ namespace BitboardExplorer
                 {
                     Board board = new Board(input);
                     BoardState bitboards = BoardState.CopyFrom(board);
+                    bitboard = bitboards.White | bitboards.Black;
                     PrintBoardState(bitboards);
                 }
                 else

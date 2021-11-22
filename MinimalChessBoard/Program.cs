@@ -209,14 +209,14 @@ namespace MinimalChessBoard
                 return 1;
 
             //probe hash-tree
-            if (PerftTable.Retrieve(board.ZobristHash, depth, out long childCount))
-                return childCount;
+            //if (PerftTable.Retrieve(board.ZobristHash, depth, out long childCount))
+            //    return childCount;
 
             long sum = 0;
             foreach (var move in new LegalMoves(board))
                 sum += Perft(new Board(board, move), depth - 1);
 
-            PerftTable.Store(board.ZobristHash, depth, sum);
+            //PerftTable.Store(board.ZobristHash, depth, sum);
             return sum;
         }
 

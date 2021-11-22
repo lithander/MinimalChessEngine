@@ -5,6 +5,14 @@ namespace MinimalChess
 {
     public static class Bitboard
     {
+        //returns the index of the least significant bit of the bitboard, bb can't be 0
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong LSB(ulong bb) => Bmi1.X64.TrailingZeroCount(bb);
+
+        //resets the least significant bit of the bitboard
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static ulong ClearLSB(ulong bb) => Bmi1.X64.ResetLowestSetBit(bb);
+
         const ulong DIAGONAL = 0x8040201008040201UL;
         const ulong ANTIDIAGONAL = 0x0102040810204080UL;
         const ulong HORIZONTAL = 0x00000000000000FFUL;
