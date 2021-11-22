@@ -317,40 +317,66 @@ namespace MinimalChess
         //*******************************
         //** MOVE GENERATION BITBOARD ***
         //*******************************
+        
+        private void NewMove(Action<Move> moveHandler, int square, ulong moveTargets)
+        {
+            byte from = (byte)square;
+            byte to = (byte)Bitboard.LSB(moveTargets);
+            moveHandler(new Move(from, to)); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
+        }
 
         private void CollectMovesBitboard(Action<Move> moveHandler)
         {
             ulong sideToMove = _sideToMove == Color.Black ? _bbState.Black : _bbState.White;
             ulong occupied = _bbState.Black | _bbState.White;
-            //Bishops
-            for (ulong pieces = _bbState.Bishops & sideToMove; pieces != 0; pieces = Bitboard.ClearLSB(pieces))
+
+            //Kings
+            int square = (int)Bitboard.LSB(_bbState.Kings & sideToMove);
+            //can't move on squares occupied by side to move
+            ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
+            for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewMove(moveHandler, square, targets);
+
+            //Knights
+            for (ulong knights = _bbState.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
             {
-                int square = (int)Bitboard.LSB(pieces);
+                square = (int)Bitboard.LSB(knights);
                 //can't move on squares occupied by side to move
-                ulong moveTargets = Bitboard.GenBishop(occupied, square) & ~sideToMove;
-                for (; moveTargets != 0; moveTargets = Bitboard.ClearLSB(moveTargets))
-                {
-                    byte from = (byte)square;
-                    byte to = (byte)Bitboard.LSB(moveTargets);
-                    moveHandler(new Move(from, to)); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
-                }
+                targets = Bitboard.KnightTargets[square] & ~sideToMove;
+                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                    NewMove(moveHandler, square, targets);
+            }
+
+            //Bishops
+            for (ulong bishops = _bbState.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
+            {
+                square = (int)Bitboard.LSB(bishops);
+                //can't move on squares occupied by side to move
+                targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
+                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                    NewMove(moveHandler, square, targets);
             }
 
             //Rooks
-            for (ulong pieces = _bbState.Rooks & sideToMove; pieces != 0; pieces = Bitboard.ClearLSB(pieces))
+            for (ulong rooks = _bbState.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
-                int square = (int)Bitboard.LSB(pieces);
+                square = (int)Bitboard.LSB(rooks);
                 //can't move on squares occupied by side to move
-                ulong moveTargets = Bitboard.GenRook(occupied, square) & ~sideToMove;
-                for (; moveTargets != 0; moveTargets = Bitboard.ClearLSB(moveTargets))
-                {
-                    byte from = (byte)square;
-                    byte to = (byte)Bitboard.LSB(moveTargets);
-                    moveHandler(new Move(from, to)); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
-                }
+                targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
+                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                    NewMove(moveHandler, square, targets);
+            }
+
+            //Queens
+            for (ulong queens = _bbState.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
+            {
+                square = (int)Bitboard.LSB(queens);
+                //can't move on squares occupied by side to move
+                targets = (Bitboard.GetBishopTargets(occupied, square) | Bitboard.GetRookTargets(occupied, square)) & ~sideToMove;
+                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                    NewMove(moveHandler, square, targets);
             }
         }
-
 
         //**********************
         //** MOVE GENERATION ***
@@ -413,16 +439,16 @@ namespace MinimalChess
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moveHandler);
-                    AddMoves(moveHandler, square, Attacks.King);
+                //    AddMoves(moveHandler, square, Attacks.King);
                     break;
                 case Piece.WhiteKing:
                     AddWhiteCastlingMoves(moveHandler);
-                    AddMoves(moveHandler, square, Attacks.King);
+                //    AddMoves(moveHandler, square, Attacks.King);
                     break;
-                case Piece.BlackKnight:
-                case Piece.WhiteKnight:
-                    AddMoves(moveHandler, square, Attacks.Knight);
-                    break;
+                //case Piece.BlackKnight:
+                //case Piece.WhiteKnight:
+                //    AddMoves(moveHandler, square, Attacks.Knight);
+                //    break;
                 //case Piece.BlackRook:
                 //case Piece.WhiteRook:
                 //    AddMoves(moveHandler, square, Attacks.Rook);
@@ -431,10 +457,10 @@ namespace MinimalChess
                 //case Piece.WhiteBishop:
                 //    AddMoves(moveHandler, square, Attacks.Bishop);
                 //    break;
-                case Piece.BlackQueen:
-                case Piece.WhiteQueen:
-                    AddMoves(moveHandler, square, Attacks.Queen);
-                    break;
+                //case Piece.BlackQueen:
+                //case Piece.WhiteQueen:
+                //    AddMoves(moveHandler, square, Attacks.Queen);
+                //    break;
             }
         }
 
@@ -448,14 +474,14 @@ namespace MinimalChess
                 case Piece.WhitePawn:
                     AddWhitePawnAttacks(moveHandler, square);
                     break;
-                case Piece.BlackKing:
-                case Piece.WhiteKing:
-                    AddCaptures(moveHandler, square, Attacks.King);
-                    break;
-                case Piece.BlackKnight:
-                case Piece.WhiteKnight:
-                    AddCaptures(moveHandler, square, Attacks.Knight);
-                    break;
+                //case Piece.BlackKing:
+                //case Piece.WhiteKing:
+                //    AddCaptures(moveHandler, square, Attacks.King);
+                //    break;
+                //case Piece.BlackKnight:
+                //case Piece.WhiteKnight:
+                //    AddCaptures(moveHandler, square, Attacks.Knight);
+                //    break;
                 //case Piece.BlackRook:
                 //case Piece.WhiteRook:
                 //    AddCaptures(moveHandler, square, Attacks.Rook);
@@ -464,10 +490,10 @@ namespace MinimalChess
                 //case Piece.WhiteBishop:
                 //    AddCaptures(moveHandler, square, Attacks.Bishop);
                 //    break;
-                case Piece.BlackQueen:
-                case Piece.WhiteQueen:
-                    AddCaptures(moveHandler, square, Attacks.Queen);
-                    break;
+                //case Piece.BlackQueen:
+                //case Piece.WhiteQueen:
+                //    AddCaptures(moveHandler, square, Attacks.Queen);
+                //    break;
             }
         }
 

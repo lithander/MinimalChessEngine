@@ -57,19 +57,22 @@ namespace BitboardExplorer
                     if (!int.TryParse(tokens[1], out int square))
                         square = Notation.ToSquare(tokens[1]);
                     FindBishopTargetsAnnotated(bitboard, square);
-                    PrintBitboard(Bitboard.GenBishop(bitboard, square), "Bitboard.GenBishop");
+                    PrintBitboard(Bitboard.GetBishopTargets(bitboard, square), "Bitboard.GenBishop");
                 }
                 else if(command == "rook" && tokens.Length == 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
                         square = Notation.ToSquare(tokens[1]);
                     FindRookTargetsAnnotated(bitboard, square);
-                    PrintBitboard(Bitboard.GenRook(bitboard, square), "Bitboard.GenRook");
+                    PrintBitboard(Bitboard.GetRookTargets(bitboard, square), "Bitboard.GenRook");
                 }
-                else if(command == "Test")
+                else if (command == "king_targets")
                 {
-                    for (int i = 0; i < 64; i++)
-                        FindBishopTargetsAnnotated(bitboard, i);
+                    ListTargets(Attacks.King);
+                }
+                else if (command == "knight_targets")
+                {
+                    ListTargets(Attacks.Knight);
                 }
                 else if (command.Count(c => c == '/') == 7) //Fen-string detection
                 {
@@ -96,6 +99,37 @@ namespace BitboardExplorer
                     }
                 }
             }
+        }
+
+        private static void ListTargets(byte[][] pattern)
+        {
+            List<string> bbStrings = new List<string>();
+            for (int square = 0; square < 64; square++)
+            {
+                ulong bb = 0;
+                foreach (var target in pattern[square])
+                    bb |= 1UL << target;
+                bbStrings.Add(ToHex(bb));
+            }
+
+            BlockPrint(bbStrings, 4);
+        }
+
+        private static void BlockPrint(List<string> bbStrings, int stride)
+        {
+            int next = 0;
+            while (next < bbStrings.Count)
+            {
+                for (int i = 0; i < stride; i++)
+                {
+                    Console.Write(bbStrings[next++]);
+                    if (next == bbStrings.Count)
+                        break;
+                    Console.Write(", ");
+                }
+                Console.WriteLine();
+            }
+
         }
 
         private static void FindBishopTargetsAnnotated(ulong bitboard, int square)
