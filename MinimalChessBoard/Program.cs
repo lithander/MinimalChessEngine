@@ -57,11 +57,18 @@ namespace MinimalChessBoard
                     }
                     else if (command == "perft")
                     {
-                        int depth = int.Parse(tokens[1]);
                         if (tokens.Length > 2)
+                        {
+                            int depth = int.Parse(tokens[1]);
                             ComparePerft(depth, tokens[2]);
+                        }
                         else
-                            RunPerft(board, depth);
+                        {
+                            if(int.TryParse(tokens[1], out int depth))
+                                RunPerft(board, depth);
+                            else
+                                ComparePerft(tokens[1]);
+                        }
                     }
                     else if (command == "divide")
                     {
@@ -248,6 +255,49 @@ namespace MinimalChessBoard
             Console.WriteLine();
             Console.WriteLine($"  Total:   {sum:N0}");
         }
+
+        private static void ComparePerft(string filePath)
+        {
+            var file = File.OpenText(filePath);
+            int error = 0;
+            int line = 1;
+            long totalNodes = 0;
+            double totalDuration = 0;
+            while (!file.EndOfStream)
+            {
+                //The parser expects a fen-string followed by a depth and a perft results at that depth
+                //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1; D1 15; D2 66; 6; 764643
+                string entry = file.ReadLine();
+                string[] data = entry.Split(';');
+                string fen = data[0];
+                int depth = int.Parse(data[1]);
+                long refResult = long.Parse(data[2]);
+
+                Board board = new Board(fen);
+                //PerftTable.Clear();
+                
+                long t0 = Stopwatch.GetTimestamp();
+                long result = Perft(board, depth);
+                long t1 = Stopwatch.GetTimestamp();
+                
+                double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+                double ms = (1000 * dt);
+
+                totalNodes += result;
+                totalDuration += dt;
+
+                if (result != refResult)
+                {
+                    error++;
+                    Console.WriteLine($"{line++} ERROR! perft({depth})={result}, expected {refResult} ({result - refResult:+#;-#}) FEN: {fen}");
+                }
+                else
+                    Console.WriteLine($"OK! {(int)ms}ms, {(int)(result / ms)}K NPS");
+            }
+            Console.WriteLine();
+            Console.WriteLine($"Total: {totalNodes} Nodes, {(int)(1000 * totalDuration)}ms, {(int)(totalNodes / totalDuration / 1000)}K NPS");
+        }
+
 
         private static void ComparePerft(int depth, string filePath)
         {
