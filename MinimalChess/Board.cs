@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace MinimalChess
 {
@@ -317,13 +318,43 @@ namespace MinimalChess
         //*******************************
         //** MOVE GENERATION BITBOARD ***
         //*******************************
-        
-        private void NewMove(Action<Move> moveHandler, int square, ulong moveTargets)
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private void NewMove(Action<Move> moveHandler, byte from, ulong moveTargets)
         {
-            byte from = (byte)square;
             byte to = (byte)Bitboard.LSB(moveTargets);
             moveHandler(new Move(from, to)); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
         }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void NewPawnMove(Action<Move> moveHandler, ulong moveTargets, int offset)
+        {
+            byte to = (byte)Bitboard.LSB(moveTargets);
+            byte from = (byte)(to + offset);
+            moveHandler(new Move(from, to));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void WhitePawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
+        {
+            byte to = (byte)Bitboard.LSB(moveTargets);
+            byte from = (byte)(to + offset);
+            moveHandler(new Move(from, to, Piece.WhiteQueen));
+            moveHandler(new Move(from, to, Piece.WhiteRook));
+            moveHandler(new Move(from, to, Piece.WhiteBishop));
+            moveHandler(new Move(from, to, Piece.WhiteKnight));
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void BlackPawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
+        {
+            byte to = (byte)Bitboard.LSB(moveTargets);
+            byte from = (byte)(to + offset);
+            moveHandler(new Move(from, to, Piece.BlackQueen));
+            moveHandler(new Move(from, to, Piece.BlackRook));
+            moveHandler(new Move(from, to, Piece.BlackBishop));
+            moveHandler(new Move(from, to, Piece.BlackKnight));
+        }
+
 
         private void CollectMovesBitboard(Action<Move> moveHandler)
         {
@@ -331,7 +362,7 @@ namespace MinimalChess
             ulong occupied = _bbState.Black | _bbState.White;
 
             //Kings
-            int square = (int)Bitboard.LSB(_bbState.Kings & sideToMove);
+            byte square = (byte)Bitboard.LSB(_bbState.Kings & sideToMove);
             //can't move on squares occupied by side to move
             ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
             for (; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -340,7 +371,7 @@ namespace MinimalChess
             //Knights
             for (ulong knights = _bbState.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
             {
-                square = (int)Bitboard.LSB(knights);
+                square = (byte)Bitboard.LSB(knights);
                 //can't move on squares occupied by side to move
                 targets = Bitboard.KnightTargets[square] & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -350,7 +381,7 @@ namespace MinimalChess
             //Bishops
             for (ulong bishops = _bbState.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
-                square = (int)Bitboard.LSB(bishops);
+                square = (byte)Bitboard.LSB(bishops);
                 //can't move on squares occupied by side to move
                 targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -360,7 +391,7 @@ namespace MinimalChess
             //Rooks
             for (ulong rooks = _bbState.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
-                square = (int)Bitboard.LSB(rooks);
+                square = (byte)Bitboard.LSB(rooks);
                 //can't move on squares occupied by side to move
                 targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -370,12 +401,102 @@ namespace MinimalChess
             //Queens
             for (ulong queens = _bbState.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
             {
-                square = (int)Bitboard.LSB(queens);
+                square = (byte)Bitboard.LSB(queens);
                 //can't move on squares occupied by side to move
                 targets = (Bitboard.GetBishopTargets(occupied, square) | Bitboard.GetRookTargets(occupied, square)) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                     NewMove(moveHandler, square, targets);
             }
+
+            //Pawns & Castling
+            if (_sideToMove == Color.White)
+            {
+                CollectWhitePawnMoves(moveHandler);
+                AddWhiteCastlingMoves(moveHandler);
+            }
+            else
+            {
+                CollectBlackPawnMoves(moveHandler);
+                AddBlackCastlingMoves(moveHandler);
+            }
+        }
+
+        private void CollectBlackPawnMoves(Action<Move> moveHandler)
+        {
+            ulong targets;
+            ulong occupied = _bbState.Black | _bbState.White;
+            ulong blackPawns = _bbState.Pawns & _bbState.Black;
+            ulong oneStep = (blackPawns >> 8) & ~occupied;
+            //move one square down
+            for (targets = oneStep & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, +8);
+
+            //move to first rank and promote
+            for (targets = oneStep & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                BlackPawnPromotions(moveHandler, targets, +8);
+
+            //move two squares down
+            ulong twoStep = (oneStep >> 8) & ~occupied;
+            for (targets = twoStep & 0x000000FF00000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, +16);
+
+            //capture left
+            ulong opposing = _bbState.White | (1UL << _bbState.EnPassantSquare);
+            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & opposing;
+            for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, +9);
+
+            //capture left to first rank and promote
+            for (targets = captureLeft & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                BlackPawnPromotions(moveHandler, targets, +9);
+
+            //capture right
+            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & opposing;
+            for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, +7);
+
+            //capture right to first rank and promote
+            for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                BlackPawnPromotions(moveHandler, targets, +7);
+        }
+
+        private void CollectWhitePawnMoves(Action<Move> moveHandler)
+        {
+            ulong targets;
+            ulong whitePawns = _bbState.Pawns & _bbState.White;
+            ulong occupied = _bbState.Black | _bbState.White;
+            ulong oneStep = (whitePawns << 8) & ~occupied;
+            //move one square up
+            for (targets = oneStep & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, -8);
+
+            //move to last rank and promote
+            for (targets = oneStep & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                WhitePawnPromotions(moveHandler, targets, -8);
+
+            //move two squares up
+            ulong twoStep = (oneStep << 8) & ~occupied;
+            for (targets = twoStep & 0x00000000FF000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, -16);
+
+            //capture left
+            ulong opposing = _bbState.Black | (1UL << _bbState.EnPassantSquare);
+            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & opposing;
+            for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, -7);
+
+            //capture left to last rank and promote
+            for (targets = captureLeft & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                WhitePawnPromotions(moveHandler, targets, -7);
+
+            //capture right
+            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & opposing;
+            for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                NewPawnMove(moveHandler, targets, -9);
+
+            //capture right to last rank and promote
+            for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                WhitePawnPromotions(moveHandler, targets, -9);
         }
 
         //**********************
@@ -392,9 +513,8 @@ namespace MinimalChess
         public void CollectMoves(Action<Move> moveHandler)
         {
             CollectMovesBitboard(moveHandler);
-
-            for (int square = 0; square < 64; square++)
-                CollectMoves(square, moveHandler);
+            //for (int square = 0; square < 64; square++)
+            //    CollectMoves(square, moveHandler);
         }
 
         public void CollectQuiets(Action<Move> moveHandler)
@@ -432,10 +552,10 @@ namespace MinimalChess
             switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnMoves(moveHandler, square);
+                    //AddBlackPawnMoves(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnMoves(moveHandler, square);
+                    //AddWhitePawnMoves(moveHandler, square);
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moveHandler);
@@ -469,10 +589,10 @@ namespace MinimalChess
             switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    AddBlackPawnAttacks(moveHandler, square);
+                    //AddBlackPawnAttacks(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    AddWhitePawnAttacks(moveHandler, square);
+                    //AddWhitePawnAttacks(moveHandler, square);
                     break;
                 //case Piece.BlackKing:
                 //case Piece.WhiteKing:
