@@ -5,6 +5,7 @@ namespace MinimalChess
 {
     public struct BoardState : IEquatable<BoardState>
     {
+        //TODO: Occupied & SideToMove instead of White/Black?
         public ulong White;
         public ulong Black;
         public ulong Pawns;
@@ -17,6 +18,14 @@ namespace MinimalChess
         public CastlingRights CastleFlags;
         public Color SideToMove;
         public int EnPassantSquare;
+
+        public bool CanWhiteCastleLong => (CastleFlags & CastlingRights.WhiteQueenside) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
+        public bool CanWhiteCastleShort => (CastleFlags & CastlingRights.WhiteKingside) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
+        public bool CanBlackCastleLong => (CastleFlags & CastlingRights.BlackQueenside) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
+        public bool CanBlackCastleShort => (CastleFlags & CastlingRights.BlackKingside) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
+
+        public bool HasCastlingRight(CastlingRights flag) => (CastleFlags & flag) == flag;
+
 
         public static BoardState CopyFrom(Board board)
         {
@@ -98,6 +107,41 @@ namespace MinimalChess
                     Kings &= bbPiece;
                     break;
             }
+        }
+
+        public Move AddCaptureFlag(Move move)
+        {
+            Piece flags = move.Flags;
+            ulong bbTarget = 1UL << move.ToSquare;
+            if (((Black | White) & bbTarget) > 0)
+                flags |= Piece.Capture;
+            return new Move(move, flags);
+        }
+
+        public Move AddPieceFlag(Move move)
+        {
+            Piece flags = move.Flags;
+            ulong bbPiece = 1UL << move.FromSquare;
+
+            if ((bbPiece & Black) > 0)
+                flags |= Piece.Black;
+            else if((bbPiece & White) > 0)
+                flags |= Piece.White;
+
+            if ((bbPiece & Pawns) > 0)
+                flags |= Piece.Pawn;
+            else if ((bbPiece & Knights) > 0)
+                flags |= Piece.Knight;
+            else if ((bbPiece & Bishops) > 0)
+                flags |= Piece.Bishop;
+            else if ((bbPiece & Rooks) > 0)
+                flags |= Piece.Rook;
+            else if ((bbPiece & Queens) > 0)
+                flags |= Piece.Queen;
+            else if ((bbPiece & Kings) > 0)
+                flags |= Piece.King;
+
+            return new Move(move, flags);
         }
 
         private void ClearBits(int square)
@@ -208,6 +252,86 @@ namespace MinimalChess
 
             //toggle active color!
             SideToMove = Pieces.Flip(SideToMove);
+        }
+
+        public bool IsChecked(Color color)
+        {
+            if (color == Color.White)
+            {
+                int kingSquare = (byte)Bitboard.LSB(Kings & White);
+                return IsAttackedByBlack(kingSquare);
+            }
+            else
+            {
+                int kingSquare = (byte)Bitboard.LSB(Kings & Black);
+                return IsAttackedByWhite(kingSquare);
+            }
+        }
+
+        public bool IsAttackedByWhite(int square)
+        {
+            ulong occupied = Black | White;
+
+            ulong pieces = White & Knights;
+            if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
+                return true;
+
+            pieces = White & Kings;
+            if (pieces > 0 && (pieces & Bitboard.KingTargets[square]) > 0)
+                return true;
+
+            pieces = White & (Queens | Bishops);
+            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(occupied, square)) > 0)
+                return true;
+
+            pieces = White & (Queens | Rooks);
+            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(occupied, square)) > 0)
+                return true;
+
+            pieces = White & Pawns;
+            ulong left = (pieces & 0xFEFEFEFEFEFEFEFEUL) << 7;
+            if ((left & 1UL << square) > 0)
+                return true;
+
+            ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) << 9;
+            if ((right & 1UL << square) > 0)
+                return true;
+
+            //Warning: does not consider en-passent!
+            return false;
+        }
+
+        public bool IsAttackedByBlack(int square)
+        {
+            ulong occupied = Black | White;
+
+            ulong pieces = Black & Knights;
+            if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
+                return true;
+
+            pieces = Black & Kings;
+            if (pieces > 0 && (pieces & Bitboard.KingTargets[square]) > 0)
+                return true;
+
+            pieces = Black & (Queens | Bishops);
+            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(occupied, square)) > 0)
+                return true;
+
+            pieces = Black & (Queens | Rooks);
+            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(occupied, square)) > 0)
+                return true;
+
+            pieces = Black & Pawns;
+            ulong left = (pieces & 0xFEFEFEFEFEFEFEFEUL) >> 9;
+            if ((left & 1UL << square) > 0)
+                return true;
+
+            ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) >> 7;
+            if ((right & 1UL << square) > 0)
+                return true;
+
+            //Warning: does not consider en-passent!
+            return false;
         }
 
         //TODO: use consts

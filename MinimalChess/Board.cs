@@ -47,6 +47,7 @@ namespace MinimalChess
         /*** STATE DATA ***/
 
         private BoardState _bbState;
+        public BoardState Bitboards => _bbState;
 
         public int Score => _eval.Score;
 
@@ -170,21 +171,6 @@ namespace MinimalChess
         //** PLAY MOVES ***
         //*****************
 
-        public Move AddFlags(Move move)
-        {
-            Piece flags = this[move.FromSquare];
-            if (move.Promotion != Piece.None)
-                flags |= Piece.Promotion;
-            if(IsEnPassant(flags, move, out int captureIndex))
-                flags |= Piece.EnPassant;
-            if(IsCastling(flags, move, out Move rookMove))
-                flags |= Piece.Castle;
-            if (this[move.ToSquare] != Piece.None)
-                flags |= Piece.Capture;
-
-            return new Move(move, flags);
-        }
-
         public void PlayNullMove()
         {
             SideToMove = Pieces.Flip(_sideToMove);
@@ -195,8 +181,8 @@ namespace MinimalChess
 
         public void Play(Move move)
         {
-            move = AddFlags(move);
-            _bbState.Play(move);
+            //move = AddFlags(move);
+            _bbState.Play(_bbState.AddCaptureFlag(_bbState.AddPieceFlag(move)));
             PlayClassic(move);
             //_bbState.AssertEquality(BoardState.CopyFrom(this));
         }
@@ -335,6 +321,14 @@ namespace MinimalChess
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static void NewEnPassantCapture(Action<Move> moveHandler, ulong moveTargets, int offset)
+        {
+            byte to = (byte)Bitboard.LSB(moveTargets);
+            byte from = (byte)(to + offset);
+            moveHandler(new Move(from, to, Piece.None, Piece.EnPassant));
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void WhitePawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
@@ -344,6 +338,7 @@ namespace MinimalChess
             moveHandler(new Move(from, to, Piece.WhiteBishop));
             moveHandler(new Move(from, to, Piece.WhiteKnight));
         }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void BlackPawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
         {
@@ -354,7 +349,6 @@ namespace MinimalChess
             moveHandler(new Move(from, to, Piece.BlackBishop));
             moveHandler(new Move(from, to, Piece.BlackKnight));
         }
-
 
         private void CollectMovesBitboard(Action<Move> moveHandler)
         {
@@ -412,13 +406,32 @@ namespace MinimalChess
             if (_sideToMove == Color.White)
             {
                 CollectWhitePawnMoves(moveHandler);
-                AddWhiteCastlingMoves(moveHandler);
+                CollectWhiteCastlingMoves(moveHandler);
             }
             else
             {
                 CollectBlackPawnMoves(moveHandler);
-                AddBlackCastlingMoves(moveHandler);
+                CollectBlackCastlingMoves(moveHandler);
             }
+        }
+
+        private void CollectWhiteCastlingMoves(Action<Move> moveHandler)
+        {
+            //TODO: consider enum with Square.B2
+            if(_bbState.CanWhiteCastleLong && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(3) && !_bbState.IsAttackedByBlack(2))
+                moveHandler(Move.WhiteCastlingLong);
+
+            if (_bbState.CanWhiteCastleShort && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(5) && !_bbState.IsAttackedByBlack(6))
+                moveHandler(Move.WhiteCastlingShort);
+        }
+
+        private void CollectBlackCastlingMoves(Action<Move> moveHandler)
+        {
+            if (_bbState.CanBlackCastleLong && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(59) && !_bbState.IsAttackedByWhite(58))
+                moveHandler(Move.BlackCastlingLong);
+
+            if (_bbState.CanBlackCastleShort && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(61) && !_bbState.IsAttackedByWhite(62))
+                moveHandler(Move.BlackCastlingShort);
         }
 
         private void CollectBlackPawnMoves(Action<Move> moveHandler)
@@ -441,8 +454,7 @@ namespace MinimalChess
                 NewPawnMove(moveHandler, targets, +16);
 
             //capture left
-            ulong opposing = _bbState.White | (1UL << _bbState.EnPassantSquare);
-            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & opposing;
+            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & _bbState.White;
             for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 NewPawnMove(moveHandler, targets, +9);
 
@@ -451,13 +463,22 @@ namespace MinimalChess
                 BlackPawnPromotions(moveHandler, targets, +9);
 
             //capture right
-            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & opposing;
+            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & _bbState.White;
             for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 NewPawnMove(moveHandler, targets, +7);
 
             //capture right to first rank and promote
             for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 BlackPawnPromotions(moveHandler, targets, +7);
+
+            //enPassantLeft
+            captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << _bbState.EnPassantSquare);
+            if (captureLeft != 0)
+                NewEnPassantCapture(moveHandler, captureLeft, +9);
+
+            captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << _bbState.EnPassantSquare);
+            if (captureRight != 0)
+                NewEnPassantCapture(moveHandler, captureRight, +7);
         }
 
         private void CollectWhitePawnMoves(Action<Move> moveHandler)
@@ -480,8 +501,7 @@ namespace MinimalChess
                 NewPawnMove(moveHandler, targets, -16);
 
             //capture left
-            ulong opposing = _bbState.Black | (1UL << _bbState.EnPassantSquare);
-            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & opposing;
+            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & _bbState.Black;
             for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 NewPawnMove(moveHandler, targets, -7);
 
@@ -490,13 +510,22 @@ namespace MinimalChess
                 WhitePawnPromotions(moveHandler, targets, -7);
 
             //capture right
-            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & opposing;
+            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & _bbState.Black;
             for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 NewPawnMove(moveHandler, targets, -9);
 
             //capture right to last rank and promote
             for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 WhitePawnPromotions(moveHandler, targets, -9);
+
+            //enPassantLeft
+            captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << _bbState.EnPassantSquare);
+            if (captureLeft != 0)
+                NewEnPassantCapture(moveHandler, captureLeft, -7);
+
+            captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << _bbState.EnPassantSquare);
+            if (captureRight != 0)
+                NewEnPassantCapture(moveHandler, captureRight, -9);
         }
 
         //**********************
@@ -552,35 +581,35 @@ namespace MinimalChess
             switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    //AddBlackPawnMoves(moveHandler, square);
+                    AddBlackPawnMoves(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    //AddWhitePawnMoves(moveHandler, square);
+                    AddWhitePawnMoves(moveHandler, square);
                     break;
                 case Piece.BlackKing:
                     AddBlackCastlingMoves(moveHandler);
-                //    AddMoves(moveHandler, square, Attacks.King);
+                    AddMoves(moveHandler, square, Attacks.King);
                     break;
                 case Piece.WhiteKing:
                     AddWhiteCastlingMoves(moveHandler);
-                //    AddMoves(moveHandler, square, Attacks.King);
+                    AddMoves(moveHandler, square, Attacks.King);
                     break;
-                //case Piece.BlackKnight:
-                //case Piece.WhiteKnight:
-                //    AddMoves(moveHandler, square, Attacks.Knight);
-                //    break;
-                //case Piece.BlackRook:
-                //case Piece.WhiteRook:
-                //    AddMoves(moveHandler, square, Attacks.Rook);
-                //    break;
-                //case Piece.BlackBishop:
-                //case Piece.WhiteBishop:
-                //    AddMoves(moveHandler, square, Attacks.Bishop);
-                //    break;
-                //case Piece.BlackQueen:
-                //case Piece.WhiteQueen:
-                //    AddMoves(moveHandler, square, Attacks.Queen);
-                //    break;
+                case Piece.BlackKnight:
+                case Piece.WhiteKnight:
+                    AddMoves(moveHandler, square, Attacks.Knight);
+                    break;
+                case Piece.BlackRook:
+                case Piece.WhiteRook:
+                    AddMoves(moveHandler, square, Attacks.Rook);
+                    break;
+                case Piece.BlackBishop:
+                case Piece.WhiteBishop:
+                    AddMoves(moveHandler, square, Attacks.Bishop);
+                    break;
+                case Piece.BlackQueen:
+                case Piece.WhiteQueen:
+                    AddMoves(moveHandler, square, Attacks.Queen);
+                    break;
             }
         }
 
@@ -589,31 +618,31 @@ namespace MinimalChess
             switch (_state[square])
             {
                 case Piece.BlackPawn:
-                    //AddBlackPawnAttacks(moveHandler, square);
+                    AddBlackPawnAttacks(moveHandler, square);
                     break;
                 case Piece.WhitePawn:
-                    //AddWhitePawnAttacks(moveHandler, square);
+                    AddWhitePawnAttacks(moveHandler, square);
                     break;
-                //case Piece.BlackKing:
-                //case Piece.WhiteKing:
-                //    AddCaptures(moveHandler, square, Attacks.King);
-                //    break;
-                //case Piece.BlackKnight:
-                //case Piece.WhiteKnight:
-                //    AddCaptures(moveHandler, square, Attacks.Knight);
-                //    break;
-                //case Piece.BlackRook:
-                //case Piece.WhiteRook:
-                //    AddCaptures(moveHandler, square, Attacks.Rook);
-                //    break;
-                //case Piece.BlackBishop:
-                //case Piece.WhiteBishop:
-                //    AddCaptures(moveHandler, square, Attacks.Bishop);
-                //    break;
-                //case Piece.BlackQueen:
-                //case Piece.WhiteQueen:
-                //    AddCaptures(moveHandler, square, Attacks.Queen);
-                //    break;
+                case Piece.BlackKing:
+                case Piece.WhiteKing:
+                    AddCaptures(moveHandler, square, Attacks.King);
+                    break;
+                case Piece.BlackKnight:
+                case Piece.WhiteKnight:
+                    AddCaptures(moveHandler, square, Attacks.Knight);
+                    break;
+                case Piece.BlackRook:
+                case Piece.WhiteRook:
+                    AddCaptures(moveHandler, square, Attacks.Rook);
+                    break;
+                case Piece.BlackBishop:
+                case Piece.WhiteBishop:
+                    AddCaptures(moveHandler, square, Attacks.Bishop);
+                    break;
+                case Piece.BlackQueen:
+                case Piece.WhiteQueen:
+                    AddCaptures(moveHandler, square, Attacks.Queen);
+                    break;
             }
         }
 
@@ -624,12 +653,19 @@ namespace MinimalChess
         //*****************
         //** CHECK TEST ***
         //*****************
-
+        
         public bool IsChecked(Color color)
         {
-            //TODO: use BBs to implement that check
-            return IsCheckedClassic(color);
+            return _bbState.IsChecked(color);
         }
+
+        public bool IsSquareAttackedBy(int square, Color color)
+        {
+            if (color == Color.Black)
+                return _bbState.IsAttackedByBlack(square);
+            else
+                return _bbState.IsAttackedByWhite(square);
+        }        
 
         public bool IsCheckedClassic(Color color)
         {
@@ -641,7 +677,7 @@ namespace MinimalChess
             throw new Exception($"No {color} King found!");
         }
 
-        public bool IsSquareAttackedBy(int square, Color color)
+        public bool IsSquareAttackedByClassic(int square, Color color)
         {
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = color == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;
