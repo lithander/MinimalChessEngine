@@ -182,7 +182,7 @@ namespace MinimalChess
         public void Play(Move move)
         {
             //move = AddFlags(move);
-            _bbState.Play(_bbState.AddCaptureFlag(_bbState.AddPieceFlag(move)));
+            _bbState.Play(move);
             PlayClassic(move);
             //_bbState.AssertEquality(BoardState.CopyFrom(this));
         }
@@ -418,19 +418,19 @@ namespace MinimalChess
         private void CollectWhiteCastlingMoves(Action<Move> moveHandler)
         {
             //TODO: consider enum with Square.B2
-            if(_bbState.CanWhiteCastleLong && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(3) && !_bbState.IsAttackedByBlack(2))
+            if(_bbState.CanWhiteCastleLong() && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(3) && !_bbState.IsAttackedByBlack(2))
                 moveHandler(Move.WhiteCastlingLong);
 
-            if (_bbState.CanWhiteCastleShort && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(5) && !_bbState.IsAttackedByBlack(6))
+            if (_bbState.CanWhiteCastleShort() && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(5) && !_bbState.IsAttackedByBlack(6))
                 moveHandler(Move.WhiteCastlingShort);
         }
 
         private void CollectBlackCastlingMoves(Action<Move> moveHandler)
         {
-            if (_bbState.CanBlackCastleLong && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(59) && !_bbState.IsAttackedByWhite(58))
+            if (_bbState.CanBlackCastleLong() && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(59) && !_bbState.IsAttackedByWhite(58))
                 moveHandler(Move.BlackCastlingLong);
 
-            if (_bbState.CanBlackCastleShort && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(61) && !_bbState.IsAttackedByWhite(62))
+            if (_bbState.CanBlackCastleShort() && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(61) && !_bbState.IsAttackedByWhite(62))
                 moveHandler(Move.BlackCastlingShort);
         }
 

@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Diagnostics;
+using System.Runtime.CompilerServices;
 
 namespace MinimalChess
 {
@@ -19,13 +20,33 @@ namespace MinimalChess
         public Color SideToMove;
         public int EnPassantSquare;
 
-        public bool CanWhiteCastleLong => (CastleFlags & CastlingRights.WhiteQueenside) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
-        public bool CanWhiteCastleShort => (CastleFlags & CastlingRights.WhiteKingside) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
-        public bool CanBlackCastleLong => (CastleFlags & CastlingRights.BlackQueenside) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
-        public bool CanBlackCastleShort => (CastleFlags & CastlingRights.BlackKingside) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
 
-        public bool HasCastlingRight(CastlingRights flag) => (CastleFlags & flag) == flag;
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanWhiteCastleLong()
+        {
+            return (CastleFlags & CastlingRights.WhiteQueenside) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
+        }
 
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanWhiteCastleShort()
+        {
+            return (CastleFlags & CastlingRights.WhiteKingside) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanBlackCastleLong()
+        {
+            return (CastleFlags & CastlingRights.BlackQueenside) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public bool CanBlackCastleShort()
+        {
+            return (CastleFlags & CastlingRights.BlackKingside) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
+        }
 
         public static BoardState CopyFrom(Board board)
         {
@@ -39,6 +60,7 @@ namespace MinimalChess
             return result;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void SetBit(int square, Piece piece)
         {
             ulong bbPiece = 1UL << square;
@@ -74,6 +96,7 @@ namespace MinimalChess
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBit(int square, Piece piece)
         {
             ulong bbPiece = ~(1UL << square);
@@ -109,20 +132,16 @@ namespace MinimalChess
             }
         }
 
-        public Move AddCaptureFlag(Move move)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public Piece CompleteFlags(Move move)
         {
             Piece flags = move.Flags;
+
             ulong bbTarget = 1UL << move.ToSquare;
             if (((Black | White) & bbTarget) > 0)
                 flags |= Piece.Capture;
-            return new Move(move, flags);
-        }
 
-        public Move AddPieceFlag(Move move)
-        {
-            Piece flags = move.Flags;
             ulong bbPiece = 1UL << move.FromSquare;
-
             if ((bbPiece & Black) > 0)
                 flags |= Piece.Black;
             else if((bbPiece & White) > 0)
@@ -141,9 +160,10 @@ namespace MinimalChess
             else if ((bbPiece & Kings) > 0)
                 flags |= Piece.King;
 
-            return new Move(move, flags);
+            return flags;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBits(int square)
         {
             ulong bbPiece = ~(1UL << square);
@@ -157,6 +177,7 @@ namespace MinimalChess
             Kings &= bbPiece;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool Equals(BoardState other)
         {
             return White == other.White &&
@@ -187,8 +208,11 @@ namespace MinimalChess
             Trace.Assert(EnPassantSquare == other.EnPassantSquare, "EnPassantSquare not equal");
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static bool operator ==(BoardState a, BoardState b) => a.Equals(b);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public static bool operator !=(BoardState a, BoardState b) => !a.Equals(b);
+        [MethodImpl(MethodImplOptions.AggressiveInlining)] 
         public override bool Equals(object obj) => obj is BoardState bs && Equals(bs);
 
         //TODO: use zobrist
@@ -197,16 +221,19 @@ namespace MinimalChess
             return HashCode.Combine(White, Black, Pawns, Knights, Bishops, Rooks, Queens, Kings);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Play(Move move)
         {
-            ClearBit(move.FromSquare, move.Flags);
+            Piece flags = CompleteFlags(move);
 
-            if ((move.Flags & Piece.Capture) != 0)
+            ClearBit(move.FromSquare, flags);
+
+            if ((flags & Piece.Capture) != 0)
                 ClearBits(move.ToSquare);
 
-            if ((move.Flags & Piece.Castle) != 0)
+            if ((flags & Piece.Castle) != 0)
             {
-                SetBit(move.ToSquare, move.Flags);
+                SetBit(move.ToSquare, flags);
                 switch (move.ToSquare)
                 {
                     case 2: //white castling long/queenside
@@ -227,33 +254,41 @@ namespace MinimalChess
                         break;
                 }
             }
-            else if ((move.Flags & Piece.Promotion) != 0)
+            else if ((flags & Piece.Promotion) != 0)
             {
                 SetBit(move.ToSquare, move.Promotion);
             }
-            else if ((move.Flags & Piece.EnPassant) != 0)
+            else if ((flags & Piece.EnPassant) != 0)
             {
-                SetBit(move.ToSquare, move.Flags);
+                SetBit(move.ToSquare, flags);
                 //Delete the captured pawn
-                if(move.Flags.Color() == Color.White)
+                if((flags & Piece.ColorMask) == Piece.White)
                     ClearBit(move.ToSquare - 8, Piece.BlackPawn);
                 else
                     ClearBit(move.ToSquare + 8, Piece.WhitePawn);
             }
             else
             {
-                SetBit(move.ToSquare, move.Flags);
+                SetBit(move.ToSquare, flags);
             }
 
+            //update enPassant
+            if (flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
+                EnPassantSquare = move.FromSquare - 8;
+            else if (flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
+                EnPassantSquare = move.FromSquare + 8;
+            else
+                EnPassantSquare = -1;
+
             //update board state
-            UpdateEnPassent(move);
             UpdateCastlingRights(move.FromSquare);
             UpdateCastlingRights(move.ToSquare);
 
             //toggle active color!
-            SideToMove = Pieces.Flip(SideToMove);
+            SideToMove = (Color)(-(int)SideToMove);
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsChecked(Color color)
         {
             if (color == Color.White)
@@ -268,6 +303,7 @@ namespace MinimalChess
             }
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAttackedByWhite(int square)
         {
             ulong occupied = Black | White;
@@ -301,6 +337,7 @@ namespace MinimalChess
             return false;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAttackedByBlack(int square)
         {
             ulong occupied = Black | White;
@@ -342,6 +379,7 @@ namespace MinimalChess
         static readonly int WhiteQueensideRookSquare = Notation.ToSquare("a1");
         static readonly int WhiteKingsideRookSquare = Notation.ToSquare("h1");
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void UpdateCastlingRights(int square)
         {
             //TODO: early out against bitmask. if it's none of the squares don't bother
@@ -356,19 +394,6 @@ namespace MinimalChess
                 CastleFlags &= ~CastlingRights.BlackQueenside;
             if (square == BlackKingSquare || square == BlackKingsideRookSquare)
                 CastleFlags &= ~CastlingRights.BlackKingside;
-        }
-
-        private void UpdateEnPassent(Move move)
-        {
-            //TODO: early out against pawn. if it's none of the squares don't bother 
-
-            //movingPiece needs to be either a BlackPawn...
-            if (move.Flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
-                EnPassantSquare = move.FromSquare - 8;
-            else if (move.Flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
-                EnPassantSquare = move.FromSquare + 8;
-            else
-                EnPassantSquare = -1;
         }
     }
 }
