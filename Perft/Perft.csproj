@@ -6,10 +6,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\MinimalChess\MinimalChess.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
     <None Update="qbb.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>

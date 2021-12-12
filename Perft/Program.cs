@@ -2,13 +2,12 @@
 using System.Diagnostics;
 using System.IO;
 using System.Runtime.CompilerServices;
-using MinimalChess;
 
 namespace Perft
 {
     class Program
     {
-        static void Main(string[] args)
+        static void Main()
         {
             Console.WriteLine("Leorik Perft");
             Console.WriteLine();
@@ -32,8 +31,7 @@ namespace Perft
                 string fen = data[0];
                 int depth = int.Parse(data[1]);
                 long refResult = long.Parse(data[2]);
-                var board = new Board(fen);
-                Positions[0] = board.Bitboards;
+                Positions[0] = new BoardState(fen);
 
                 long t0 = Stopwatch.GetTimestamp();
                 long result = Perft(0, depth);

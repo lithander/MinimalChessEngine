@@ -1,0 +1,12 @@
+Leorik Perft
+
+OK! 4760ms, 25010K NPS
+OK! 7682ms, 25213K NPS
+OK! 7292ms, 24496K NPS
+OK! 29677ms, 23790K NPS
+OK! 2ms, 24029K NPS
+OK! 6478ms, 25327K NPS
+
+Total: 1361558651 Nodes, 55892ms, 24360K NPS
+
+Press any key to quit

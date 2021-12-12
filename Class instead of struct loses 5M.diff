@@ -1,0 +1,300 @@
+ MinimalChess/BoardState.cs | 19 +++++++++-
+ Perft/Program.cs           | 89 ++++++++++++++++++++++++----------------------
+ 2 files changed, 65 insertions(+), 43 deletions(-)
+
+diff --git a/MinimalChess/BoardState.cs b/MinimalChess/BoardState.cs
+index 10db914..92abb1f 100644
+--- a/MinimalChess/BoardState.cs
++++ b/MinimalChess/BoardState.cs
+@@ -4,7 +4,7 @@ using System.Runtime.CompilerServices;
+ 
+ namespace MinimalChess
+ {
+-    public struct BoardState : IEquatable<BoardState>
++    public class BoardState : IEquatable<BoardState>
+     {
+         //TODO: Occupied & SideToMove instead of White/Black?
+         public ulong White;
+@@ -132,6 +132,23 @@ namespace MinimalChess
+             }
+         }
+ 
++        public BoardState Copy(BoardState other)
++        {
++            White = other.White;
++            Black = other.Black;
++            Pawns = other.Pawns;
++            Knights = other.Knights;
++            Bishops = other.Bishops;
++            Rooks = other.Rooks;
++            Queens = other.Queens;
++            Kings = other.Kings;
++
++            CastleFlags = other.CastleFlags;
++            SideToMove = other.SideToMove;
++            EnPassantSquare = other.EnPassantSquare;
++            return this;
++        }
++
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+         public Piece CompleteFlags(Move move)
+         {
+diff --git a/Perft/Program.cs b/Perft/Program.cs
+index b565390..2a30502 100644
+--- a/Perft/Program.cs
++++ b/Perft/Program.cs
+@@ -33,7 +33,7 @@ namespace Perft
+                 int depth = int.Parse(data[1]);
+                 long refResult = long.Parse(data[2]);
+                 var board = new Board(fen);
+-                Positions[0] = board.Bitboards;
++                Position = Positions[0] = board.Bitboards;
+ 
+                 long t0 = Stopwatch.GetTimestamp();
+                 long result = Perft(0, depth);
+@@ -57,6 +57,7 @@ namespace Perft
+         const int MAX_PLY = 32;
+         const int MAX_MOVES = 225; //https://www.stmintz.com/ccc/index.php?id=425058
+         static BoardState[] Positions;
++        static BoardState Position;
+         static Move[][] Moves;
+ 
+         static Program()
+@@ -64,7 +65,11 @@ namespace Perft
+             Positions = new BoardState[MAX_PLY];
+             Moves = new Move[MAX_PLY][];
+             for (int i = 0; i < MAX_PLY; i++)
++            {
+                 Moves[i] = new Move[MAX_MOVES];
++                Positions[i] = new BoardState();
++            }
++            Position = Positions[0];
+         }
+ 
+         private static long Perft(int depth, int remaining)
+@@ -78,6 +83,7 @@ namespace Perft
+                         sum += Perft(depth + 1, remaining - 1);
+                     else
+                         sum++;
++                Position = Positions[depth];
+             }
+ 
+             //PerftTable.Store(board.ZobristHash, depth, sum);
+@@ -87,11 +93,10 @@ namespace Perft
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+         private static bool TryMake(int depth, int moveIndex)
+         {
+-            ref BoardState current = ref Positions[depth];
+-            ref BoardState next = ref Positions[depth + 1];
+-            next = current;
+-            next.Play(Moves[depth][moveIndex]);
+-            return !next.IsChecked(current.SideToMove);
++            Color sideToMove = Position.SideToMove;
++            Position = Positions[depth+1].Copy(Position);
++            Position.Play(Moves[depth][moveIndex]);
++            return !Position.IsChecked(sideToMove);
+         }
+ 
+         /***********************/
+@@ -102,29 +107,29 @@ namespace Perft
+         static int _nextMove;
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static int GenerateMoves(int position)
++        private static int GenerateMoves(int depth)
+         {
+-            _moves = Moves[position];
++            _moves = Moves[depth];
+             _nextMove = 0;
+-            GenerateMoves(ref Positions[position]);
++            GenerateMoves();
+             return _nextMove;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void GenerateMoves(ref BoardState board)
++        private static void GenerateMoves()
+         {
+-            ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
+-            ulong occupied = board.Black | board.White;
++            ulong sideToMove = Position.SideToMove == Color.Black ? Position.Black : Position.White;
++            ulong occupied = Position.Black | Position.White;
+ 
+             //Kings
+-            byte square = (byte)Bitboard.LSB(board.Kings & sideToMove);
++            byte square = (byte)Bitboard.LSB(Position.Kings & sideToMove);
+             //can't move on squares occupied by side to move
+             ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
+             for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+                 NewMove(square, targets);
+ 
+             //Knights
+-            for (ulong knights = board.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
++            for (ulong knights = Position.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
+             {
+                 square = (byte)Bitboard.LSB(knights);
+                 //can't move on squares occupied by side to move
+@@ -134,7 +139,7 @@ namespace Perft
+             }
+ 
+             //Bishops
+-            for (ulong bishops = board.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
++            for (ulong bishops = Position.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
+             {
+                 square = (byte)Bitboard.LSB(bishops);
+                 //can't move on squares occupied by side to move
+@@ -144,7 +149,7 @@ namespace Perft
+             }
+ 
+             //Rooks
+-            for (ulong rooks = board.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
++            for (ulong rooks = Position.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
+             {
+                 square = (byte)Bitboard.LSB(rooks);
+                 //can't move on squares occupied by side to move
+@@ -154,7 +159,7 @@ namespace Perft
+             }
+ 
+             //Queens
+-            for (ulong queens = board.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
++            for (ulong queens = Position.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
+             {
+                 square = (byte)Bitboard.LSB(queens);
+                 //can't move on squares occupied by side to move
+@@ -164,45 +169,45 @@ namespace Perft
+             }
+ 
+             //Pawns & Castling
+-            if (board.SideToMove == Color.White)
++            if (Position.SideToMove == Color.White)
+             {
+-                CollectWhitePawnMoves(ref board);
+-                CollectWhiteCastlingMoves(ref board);
++                CollectWhitePawnMoves();
++                CollectWhiteCastlingMoves();
+             }
+             else
+             {
+-                CollectBlackPawnMoves(ref board);
+-                CollectBlackCastlingMoves(ref board);
++                CollectBlackPawnMoves();
++                CollectBlackCastlingMoves();
+             }
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectWhiteCastlingMoves(ref BoardState board)
++        private static void CollectWhiteCastlingMoves()
+         {
+             //TODO: consider enum with Square.B2
+-            if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) && !board.IsAttackedByBlack(2))
++            if (Position.CanWhiteCastleLong() && !Position.IsAttackedByBlack(4) && !Position.IsAttackedByBlack(3) && !Position.IsAttackedByBlack(2))
+                 _moves[_nextMove++] = Move.WhiteCastlingLong;
+ 
+-            if (board.CanWhiteCastleShort() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(5) && !board.IsAttackedByBlack(6))
++            if (Position.CanWhiteCastleShort() && !Position.IsAttackedByBlack(4) && !Position.IsAttackedByBlack(5) && !Position.IsAttackedByBlack(6))
+                 _moves[_nextMove++] = Move.WhiteCastlingShort;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectBlackCastlingMoves(ref BoardState board)
++        private static void CollectBlackCastlingMoves()
+         {
+-            if (board.CanBlackCastleLong() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(59) && !board.IsAttackedByWhite(58))
++            if (Position.CanBlackCastleLong() && !Position.IsAttackedByWhite(60) && !Position.IsAttackedByWhite(59) && !Position.IsAttackedByWhite(58))
+                 _moves[_nextMove++] = Move.BlackCastlingLong;
+ 
+-            if (board.CanBlackCastleShort() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(61) && !board.IsAttackedByWhite(62))
++            if (Position.CanBlackCastleShort() && !Position.IsAttackedByWhite(60) && !Position.IsAttackedByWhite(61) && !Position.IsAttackedByWhite(62))
+                 _moves[_nextMove++] = Move.BlackCastlingShort;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectBlackPawnMoves(ref BoardState board)
++        private static void CollectBlackPawnMoves()
+         {
+             ulong targets;
+-            ulong occupied = board.Black | board.White;
+-            ulong blackPawns = board.Pawns & board.Black;
++            ulong occupied = Position.Black | Position.White;
++            ulong blackPawns = Position.Pawns & Position.Black;
+             ulong oneStep = (blackPawns >> 8) & ~occupied;
+             //move one square down
+             for (targets = oneStep & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+@@ -218,7 +223,7 @@ namespace Perft
+                 NewPawnMove(targets, +16);
+ 
+             //capture left
+-            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & board.White;
++            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & Position.White;
+             for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                 NewPawnMove(targets, +9);
+ 
+@@ -227,7 +232,7 @@ namespace Perft
+                 BlackPawnPromotions(targets, +9);
+ 
+             //capture right
+-            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & board.White;
++            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & Position.White;
+             for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                 NewPawnMove(targets, +7);
+ 
+@@ -236,21 +241,21 @@ namespace Perft
+                 BlackPawnPromotions(targets, +7);
+ 
+             //enPassantLeft
+-            captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << board.EnPassantSquare);
++            captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << Position.EnPassantSquare);
+             if (captureLeft != 0)
+                 NewEnPassantCapture(captureLeft, +9);
+ 
+-            captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << board.EnPassantSquare);
++            captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << Position.EnPassantSquare);
+             if (captureRight != 0)
+                 NewEnPassantCapture(captureRight, +7);
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectWhitePawnMoves(ref BoardState board)
++        private static void CollectWhitePawnMoves()
+         {
+             ulong targets;
+-            ulong whitePawns = board.Pawns & board.White;
+-            ulong occupied = board.Black | board.White;
++            ulong whitePawns = Position.Pawns & Position.White;
++            ulong occupied = Position.Black | Position.White;
+             ulong oneStep = (whitePawns << 8) & ~occupied;
+             //move one square up
+             for (targets = oneStep & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+@@ -266,7 +271,7 @@ namespace Perft
+                 NewPawnMove(targets, -16);
+ 
+             //capture left
+-            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & board.Black;
++            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & Position.Black;
+             for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                 NewPawnMove(targets, -7);
+ 
+@@ -275,7 +280,7 @@ namespace Perft
+                 WhitePawnPromotions(targets, -7);
+ 
+             //capture right
+-            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & board.Black;
++            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & Position.Black;
+             for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+                 NewPawnMove(targets, -9);
+ 
+@@ -284,11 +289,11 @@ namespace Perft
+                 WhitePawnPromotions(targets, -9);
+ 
+             //enPassantLeft
+-            captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << board.EnPassantSquare);
++            captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << Position.EnPassantSquare);
+             if (captureLeft != 0)
+                 NewEnPassantCapture(captureLeft, -7);
+ 
+-            captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << board.EnPassantSquare);
++            captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << Position.EnPassantSquare);
+             if (captureRight != 0)
+                 NewEnPassantCapture(captureRight, -9);
+         }
