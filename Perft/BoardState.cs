@@ -272,8 +272,6 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAttackedByWhite(int square)
         {
-            ulong occupied = Black | White;
-
             ulong pieces = White & Knights;
             if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
                 return true;
@@ -283,31 +281,23 @@ namespace Perft
                 return true;
 
             pieces = White & (Queens | Bishops);
-            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(occupied, square)) > 0)
+            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = White & (Queens | Rooks);
-            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(occupied, square)) > 0)
+            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(Black | White, square)) > 0)
                 return true;
 
+            //Warning: pawn attacks do not consider en-passent!
             pieces = White & Pawns;
             ulong left = (pieces & 0xFEFEFEFEFEFEFEFEUL) << 7;
-            if ((left & 1UL << square) > 0)
-                return true;
-
             ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) << 9;
-            if ((right & 1UL << square) > 0)
-                return true;
-
-            //Warning: does not consider en-passent!
-            return false;
+            return ((left | right) & 1UL << square) > 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAttackedByBlack(int square)
         {
-            ulong occupied = Black | White;
-
             ulong pieces = Black & Knights;
             if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
                 return true;
@@ -317,24 +307,18 @@ namespace Perft
                 return true;
 
             pieces = Black & (Queens | Bishops);
-            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(occupied, square)) > 0)
+            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = Black & (Queens | Rooks);
-            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(occupied, square)) > 0)
+            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(Black | White, square)) > 0)
                 return true;
 
+            //Warning: pawn attacks do not consider en-passent!
             pieces = Black & Pawns;
             ulong left = (pieces & 0xFEFEFEFEFEFEFEFEUL) >> 9;
-            if ((left & 1UL << square) > 0)
-                return true;
-
             ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) >> 7;
-            if ((right & 1UL << square) > 0)
-                return true;
-
-            //Warning: does not consider en-passent!
-            return false;
+            return ((left | right) & 1UL << square) > 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
