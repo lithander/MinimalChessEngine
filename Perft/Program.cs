@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v2");
+            Console.WriteLine("Leorik Perft v3");
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -113,13 +113,14 @@ namespace Perft
         {
             ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
             ulong occupied = board.Black | board.White;
+            Piece color = (Piece)(board.SideToMove + 2);
 
             //Kings
             byte square = (byte)Bitboard.LSB(board.Kings & sideToMove);
             //can't move on squares occupied by side to move
             ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
             for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewMove(square, targets);
+                NewMove(Piece.King | color, square, targets);
 
             //Knights
             for (ulong knights = board.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
@@ -128,7 +129,7 @@ namespace Perft
                 //can't move on squares occupied by side to move
                 targets = Bitboard.KnightTargets[square] & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(square, targets);
+                    NewMove(Piece.Knight | color, square, targets);
             }
 
             //Bishops
@@ -138,7 +139,7 @@ namespace Perft
                 //can't move on squares occupied by side to move
                 targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(square, targets);
+                    NewMove(Piece.Bishop | color, square, targets);
             }
 
             //Rooks
@@ -148,7 +149,7 @@ namespace Perft
                 //can't move on squares occupied by side to move
                 targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(square, targets);
+                    NewMove(Piece.Rook | color, square, targets);
             }
 
             //Queens
@@ -158,7 +159,7 @@ namespace Perft
                 //can't move on squares occupied by side to move
                 targets = (Bitboard.GetBishopTargets(occupied, square) | Bitboard.GetRookTargets(occupied, square)) & ~sideToMove;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(square, targets);
+                    NewMove(Piece.Queen | color, square, targets);
             }
 
             //Pawns & Castling
@@ -204,7 +205,7 @@ namespace Perft
             ulong oneStep = (blackPawns >> 8) & ~occupied;
             //move one square down
             for (targets = oneStep & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, +8);
+                PawnMove(Piece.BlackPawn, targets, +8);
 
             //move to first rank and promote
             for (targets = oneStep & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -213,12 +214,12 @@ namespace Perft
             //move two squares down
             ulong twoStep = (oneStep >> 8) & ~occupied;
             for (targets = twoStep & 0x000000FF00000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, +16);
+                PawnMove(Piece.BlackPawn, targets, +16);
 
             //capture left
             ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & board.White;
             for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, +9);
+                PawnMove(Piece.BlackPawn, targets, +9);
 
             //capture left to first rank and promote
             for (targets = captureLeft & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -227,7 +228,7 @@ namespace Perft
             //capture right
             ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & board.White;
             for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, +7);
+                PawnMove(Piece.BlackPawn, targets, +7);
 
             //capture right to first rank and promote
             for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -236,11 +237,11 @@ namespace Perft
             //enPassantLeft
             captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << board.EnPassantSquare);
             if (captureLeft != 0)
-                NewEnPassantCapture(captureLeft, +9);
+                PawnMove(Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
 
             captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << board.EnPassantSquare);
             if (captureRight != 0)
-                NewEnPassantCapture(captureRight, +7);
+                PawnMove(Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -252,7 +253,7 @@ namespace Perft
             ulong oneStep = (whitePawns << 8) & ~occupied;
             //move one square up
             for (targets = oneStep & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, -8);
+                PawnMove(Piece.WhitePawn, targets, -8);
 
             //move to last rank and promote
             for (targets = oneStep & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -261,12 +262,12 @@ namespace Perft
             //move two squares up
             ulong twoStep = (oneStep << 8) & ~occupied;
             for (targets = twoStep & 0x00000000FF000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, -16);
+                PawnMove(Piece.WhitePawn, targets, -16);
 
             //capture left
             ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & board.Black;
             for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, -7);
+                PawnMove(Piece.WhitePawn, targets, -7);
 
             //capture left to last rank and promote
             for (targets = captureLeft & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -275,7 +276,7 @@ namespace Perft
             //capture right
             ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & board.Black;
             for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(targets, -9);
+                PawnMove(Piece.WhitePawn, targets, -9);
 
             //capture right to last rank and promote
             for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
@@ -284,34 +285,26 @@ namespace Perft
             //enPassantLeft
             captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << board.EnPassantSquare);
             if (captureLeft != 0)
-                NewEnPassantCapture(captureLeft, -7);
+                PawnMove(Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
 
             captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << board.EnPassantSquare);
             if (captureRight != 0)
-                NewEnPassantCapture(captureRight, -9);
+                PawnMove(Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void NewMove(byte from, ulong moveTargets)
+        private static void NewMove(Piece attacker, byte from, ulong moveTargets)
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
-            _moves[_nextMove++] = new Move(from, to); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
+            _moves[_nextMove++] = new Move(attacker, from, to); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void NewPawnMove(ulong moveTargets, int offset)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(from, to);
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void NewEnPassantCapture(ulong moveTargets, int offset)
+        private static void PawnMove(Piece flags, ulong moveTargets, int offset)
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
             byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(from, to, Piece.None, Piece.EnPassant);
+            _moves[_nextMove++] = new Move(flags, from, to);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -319,10 +312,10 @@ namespace Perft
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
             byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(from, to, Piece.WhiteQueen);
-            _moves[_nextMove++] = new Move(from, to, Piece.WhiteRook);
-            _moves[_nextMove++] = new Move(from, to, Piece.WhiteBishop);
-            _moves[_nextMove++] = new Move(from, to, Piece.WhiteKnight);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteQueen);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteRook);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteBishop);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteKnight);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -330,10 +323,10 @@ namespace Perft
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
             byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(from, to, Piece.BlackQueen);
-            _moves[_nextMove++] = new Move(from, to, Piece.BlackRook);
-            _moves[_nextMove++] = new Move(from, to, Piece.BlackBishop);
-            _moves[_nextMove++] = new Move(from, to, Piece.BlackKnight);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackQueen);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackRook);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackBishop);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackKnight);
         }
     }
 }

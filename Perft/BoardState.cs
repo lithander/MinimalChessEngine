@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics;
 using System.Runtime.CompilerServices;
 
 namespace Perft
@@ -143,38 +144,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public Piece CompleteFlags(Move move)
-        {
-            Piece flags = move.Flags;
-
-            ulong bbTarget = 1UL << move.ToSquare;
-            if (((Black | White) & bbTarget) > 0)
-                flags |= Piece.Capture;
-
-            ulong bbPiece = 1UL << move.FromSquare;
-            if ((bbPiece & Black) > 0)
-                flags |= Piece.Black;
-            else if ((bbPiece & White) > 0)
-                flags |= Piece.White;
-
-            if ((bbPiece & Pawns) > 0)
-                flags |= Piece.Pawn;
-            else if ((bbPiece & Knights) > 0)
-                flags |= Piece.Knight;
-            else if ((bbPiece & Bishops) > 0)
-                flags |= Piece.Bishop;
-            else if ((bbPiece & Rooks) > 0)
-                flags |= Piece.Rook;
-            else if ((bbPiece & Queens) > 0)
-                flags |= Piece.Queen;
-            else if ((bbPiece & Kings) > 0)
-                flags |= Piece.King;
-
-            return flags;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ClearBits(int square)
+		private void ClearBits(int square)
         {
             ulong bbPiece = ~(1UL << square);
             Black &= bbPiece;
@@ -190,16 +160,14 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Play(Move move)
         {
-            Piece flags = CompleteFlags(move);
+            ClearBit(move.FromSquare, move.Flags);
 
-            ClearBit(move.FromSquare, flags);
-
-            if ((flags & Piece.Capture) != 0)
+            if (((Black | White) & (1UL << move.ToSquare)) > 0)
                 ClearBits(move.ToSquare);
 
-            if ((flags & Piece.Castle) != 0)
+            if ((move.Flags & Piece.Castle) != 0)
             {
-                SetBit(move.ToSquare, flags);
+                SetBit(move.ToSquare, move.Flags);
                 switch (move.ToSquare)
                 {
                     case 2: //white castling long/queenside
@@ -220,28 +188,28 @@ namespace Perft
                         break;
                 }
             }
-            else if ((flags & Piece.Promotion) != 0)
+            else if ((move.Flags & Piece.Promotion) != 0)
             {
                 SetBit(move.ToSquare, move.Promotion);
             }
-            else if ((flags & Piece.EnPassant) != 0)
+            else if ((move.Flags & Piece.EnPassant) != 0)
             {
-                SetBit(move.ToSquare, flags);
+                SetBit(move.ToSquare, move.Flags);
                 //Delete the captured pawn
-                if ((flags & Piece.ColorMask) == Piece.White)
+                if ((move.Flags & Piece.ColorMask) == Piece.White)
                     ClearBit(move.ToSquare - 8, Piece.BlackPawn);
                 else
                     ClearBit(move.ToSquare + 8, Piece.WhitePawn);
             }
             else
             {
-                SetBit(move.ToSquare, flags);
+                SetBit(move.ToSquare, move.Flags);
             }
 
             //update enPassant
-            if (flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
+            if (move.Flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
                 EnPassantSquare = move.FromSquare - 8;
-            else if (flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
+            else if (move.Flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
                 EnPassantSquare = move.FromSquare + 8;
             else
                 EnPassantSquare = -1;

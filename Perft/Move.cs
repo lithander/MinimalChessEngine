@@ -9,28 +9,20 @@ namespace Perft
         public readonly byte ToSquare;
         public readonly Piece Promotion;
 
-        public Move(int fromIndex, int toIndex)
+        public Move(Piece flags, int fromIndex, int toIndex, Piece promotion)
         {
-            Flags = Piece.None;
-            FromSquare = (byte)fromIndex;
-            ToSquare = (byte)toIndex;
-            Promotion = Piece.None;
-        }
-
-        public Move(int fromIndex, int toIndex, Piece promotion)
-        {
-            Flags = Piece.Promotion;
+            Flags = flags | Piece.Promotion;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
             Promotion = promotion;
         }
 
-        public Move(int fromIndex, int toIndex, Piece promotion, Piece flags)
+        public Move(Piece flags, int fromIndex, int toIndex)
         {
             Flags = flags;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
-            Promotion = promotion;
+            Promotion = Piece.None;
         }
 
         public Move(string uciMoveNotation, Piece flags = Piece.None)
@@ -52,9 +44,9 @@ namespace Perft
             Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
         }
 
-        public static Move BlackCastlingShort = new("e8g8", Piece.Castle);
-        public static Move BlackCastlingLong = new("e8c8", Piece.Castle);
-        public static Move WhiteCastlingShort = new("e1g1", Piece.Castle);
-        public static Move WhiteCastlingLong = new("e1c1", Piece.Castle);
+        public static Move BlackCastlingShort = new("e8g8", Piece.BlackKing | Piece.Castle);
+        public static Move BlackCastlingLong = new("e8c8", Piece.BlackKing | Piece.Castle);
+        public static Move WhiteCastlingShort = new("e1g1", Piece.WhiteKing | Piece.Castle);
+        public static Move WhiteCastlingLong = new("e1c1", Piece.WhiteKing | Piece.Castle);
     }
 }
