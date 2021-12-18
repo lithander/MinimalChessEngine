@@ -160,43 +160,148 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Play(Move move)
         {
-            ClearBit(move.FromSquare, move.Flags);
-
-            if (((Black | White) & (1UL << move.ToSquare)) > 0)
-                ClearBits(move.ToSquare);
-
             EnPassantSquare = -1;
+            switch (SideToMove)
+            {
+                case Color.White:
+                PlayWhite(move);
+                SideToMove = Color.Black;
+                break;
+                case Color.Black:
+                PlayBlack(move);
+                SideToMove = Color.White;
+                break;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void PlayBlack(Move move)
+        {
+            ulong bbTo = 1UL << move.ToSquare;
+            ulong bbFrom = 1UL << move.FromSquare;
+
+            if ((White & bbTo) > 0)
+            {
+                White &= ~bbTo;
+                Pawns &= ~bbTo;
+                Knights &= ~bbTo;
+                Bishops &= ~bbTo;
+                Rooks &= ~bbTo;
+                Queens &= ~bbTo;
+                Kings &= ~bbTo;
+            }
+
+            Black ^= bbFrom | bbTo;
+
             switch (move.Flags & Piece.TypeMask)
             {
                 case Piece.Pawn:
                     if ((move.Flags & Piece.Promotion) != 0)
                     {
+                        Pawns &= ~bbFrom;
                         SetBit(move.ToSquare, move.Promotion);
                     }
                     else if ((move.Flags & Piece.EnPassant) != 0)
                     {
-                        SetBit(move.ToSquare, move.Flags);
-                        //Delete the captured pawn
-                        if ((move.Flags & Piece.ColorMask) == Piece.White)
-                            ClearBit(move.ToSquare - 8, Piece.BlackPawn);
-                        else
-                            ClearBit(move.ToSquare + 8, Piece.WhitePawn);
+                        Pawns ^= bbFrom | bbTo;
+                        ClearBit(move.ToSquare + 8, Piece.WhitePawn);
                     }
                     else
                     {
-                        SetBit(move.ToSquare, move.Flags);
+                        Pawns ^= bbFrom | bbTo;
                         //update enPassant
-                        if (move.Flags == Piece.BlackPawn && move.ToSquare == move.FromSquare - 16)
+                        if (move.ToSquare == move.FromSquare - 16)
                             EnPassantSquare = move.FromSquare - 8;
-                        else if (move.Flags == Piece.WhitePawn && move.ToSquare == move.FromSquare + 16)
+                    }
+                    break;
+                case Piece.Knight:
+                    Knights ^= bbFrom | bbTo;
+                    break;
+                case Piece.Bishop:
+                    Bishops ^= bbFrom | bbTo;
+                    break;
+                case Piece.Rook:
+                    //any move from or to rook squares will effect castling right
+                    //TODO: Mask
+                    if (move.FromSquare == BlackQueensideRookSquare || move.ToSquare == BlackQueensideRookSquare)
+                        CastleFlags &= ~CastlingRights.BlackQueenside;
+                    if (move.FromSquare == BlackKingsideRookSquare || move.ToSquare == BlackKingsideRookSquare)
+                        CastleFlags &= ~CastlingRights.BlackKingside;
+
+                    Rooks ^= bbFrom | bbTo;
+                    break;
+                case Piece.Queen:
+                    Queens ^= bbFrom | bbTo;
+                    break;
+                case Piece.King:
+                    Kings ^= bbFrom | bbTo;
+
+                    if (move.FromSquare == BlackKingSquare)
+                    {
+                        CastleFlags &= ~CastlingRights.BlackQueenside;
+                        CastleFlags &= ~CastlingRights.BlackKingside;
+                        if ((move.Flags & Piece.Castle) != 0)
+                        {
+                            switch (move.ToSquare)
+                            {
+                                case 58: //black castling long/queenside
+                                    Rooks ^= 0x0900000000000000UL;
+                                    Black ^= 0x0900000000000000UL;
+                                    break;
+                                case 62: //black castling short/kingside
+                                    Rooks ^= 0xA000000000000000UL;
+                                    Black ^= 0xA000000000000000UL;
+                                    break;
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public void PlayWhite(Move move)
+        {
+            ulong bbTo = 1UL << move.ToSquare;
+            ulong bbFrom = 1UL << move.FromSquare;
+
+            if ((Black & bbTo) > 0)
+            {
+                Black &= ~bbTo;
+                Pawns &= ~bbTo;
+                Knights &= ~bbTo;
+                Bishops &= ~bbTo;
+                Rooks &= ~bbTo;
+                Queens &= ~bbTo;
+                Kings &= ~bbTo;
+            }
+
+            White ^= bbFrom | bbTo;
+            switch (move.Flags & Piece.TypeMask)
+            {
+                case Piece.Pawn:
+                    if ((move.Flags & Piece.Promotion) != 0)
+                    {
+                        Pawns &= ~bbFrom;
+                        SetBit(move.ToSquare, move.Promotion);
+                    }
+                    else if ((move.Flags & Piece.EnPassant) != 0)
+                    {
+                        Pawns ^= bbFrom | bbTo;
+                        ClearBit(move.ToSquare - 8, Piece.BlackPawn);
+                    }
+                    else
+                    {
+                        Pawns ^= bbFrom | bbTo;
+                        if (move.ToSquare == move.FromSquare + 16)
                             EnPassantSquare = move.FromSquare + 8;
                     }
                     break;
                 case Piece.Knight:
-                    SetBit(move.ToSquare, move.Flags);
+                    Knights ^= bbFrom | bbTo;
                     break;
                 case Piece.Bishop:
-                    SetBit(move.ToSquare, move.Flags);
+                    Bishops ^= bbFrom | bbTo;
                     break;
                 case Piece.Rook:
                     //any move from or to rook squares will effect castling right
@@ -206,56 +311,35 @@ namespace Perft
                     if (move.FromSquare == WhiteKingsideRookSquare || move.ToSquare == WhiteKingsideRookSquare)
                         CastleFlags &= ~CastlingRights.WhiteKingside;
 
-                    if (move.FromSquare == BlackQueensideRookSquare || move.ToSquare == BlackQueensideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackQueenside;
-                    if (move.FromSquare == BlackKingsideRookSquare || move.ToSquare == BlackKingsideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackKingside;
-
-                    SetBit(move.ToSquare, move.Flags);
+                    Rooks ^= bbFrom | bbTo;
                     break;
                 case Piece.Queen:
-                    SetBit(move.ToSquare, move.Flags);
+                    Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
-                    SetBit(move.ToSquare, move.Flags);
+                    Kings ^= bbFrom | bbTo;
 
                     if (move.FromSquare == WhiteKingSquare)
                     {
                         CastleFlags &= ~CastlingRights.WhiteQueenside;
                         CastleFlags &= ~CastlingRights.WhiteKingside;
-                    }
-                    else if (move.FromSquare == BlackKingSquare)
-                    {
-                        CastleFlags &= ~CastlingRights.BlackQueenside;
-                        CastleFlags &= ~CastlingRights.BlackKingside;
-                    }
-                    if ((move.Flags & Piece.Castle) != 0)
-                    {
-                        switch (move.ToSquare)
+                        if ((move.Flags & Piece.Castle) != 0)
                         {
-                            case 2: //white castling long/queenside
-                                Rooks ^= 0x0000000000000009UL;
-                                White ^= 0x0000000000000009UL;
-                                break;
-                            case 6: //white castling short/kingside
-                                Rooks ^= 0x00000000000000A0UL;
-                                White ^= 0x00000000000000A0UL;
-                                break;
-                            case 58: //black castling long/queenside
-                                Rooks ^= 0x0900000000000000UL;
-                                Black ^= 0x0900000000000000UL;
-                                break;
-                            case 62: //black castling short/kingside
-                                Rooks ^= 0xA000000000000000UL;
-                                Black ^= 0xA000000000000000UL;
-                                break;
+                            switch (move.ToSquare)
+                            {
+                                case 2: //white castling long/queenside
+                                    Rooks ^= 0x0000000000000009UL;
+                                    White ^= 0x0000000000000009UL;
+                                    break;
+                                case 6: //white castling short/kingside
+                                    Rooks ^= 0x00000000000000A0UL;
+                                    White ^= 0x00000000000000A0UL;
+                                    break;
+                            }
                         }
                     }
                     break;
             }
-
-            //toggle active color!
-            SideToMove = (Color)(-(int)SideToMove);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
