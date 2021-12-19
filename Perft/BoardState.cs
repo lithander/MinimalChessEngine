@@ -12,6 +12,8 @@ namespace Perft
         WhiteQueenside = 2,
         BlackKingside = 4,
         BlackQueenside = 8,
+        White = WhiteKingside + WhiteQueenside,
+        Black = BlackKingside + BlackQueenside,
         All = 15
     }
 
@@ -189,6 +191,11 @@ namespace Perft
                 Rooks &= ~bbTo;
                 Queens &= ~bbTo;
                 Kings &= ~bbTo;
+
+                if (move.ToSquare == WhiteQueensideRookSquare)
+                    CastleFlags &= ~CastlingRights.WhiteQueenside;
+                else if (move.FromSquare == WhiteKingsideRookSquare)
+                    CastleFlags &= ~CastlingRights.WhiteKingside;
             }
 
             Black ^= bbFrom | bbTo;
@@ -199,12 +206,26 @@ namespace Perft
                     if ((move.Flags & Piece.Promotion) != 0)
                     {
                         Pawns &= ~bbFrom;
-                        SetBit(move.ToSquare, move.Promotion);
+                        switch (move.Promotion & Piece.TypeMask)
+                        {
+                            case Piece.Queen: 
+                                Queens |= bbTo;
+                                break;
+                            case Piece.Rook:
+                                Rooks |= bbTo;
+                                break;
+                            case Piece.Bishop:
+                                Bishops |= bbTo;
+                                break;
+                            case Piece.Knight:
+                                Knights |= bbTo;
+                                break;
+                        }
                     }
                     else if ((move.Flags & Piece.EnPassant) != 0)
                     {
-                        Pawns ^= bbFrom | bbTo;
-                        ClearBit(move.ToSquare + 8, Piece.WhitePawn);
+                        Pawns ^= bbFrom | bbTo | bbTo << 8;
+                        White &= ~(bbTo << 8);
                     }
                     else
                     {
@@ -221,38 +242,30 @@ namespace Perft
                     Bishops ^= bbFrom | bbTo;
                     break;
                 case Piece.Rook:
-                    //any move from or to rook squares will effect castling right
-                    //TODO: Mask
-                    if (move.FromSquare == BlackQueensideRookSquare || move.ToSquare == BlackQueensideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackQueenside;
-                    if (move.FromSquare == BlackKingsideRookSquare || move.ToSquare == BlackKingsideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackKingside;
-
                     Rooks ^= bbFrom | bbTo;
+                    if (move.FromSquare == BlackQueensideRookSquare)
+                        CastleFlags &= ~CastlingRights.BlackQueenside;
+                    else if (move.FromSquare == BlackKingsideRookSquare)
+                        CastleFlags &= ~CastlingRights.BlackKingside;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-
-                    if (move.FromSquare == BlackKingSquare)
+                    CastleFlags &= ~CastlingRights.Black;
+                    if ((move.Flags & Piece.Castle) != 0)
                     {
-                        CastleFlags &= ~CastlingRights.BlackQueenside;
-                        CastleFlags &= ~CastlingRights.BlackKingside;
-                        if ((move.Flags & Piece.Castle) != 0)
+                        switch (move.ToSquare)
                         {
-                            switch (move.ToSquare)
-                            {
-                                case 58: //black castling long/queenside
-                                    Rooks ^= 0x0900000000000000UL;
-                                    Black ^= 0x0900000000000000UL;
-                                    break;
-                                case 62: //black castling short/kingside
-                                    Rooks ^= 0xA000000000000000UL;
-                                    Black ^= 0xA000000000000000UL;
-                                    break;
-                            }
+                            case 58: //black castling long/queenside
+                                Rooks ^= 0x0900000000000000UL;
+                                Black ^= 0x0900000000000000UL;
+                                break;
+                            case 62: //black castling short/kingside
+                                Rooks ^= 0xA000000000000000UL;
+                                Black ^= 0xA000000000000000UL;
+                                break;
                         }
                     }
                     break;
@@ -274,6 +287,11 @@ namespace Perft
                 Rooks &= ~bbTo;
                 Queens &= ~bbTo;
                 Kings &= ~bbTo;
+
+                if (move.ToSquare == BlackQueensideRookSquare)
+                    CastleFlags &= ~CastlingRights.BlackQueenside;
+                else if (move.ToSquare == BlackKingsideRookSquare)
+                    CastleFlags &= ~CastlingRights.BlackKingside;
             }
 
             White ^= bbFrom | bbTo;
@@ -283,12 +301,27 @@ namespace Perft
                     if ((move.Flags & Piece.Promotion) != 0)
                     {
                         Pawns &= ~bbFrom;
-                        SetBit(move.ToSquare, move.Promotion);
+                        switch (move.Promotion & Piece.TypeMask)
+                        {
+                            case Piece.Queen:
+                                Queens |= bbTo;
+                                break;
+                            case Piece.Rook:
+                                Rooks |= bbTo;
+                                break;
+                            case Piece.Bishop:
+                                Bishops |= bbTo;
+                                break;
+                            case Piece.Knight:
+                                Knights |= bbTo;
+                                break;
+                        }
+
                     }
                     else if ((move.Flags & Piece.EnPassant) != 0)
                     {
-                        Pawns ^= bbFrom | bbTo;
-                        ClearBit(move.ToSquare - 8, Piece.BlackPawn);
+                        Pawns ^= bbFrom | bbTo | bbTo >> 8;
+                        Black &= ~(bbTo >> 8);
                     }
                     else
                     {
@@ -304,38 +337,30 @@ namespace Perft
                     Bishops ^= bbFrom | bbTo;
                     break;
                 case Piece.Rook:
-                    //any move from or to rook squares will effect castling right
-                    //TODO: Mask
-                    if (move.FromSquare == WhiteQueensideRookSquare || move.ToSquare == WhiteQueensideRookSquare)
-                        CastleFlags &= ~CastlingRights.WhiteQueenside;
-                    if (move.FromSquare == WhiteKingsideRookSquare || move.ToSquare == WhiteKingsideRookSquare)
-                        CastleFlags &= ~CastlingRights.WhiteKingside;
-
                     Rooks ^= bbFrom | bbTo;
+                    if (move.FromSquare == WhiteQueensideRookSquare)
+                        CastleFlags &= ~CastlingRights.WhiteQueenside;
+                    else if (move.FromSquare == WhiteKingsideRookSquare)
+                        CastleFlags &= ~CastlingRights.WhiteKingside;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-
-                    if (move.FromSquare == WhiteKingSquare)
+                    CastleFlags &= ~CastlingRights.White;
+                    if ((move.Flags & Piece.Castle) != 0)
                     {
-                        CastleFlags &= ~CastlingRights.WhiteQueenside;
-                        CastleFlags &= ~CastlingRights.WhiteKingside;
-                        if ((move.Flags & Piece.Castle) != 0)
+                        switch (move.ToSquare)
                         {
-                            switch (move.ToSquare)
-                            {
-                                case 2: //white castling long/queenside
-                                    Rooks ^= 0x0000000000000009UL;
-                                    White ^= 0x0000000000000009UL;
-                                    break;
-                                case 6: //white castling short/kingside
-                                    Rooks ^= 0x00000000000000A0UL;
-                                    White ^= 0x00000000000000A0UL;
-                                    break;
-                            }
+                            case 2: //white castling long/queenside
+                                Rooks ^= 0x0000000000000009UL;
+                                White ^= 0x0000000000000009UL;
+                                break;
+                            case 6: //white castling short/kingside
+                                Rooks ^= 0x00000000000000A0UL;
+                                White ^= 0x00000000000000A0UL;
+                                break;
                         }
                     }
                     break;
