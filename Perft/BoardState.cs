@@ -160,24 +160,24 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Play(Move move)
+        public void Play(ref Move move)
         {
             EnPassantSquare = -1;
             switch (SideToMove)
             {
                 case Color.White:
-                PlayWhite(move);
-                SideToMove = Color.Black;
-                break;
+                    PlayWhite(ref move);
+                    SideToMove = Color.Black;
+                    break;
                 case Color.Black:
-                PlayBlack(move);
-                SideToMove = Color.White;
+                    PlayBlack(ref move);
+                    SideToMove = Color.White;
                 break;
             }
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PlayBlack(Move move)
+        public void PlayBlack(ref Move move)
         {
             ulong bbTo = 1UL << move.ToSquare;
             ulong bbFrom = 1UL << move.FromSquare;
@@ -264,7 +264,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void PlayWhite(Move move)
+        public void PlayWhite(ref Move move)
         {
             ulong bbTo = 1UL << move.ToSquare;
             ulong bbFrom = 1UL << move.FromSquare;

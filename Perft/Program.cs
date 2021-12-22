@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v8");
+            Console.WriteLine("Leorik Perft v9");
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -71,11 +71,13 @@ namespace Perft
             int numMoves = GenerateMoves(depth);
             for (int i = 0; i < numMoves; i++)
             {
-                if (TryMake(depth, i))
+                if (TryMake(depth, ref Moves[depth][i]))
+                {
                     if (remaining > 1)
                         sum += Perft(depth + 1, remaining - 1);
                     else
                         sum++;
+                }
             }
 
             //PerftTable.Store(board.ZobristHash, depth, sum);
@@ -83,13 +85,15 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryMake(int depth, int moveIndex)
+        private static bool TryMake(int depth, ref Move move)
         {
             ref BoardState current = ref Positions[depth];
             ref BoardState next = ref Positions[depth + 1];
+
             next = current;
-            next.Play(Moves[depth][moveIndex]);
-            return !next.IsChecked(current.SideToMove);
+            next.Play(ref move);
+            bool legal = !next.IsChecked(current.SideToMove);
+            return legal;
         }
 
         /***********************/
