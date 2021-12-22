@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v7");
+            Console.WriteLine("Leorik Perft v8");
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -179,20 +179,20 @@ namespace Perft
         private static void CollectWhiteCastlingMoves(ref BoardState board)
         {
             //TODO: consider enum with Square.B2
-            if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) && !board.IsAttackedByBlack(2))
+            if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) /*&& !board.IsAttackedByBlack(2)*/)
                 _moves[_nextMove++] = Move.WhiteCastlingLong;
 
-            if (board.CanWhiteCastleShort() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(5) && !board.IsAttackedByBlack(6))
+            if (board.CanWhiteCastleShort() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(5) /*&& !board.IsAttackedByBlack(6)*/)
                 _moves[_nextMove++] = Move.WhiteCastlingShort;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CollectBlackCastlingMoves(ref BoardState board)
         {
-            if (board.CanBlackCastleLong() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(59) && !board.IsAttackedByWhite(58))
+            if (board.CanBlackCastleLong() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(59) /*&& !board.IsAttackedByWhite(58)*/)
                 _moves[_nextMove++] = Move.BlackCastlingLong;
 
-            if (board.CanBlackCastleShort() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(61) && !board.IsAttackedByWhite(62))
+            if (board.CanBlackCastleShort() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(61) /*&& !board.IsAttackedByWhite(62)*/)
                 _moves[_nextMove++] = Move.BlackCastlingShort;
         }
 
