@@ -200,40 +200,33 @@ namespace Perft
 
             Black ^= bbFrom | bbTo;
 
-            switch (move.Flags & Piece.TypeMask)
+            switch (move.Flags & ~Piece.ColorMask)
             {
                 case Piece.Pawn:
-                    if ((move.Flags & Piece.Promotion) != 0)
-                    {
-                        Pawns &= ~bbFrom;
-                        switch (move.Promotion & Piece.TypeMask)
-                        {
-                            case Piece.Queen: 
-                                Queens |= bbTo;
-                                break;
-                            case Piece.Rook:
-                                Rooks |= bbTo;
-                                break;
-                            case Piece.Bishop:
-                                Bishops |= bbTo;
-                                break;
-                            case Piece.Knight:
-                                Knights |= bbTo;
-                                break;
-                        }
-                    }
-                    else if ((move.Flags & Piece.EnPassant) != 0)
-                    {
-                        Pawns ^= bbFrom | bbTo | bbTo << 8;
-                        White &= ~(bbTo << 8);
-                    }
-                    else
-                    {
-                        Pawns ^= bbFrom | bbTo;
-                        //update enPassant
-                        if (move.ToSquare == move.FromSquare - 16)
-                            EnPassantSquare = move.FromSquare - 8;
-                    }
+                    Pawns ^= bbFrom | bbTo;
+                    //update enPassant
+                    if (move.ToSquare == move.FromSquare - 16)
+                        EnPassantSquare = move.FromSquare - 8;
+                    break;
+                case Piece.QueenPromotion:
+                    Pawns &= ~bbFrom;
+                    Queens |= bbTo;
+                    break;
+                case Piece.RookPromotion:
+                    Pawns &= ~bbFrom;
+                    Rooks |= bbTo;
+                    break;
+                case Piece.BishopPromotion:
+                    Pawns &= ~bbFrom;
+                    Bishops |= bbTo;
+                    break;
+                case Piece.KnightPromotion:
+                    Pawns &= ~bbFrom;
+                    Knights |= bbTo;
+                    break;
+                case Piece.EnPassant:
+                    Pawns ^= bbFrom | bbTo | bbTo << 8;
+                    White &= ~(bbTo << 8);
                     break;
                 case Piece.Knight:
                     Knights ^= bbFrom | bbTo;
@@ -254,20 +247,18 @@ namespace Perft
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
                     CastleFlags &= ~CastlingRights.Black;
-                    if ((move.Flags & Piece.Castle) != 0)
-                    {
-                        switch (move.ToSquare)
-                        {
-                            case 58: //black castling long/queenside
-                                Rooks ^= 0x0900000000000000UL;
-                                Black ^= 0x0900000000000000UL;
-                                break;
-                            case 62: //black castling short/kingside
-                                Rooks ^= 0xA000000000000000UL;
-                                Black ^= 0xA000000000000000UL;
-                                break;
-                        }
-                    }
+                    break;
+                case Piece.CastleShort:
+                    Kings ^= bbFrom | bbTo;
+                    CastleFlags &= ~CastlingRights.Black;
+                    Rooks ^= 0xA000000000000000UL;
+                    Black ^= 0xA000000000000000UL;
+                    break;
+                case Piece.CastleLong:
+                    Kings ^= bbFrom | bbTo;
+                    CastleFlags &= ~CastlingRights.Black;
+                    Rooks ^= 0x0900000000000000UL;
+                    Black ^= 0x0900000000000000UL;
                     break;
             }
         }
@@ -295,40 +286,32 @@ namespace Perft
             }
 
             White ^= bbFrom | bbTo;
-            switch (move.Flags & Piece.TypeMask)
+            switch (move.Flags & ~Piece.ColorMask)
             {
                 case Piece.Pawn:
-                    if ((move.Flags & Piece.Promotion) != 0)
-                    {
-                        Pawns &= ~bbFrom;
-                        switch (move.Promotion & Piece.TypeMask)
-                        {
-                            case Piece.Queen:
-                                Queens |= bbTo;
-                                break;
-                            case Piece.Rook:
-                                Rooks |= bbTo;
-                                break;
-                            case Piece.Bishop:
-                                Bishops |= bbTo;
-                                break;
-                            case Piece.Knight:
-                                Knights |= bbTo;
-                                break;
-                        }
-
-                    }
-                    else if ((move.Flags & Piece.EnPassant) != 0)
-                    {
-                        Pawns ^= bbFrom | bbTo | bbTo >> 8;
-                        Black &= ~(bbTo >> 8);
-                    }
-                    else
-                    {
-                        Pawns ^= bbFrom | bbTo;
-                        if (move.ToSquare == move.FromSquare + 16)
-                            EnPassantSquare = move.FromSquare + 8;
-                    }
+                    Pawns ^= bbFrom | bbTo;
+                    if (move.ToSquare == move.FromSquare + 16)
+                        EnPassantSquare = move.FromSquare + 8;
+                    break;
+                case Piece.QueenPromotion:
+                    Pawns &= ~bbFrom;
+                    Queens |= bbTo;
+                    break;
+                case Piece.RookPromotion:
+                    Pawns &= ~bbFrom;
+                    Rooks |= bbTo;
+                    break;
+                case Piece.BishopPromotion:
+                    Pawns &= ~bbFrom;
+                    Bishops |= bbTo;
+                    break;
+                case Piece.KnightPromotion:
+                    Pawns &= ~bbFrom;
+                    Knights |= bbTo;
+                    break;
+                case Piece.EnPassant:
+                    Pawns ^= bbFrom | bbTo | bbTo >> 8;
+                    Black &= ~(bbTo >> 8);
                     break;
                 case Piece.Knight:
                     Knights ^= bbFrom | bbTo;
@@ -349,20 +332,18 @@ namespace Perft
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
                     CastleFlags &= ~CastlingRights.White;
-                    if ((move.Flags & Piece.Castle) != 0)
-                    {
-                        switch (move.ToSquare)
-                        {
-                            case 2: //white castling long/queenside
-                                Rooks ^= 0x0000000000000009UL;
-                                White ^= 0x0000000000000009UL;
-                                break;
-                            case 6: //white castling short/kingside
-                                Rooks ^= 0x00000000000000A0UL;
-                                White ^= 0x00000000000000A0UL;
-                                break;
-                        }
-                    }
+                    break;
+                case Piece.CastleShort:
+                    Kings ^= bbFrom | bbTo;
+                    CastleFlags &= ~CastlingRights.White;
+                    Rooks ^= 0x00000000000000A0UL;
+                    White ^= 0x00000000000000A0UL;
+                    break;
+                case Piece.CastleLong:
+                    Kings ^= bbFrom | bbTo;
+                    CastleFlags &= ~CastlingRights.White;
+                    Rooks ^= 0x0000000000000009UL;
+                    White ^= 0x0000000000000009UL;
                     break;
             }
         }

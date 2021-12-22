@@ -43,14 +43,16 @@ namespace Perft
         BlackKing = Black + King,
 
         //Flags
-        Capture = 32,
-        EnPassant = 64,
-        Promotion = 128,
-        Castle = 256,
+        EnPassant = 32 + Pawn, //001_TM_CM
+        KnightPromotion = 64 + Pawn, //010_TM_CM
+        BishopPromotion = 96 + Pawn, //011_TM_CM
+        RookPromotion = 128 + Pawn, //100_TM_CM
+        QueenPromotion = 160 + Pawn, //101_TM_CM
+        CastleShort = 192 + King, //110_TM_CM
+        CastleLong = 224 + King, //111_TM_CM
 
         //Mask
         ColorMask = 3,
         TypeMask = 28,      //11100
-        PieceMask = 31      //1111
     }
 }

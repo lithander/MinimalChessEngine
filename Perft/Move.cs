@@ -7,22 +7,12 @@ namespace Perft
         public readonly Piece Flags;
         public readonly byte FromSquare;
         public readonly byte ToSquare;
-        public readonly Piece Promotion;
-
-        public Move(Piece flags, int fromIndex, int toIndex, Piece promotion)
-        {
-            Flags = flags | Piece.Promotion;
-            FromSquare = (byte)fromIndex;
-            ToSquare = (byte)toIndex;
-            Promotion = promotion;
-        }
 
         public Move(Piece flags, int fromIndex, int toIndex)
         {
             Flags = flags;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
-            Promotion = Piece.None;
         }
 
         public Move(string uciMoveNotation, Piece flags = Piece.None)
@@ -41,12 +31,16 @@ namespace Perft
             FromSquare = Notation.ToSquare(fromSquare);
             ToSquare = Notation.ToSquare(toSquare);
             //the presence of a 5th character should mean promotion
-            Promotion = (uciMoveNotation.Length == 5) ? Notation.ToPiece(uciMoveNotation[4]) : Piece.None;
+            if (uciMoveNotation.Length == 5)
+            {
+                Piece promo = Notation.ToPiece(uciMoveNotation[4]) & ~Piece.ColorMask;
+                Flags |= (Piece)((int)promo << 3) | Piece.Pawn;
+            }
         }
 
-        public static Move BlackCastlingShort = new("e8g8", Piece.BlackKing | Piece.Castle);
-        public static Move BlackCastlingLong = new("e8c8", Piece.BlackKing | Piece.Castle);
-        public static Move WhiteCastlingShort = new("e1g1", Piece.WhiteKing | Piece.Castle);
-        public static Move WhiteCastlingLong = new("e1c1", Piece.WhiteKing | Piece.Castle);
+        public static Move BlackCastlingShort = new("e8g8", Piece.Black | Piece.CastleShort);
+        public static Move BlackCastlingLong = new("e8c8", Piece.Black | Piece.CastleLong);
+        public static Move WhiteCastlingShort = new("e1g1", Piece.White | Piece.CastleShort);
+        public static Move WhiteCastlingLong = new("e1c1", Piece.White | Piece.CastleLong);
     }
 }

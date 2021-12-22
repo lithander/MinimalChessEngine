@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v6");
+            Console.WriteLine("Leorik Perft v7");
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -312,10 +312,10 @@ namespace Perft
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
             byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteQueen);
-            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteRook);
-            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteBishop);
-            _moves[_nextMove++] = new Move(Piece.WhitePawn, from, to, Piece.WhiteKnight);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.QueenPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.RookPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.BishopPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.KnightPromotion, from, to);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -323,10 +323,10 @@ namespace Perft
         {
             byte to = (byte)Bitboard.LSB(moveTargets);
             byte from = (byte)(to + offset);
-            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackQueen);
-            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackRook);
-            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackBishop);
-            _moves[_nextMove++] = new Move(Piece.BlackPawn, from, to, Piece.BlackKnight);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.QueenPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.RookPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.BishopPromotion, from, to);
+            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.KnightPromotion, from, to);
         }
     }
 }
