@@ -1,0 +1,310 @@
+ Perft/Program.cs | 120 ++++++++++++++++++++++++++-----------------------------
+ 1 file changed, 56 insertions(+), 64 deletions(-)
+
+diff --git a/Perft/Program.cs b/Perft/Program.cs
+index f09bfc5..6081480 100644
+--- a/Perft/Program.cs
++++ b/Perft/Program.cs
+@@ -9,7 +9,7 @@ namespace Perft
+     {
+         static void Main()
+         {
+-            Console.WriteLine("Leorik Perft v9");
++            Console.WriteLine("Leorik Perft v10");
+             Console.WriteLine();
+             var file = File.OpenText("qbb.txt");
+             ComparePerft(file);
+@@ -68,10 +68,11 @@ namespace Perft
+         private static long Perft(int depth, int remaining)
+         {
+             long sum = 0;
+-            int numMoves = GenerateMoves(depth);
++            var moves = Moves[depth];
++            int numMoves = GenerateMoves(ref Positions[depth], moves, 0);
+             for (int i = 0; i < numMoves; i++)
+             {
+-                if (TryMake(depth, ref Moves[depth][i]))
++                if (TryMake(depth, ref moves[i]))
+                 {
+                     if (remaining > 1)
+                         sum += Perft(depth + 1, remaining - 1);
+@@ -100,20 +101,9 @@ namespace Perft
+         /*** MOVE GENERATION ***/
+         /***********************/
+ 
+-        static Move[] _moves;
+-        static int _nextMove;
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static int GenerateMoves(int position)
+-        {
+-            _moves = Moves[position];
+-            _nextMove = 0;
+-            GenerateMoves(ref Positions[position]);
+-            return _nextMove;
+-        }
+-
+-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void GenerateMoves(ref BoardState board)
++        private static int GenerateMoves(ref BoardState board, Move[] moveList, int next)
+         {
+             ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
+             ulong occupied = board.Black | board.White;
+@@ -124,7 +114,7 @@ namespace Perft
+             //can't move on squares occupied by side to move
+             ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
+             for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                NewMove(Piece.King | color, square, targets);
++                NewMove(moveList, ref next, Piece.King | color, square, targets);
+ 
+             //Knights
+             for (ulong knights = board.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
+@@ -133,7 +123,7 @@ namespace Perft
+                 //can't move on squares occupied by side to move
+                 targets = Bitboard.KnightTargets[square] & ~sideToMove;
+                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                    NewMove(Piece.Knight | color, square, targets);
++                    NewMove(moveList, ref next, Piece.Knight | color, square, targets);
+             }
+ 
+             //Bishops
+@@ -143,7 +133,7 @@ namespace Perft
+                 //can't move on squares occupied by side to move
+                 targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
+                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                    NewMove(Piece.Bishop | color, square, targets);
++                    NewMove(moveList, ref next, Piece.Bishop | color, square, targets);
+             }
+ 
+             //Rooks
+@@ -153,7 +143,7 @@ namespace Perft
+                 //can't move on squares occupied by side to move
+                 targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
+                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                    NewMove(Piece.Rook | color, square, targets);
++                    NewMove(moveList, ref next, Piece.Rook | color, square, targets);
+             }
+ 
+             //Queens
+@@ -163,45 +153,47 @@ namespace Perft
+                 //can't move on squares occupied by side to move
+                 targets = (Bitboard.GetBishopTargets(occupied, square) | Bitboard.GetRookTargets(occupied, square)) & ~sideToMove;
+                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                    NewMove(Piece.Queen | color, square, targets);
++                    NewMove(moveList, ref next, Piece.Queen | color, square, targets);
+             }
+ 
+             //Pawns & Castling
+             if (board.SideToMove == Color.White)
+             {
+-                CollectWhitePawnMoves(ref board);
+-                CollectWhiteCastlingMoves(ref board);
++                CollectWhitePawnMoves(moveList, ref next, ref board);
++                CollectWhiteCastlingMoves(moveList, ref next, ref board);
+             }
+             else
+             {
+-                CollectBlackPawnMoves(ref board);
+-                CollectBlackCastlingMoves(ref board);
++                CollectBlackPawnMoves(moveList, ref next, ref board);
++                CollectBlackCastlingMoves(moveList, ref next, ref board);
+             }
++
++            return next;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectWhiteCastlingMoves(ref BoardState board)
++        private static void CollectWhiteCastlingMoves(Move[] moves, ref int next, ref BoardState board)
+         {
+             //TODO: consider enum with Square.B2
+             if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) /*&& !board.IsAttackedByBlack(2)*/)
+-                _moves[_nextMove++] = Move.WhiteCastlingLong;
++                moves[next++] = Move.WhiteCastlingLong;
+ 
+             if (board.CanWhiteCastleShort() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(5) /*&& !board.IsAttackedByBlack(6)*/)
+-                _moves[_nextMove++] = Move.WhiteCastlingShort;
++                moves[next++] = Move.WhiteCastlingShort;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectBlackCastlingMoves(ref BoardState board)
++        private static void CollectBlackCastlingMoves(Move[] moves, ref int next, ref BoardState board)
+         {
+             if (board.CanBlackCastleLong() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(59) /*&& !board.IsAttackedByWhite(58)*/)
+-                _moves[_nextMove++] = Move.BlackCastlingLong;
++                moves[next++] = Move.BlackCastlingLong;
+ 
+             if (board.CanBlackCastleShort() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(61) /*&& !board.IsAttackedByWhite(62)*/)
+-                _moves[_nextMove++] = Move.BlackCastlingShort;
++                moves[next++] = Move.BlackCastlingShort;
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectBlackPawnMoves(ref BoardState board)
++        private static void CollectBlackPawnMoves(Move[] moves, ref int next, ref BoardState board)
+         {
+             ulong targets;
+             ulong occupied = board.Black | board.White;
+@@ -209,47 +201,47 @@ namespace Perft
+             ulong oneStep = (blackPawns >> 8) & ~occupied;
+             //move one square down
+             for (targets = oneStep & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.BlackPawn, targets, +8);
++                PawnMove(moves, ref next, Piece.BlackPawn, targets, +8);
+ 
+             //move to first rank and promote
+             for (targets = oneStep & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                BlackPawnPromotions(targets, +8);
++                BlackPawnPromotions(moves, ref next, targets, +8);
+ 
+             //move two squares down
+             ulong twoStep = (oneStep >> 8) & ~occupied;
+             for (targets = twoStep & 0x000000FF00000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.BlackPawn, targets, +16);
++                PawnMove(moves, ref next, Piece.BlackPawn, targets, +16);
+ 
+             //capture left
+             ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & board.White;
+             for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.BlackPawn, targets, +9);
++                PawnMove(moves, ref next, Piece.BlackPawn, targets, +9);
+ 
+             //capture left to first rank and promote
+             for (targets = captureLeft & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                BlackPawnPromotions(targets, +9);
++                BlackPawnPromotions(moves, ref next, targets, +9);
+ 
+             //capture right
+             ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & board.White;
+             for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.BlackPawn, targets, +7);
++                PawnMove(moves, ref next, Piece.BlackPawn, targets, +7);
+ 
+             //capture right to first rank and promote
+             for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                BlackPawnPromotions(targets, +7);
++                BlackPawnPromotions(moves, ref next, targets, +7);
+ 
+             //enPassantLeft
+             captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << board.EnPassantSquare);
+             if (captureLeft != 0)
+-                PawnMove(Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
++                PawnMove(moves, ref next, Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
+ 
+             captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << board.EnPassantSquare);
+             if (captureRight != 0)
+-                PawnMove(Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
++                PawnMove(moves, ref next, Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void CollectWhitePawnMoves(ref BoardState board)
++        private static void CollectWhitePawnMoves(Move[] moves, ref int next, ref BoardState board)
+         {
+             ulong targets;
+             ulong whitePawns = board.Pawns & board.White;
+@@ -257,80 +249,80 @@ namespace Perft
+             ulong oneStep = (whitePawns << 8) & ~occupied;
+             //move one square up
+             for (targets = oneStep & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.WhitePawn, targets, -8);
++                PawnMove(moves, ref next, Piece.WhitePawn, targets, -8);
+ 
+             //move to last rank and promote
+             for (targets = oneStep & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                WhitePawnPromotions(targets, -8);
++                WhitePawnPromotions(moves, ref next, targets, -8);
+ 
+             //move two squares up
+             ulong twoStep = (oneStep << 8) & ~occupied;
+             for (targets = twoStep & 0x00000000FF000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.WhitePawn, targets, -16);
++                PawnMove(moves, ref next, Piece.WhitePawn, targets, -16);
+ 
+             //capture left
+             ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & board.Black;
+             for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.WhitePawn, targets, -7);
++                PawnMove(moves, ref next, Piece.WhitePawn, targets, -7);
+ 
+             //capture left to last rank and promote
+             for (targets = captureLeft & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                WhitePawnPromotions(targets, -7);
++                WhitePawnPromotions(moves, ref next, targets, -7);
+ 
+             //capture right
+             ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & board.Black;
+             for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                PawnMove(Piece.WhitePawn, targets, -9);
++                PawnMove(moves, ref next, Piece.WhitePawn, targets, -9);
+ 
+             //capture right to last rank and promote
+             for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
+-                WhitePawnPromotions(targets, -9);
++                WhitePawnPromotions(moves, ref next, targets, -9);
+ 
+             //enPassantLeft
+             captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << board.EnPassantSquare);
+             if (captureLeft != 0)
+-                PawnMove(Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
++                PawnMove(moves, ref next, Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
+ 
+             captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << board.EnPassantSquare);
+             if (captureRight != 0)
+-                PawnMove(Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
++                PawnMove(moves, ref next, Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void NewMove(Piece attacker, byte from, ulong moveTargets)
++        private static void NewMove(Move[] moves, ref int next, Piece attacker, byte from, ulong moveTargets)
+         {
+             byte to = (byte)Bitboard.LSB(moveTargets);
+-            _moves[_nextMove++] = new Move(attacker, from, to); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
++            moves[next++] = new Move(attacker, from, to); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void PawnMove(Piece flags, ulong moveTargets, int offset)
++        private static void PawnMove(Move[] moves, ref int next, Piece flags, ulong moveTargets, int offset)
+         {
+             byte to = (byte)Bitboard.LSB(moveTargets);
+             byte from = (byte)(to + offset);
+-            _moves[_nextMove++] = new Move(flags, from, to);
++            moves[next++] = new Move(flags, from, to);
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void WhitePawnPromotions(ulong moveTargets, int offset)
++        private static void WhitePawnPromotions(Move[] moves, ref int next, ulong moveTargets, int offset)
+         {
+             byte to = (byte)Bitboard.LSB(moveTargets);
+             byte from = (byte)(to + offset);
+-            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.QueenPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.RookPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.BishopPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.WhitePawn | Piece.KnightPromotion, from, to);
++            moves[next++] = new(Piece.WhitePawn | Piece.QueenPromotion, from, to);
++            moves[next++] = new Move(Piece.WhitePawn | Piece.RookPromotion, from, to);
++            moves[next++] = new Move(Piece.WhitePawn | Piece.BishopPromotion, from, to);
++            moves[next++] = new Move(Piece.WhitePawn | Piece.KnightPromotion, from, to);
+         }
+ 
+         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+-        private static void BlackPawnPromotions(ulong moveTargets, int offset)
++        private static void BlackPawnPromotions(Move[] moves, ref int next, ulong moveTargets, int offset)
+         {
+             byte to = (byte)Bitboard.LSB(moveTargets);
+             byte from = (byte)(to + offset);
+-            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.QueenPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.RookPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.BishopPromotion, from, to);
+-            _moves[_nextMove++] = new Move(Piece.BlackPawn | Piece.KnightPromotion, from, to);
++            moves[next++] = new Move(Piece.BlackPawn | Piece.QueenPromotion, from, to);
++            moves[next++] = new Move(Piece.BlackPawn | Piece.RookPromotion, from, to);
++            moves[next++] = new Move(Piece.BlackPawn | Piece.BishopPromotion, from, to);
++            moves[next++] = new Move(Piece.BlackPawn | Piece.KnightPromotion, from, to);
+         }
+     }
+ }
