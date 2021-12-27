@@ -9,7 +9,10 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v11");
+            Console.WriteLine("Leorik Perft v12");
+            Benchmark();
+            Benchmark();
+            Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -65,6 +68,55 @@ namespace Perft
                 Moves[i] = new Move[MAX_MOVES];
         }
 
+        private static void Benchmark()
+        {
+            long t0 = Stopwatch.GetTimestamp();
+            long result = BenchCopy(0, 6);
+            long t1 = Stopwatch.GetTimestamp();
+            double dt = (t1 - t0) / (double)Stopwatch.Frequency;
+            double ms = (1000 * dt);
+            Console.WriteLine($"BenchCopy took {(int)ms}ms, {(int)(result / ms)}K Ops");
+        }
+        private static long BenchCopy(int depth, int remaining)
+        {
+            long sum = 0;
+            for (int i = 0; i < 20; i++)
+            {
+                //224M Ops
+                //ref BoardState current = ref Positions[depth];
+                //ref BoardState next = ref Positions[depth + 1];
+                //next = current;
+
+                //109M Ops
+                //Positions[depth + 1] = Positions[depth];
+
+                //185M Ops
+                //Positions[depth + 1].Copy(ref Positions[depth]);
+
+                //195M Ops //Fixed with field offset
+                //Positions[depth + 1].Copy(ref Positions[depth]);
+
+                //180M Ops //struct with explicit layout and a fixed unsafe ulong[10] array
+                //Positions[depth + 1].CopySpan(ref Positions[depth]);
+
+                //251M Ops //Inlined
+                //Positions[depth + 1].Copy(ref Positions[depth]);
+                //removing EnPassant 282M (+31M) Ops
+                //adding 1 field 239M (-12M) Ops
+                //adding 2 fields 230M (-21M) Ops
+
+                //251M Ops
+                ref BoardState next = ref Positions[depth + 1];
+                next.Copy(ref Positions[depth]);
+
+                if (remaining > 1)
+                    sum += BenchCopy(depth + 1, remaining - 1);
+                else
+                    sum++;
+            }
+            return sum;
+        }
+
         private static long Perft(int depth, int remaining)
         {
             long sum = 0;
@@ -79,8 +131,6 @@ namespace Perft
                         sum++;
                 }
             }
-
-            //PerftTable.Store(board.ZobristHash, depth, sum);
             return sum;
         }
 
@@ -89,8 +139,8 @@ namespace Perft
         {
             ref BoardState current = ref Positions[depth];
             ref BoardState next = ref Positions[depth + 1];
+            next.Copy(ref current);
 
-            next = current;
             next.Play(ref move);
             bool legal = !next.IsChecked(current.SideToMove);
             return legal;

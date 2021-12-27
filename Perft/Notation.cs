@@ -92,7 +92,7 @@ namespace Perft
                 result.CastleFlags |= BoardState.BlackQueensideRookSquare;
 
             //Set en-passant square
-            result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
+            //result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
             return result;
         }
 

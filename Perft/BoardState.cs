@@ -97,6 +97,22 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        internal void Copy(ref BoardState other)
+        {
+            White = other.White;
+            Black = other.Black;
+            Pawns = other.Pawns;
+            Knights = other.Knights;
+            Bishops = other.Bishops;
+            Rooks = other.Rooks;
+            Queens = other.Queens;
+            Kings = other.Kings;
+            CastleFlags = other.CastleFlags;
+            EnPassant = other.EnPassant;
+            SideToMove = other.SideToMove;
+        }
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private void ClearBit(int square, Piece piece)
         {
             ulong bbPiece = ~(1UL << square);

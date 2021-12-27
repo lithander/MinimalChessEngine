@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Runtime.Intrinsics.X86;
 
 namespace Perft
@@ -47,11 +48,13 @@ namespace Perft
 
         //returns the index of the least significant bit of the bitboard, bb can't be 0
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong LSB(ulong bb) => Bmi1.X64.TrailingZeroCount(bb);
+        public static int LSB(ulong bb) => BitOperations.TrailingZeroCount(bb);
 
         //resets the least significant bit of the bitboard
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong ClearLSB(ulong bb) => Bmi1.X64.ResetLowestSetBit(bb);
+        //public static ulong ClearLSB(ulong bb) => bb & (bb - 1);
+
 
         const ulong DIAGONAL = 0x8040201008040201UL;
         const ulong ANTIDIAGONAL = 0x0102040810204080UL;
@@ -107,7 +110,7 @@ namespace Perft
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //identify the highest set bit and shift a mask so the bits below are set and the rest are zeroed
-        private static ulong MaskHigh(in ulong bb) => 0x7FFFFFFFFFFFFFFFUL >> (int)Lzcnt.X64.LeadingZeroCount(bb | 1);
+        private static ulong MaskHigh(in ulong bb) => 0x7FFFFFFFFFFFFFFFUL >> BitOperations.LeadingZeroCount(bb | 1);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //identify the lowest set bit and set all bits below while zeroing the rest
