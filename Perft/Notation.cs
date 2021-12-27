@@ -79,13 +79,20 @@ namespace Perft
             result.SideToMove = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase) ? Color.White : Color.Black;
 
             //Set castling rights
-            result.SetCastlingRights(CastlingRights.WhiteKingside, fields[2].IndexOf("K", StringComparison.Ordinal) > -1);
-            result.SetCastlingRights(CastlingRights.WhiteQueenside, fields[2].IndexOf("Q", StringComparison.Ordinal) > -1);
-            result.SetCastlingRights(CastlingRights.BlackKingside, fields[2].IndexOf("k", StringComparison.Ordinal) > -1);
-            result.SetCastlingRights(CastlingRights.BlackQueenside, fields[2].IndexOf("q", StringComparison.Ordinal) > -1);
+            if(fields[2].IndexOf("K", StringComparison.Ordinal) > -1)
+                result.CastleFlags |= BoardState.WhiteKingsideRookSquare;
+
+            if (fields[2].IndexOf("Q", StringComparison.Ordinal) > -1)
+                result.CastleFlags |= BoardState.WhiteQueensideRookSquare;
+
+            if (fields[2].IndexOf("k", StringComparison.Ordinal) > -1)
+                result.CastleFlags |= BoardState.BlackKingsideRookSquare;
+
+            if (fields[2].IndexOf("q", StringComparison.Ordinal) > -1)
+                result.CastleFlags |= BoardState.BlackQueensideRookSquare;
 
             //Set en-passant square
-            result.EnPassantSquare = fields[3] == "-" ? -1 : ToSquare(fields[3]);
+            result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
             return result;
         }
 

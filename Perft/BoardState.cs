@@ -4,19 +4,6 @@ using System.Runtime.CompilerServices;
 
 namespace Perft
 {
-    [Flags]
-    public enum CastlingRights
-    {
-        None = 0,
-        WhiteKingside = 1,
-        WhiteQueenside = 2,
-        BlackKingside = 4,
-        BlackQueenside = 8,
-        White = WhiteKingside + WhiteQueenside,
-        Black = BlackKingside + BlackQueenside,
-        All = 15
-    }
-
     public struct BoardState
     {
         //TODO: Occupied & SideToMove instead of White/Black?
@@ -28,18 +15,18 @@ namespace Perft
         public ulong Rooks;
         public ulong Queens;
         public ulong Kings;
+        public ulong CastleFlags;
+        public ulong EnPassant;
 
-        public CastlingRights CastleFlags;
         public Color SideToMove;
-        public int EnPassantSquare;
 
         //TODO: use consts
-        static readonly int BlackKingSquare = Notation.ToSquare("e8");
-        static readonly int WhiteKingSquare = Notation.ToSquare("e1");
-        static readonly int BlackQueensideRookSquare = Notation.ToSquare("a8");
-        static readonly int BlackKingsideRookSquare = Notation.ToSquare("h8");
-        static readonly int WhiteQueensideRookSquare = Notation.ToSquare("a1");
-        static readonly int WhiteKingsideRookSquare = Notation.ToSquare("h1");
+        public const ulong BlackQueensideRookSquare = 0x0100000000000000UL;//1UL << Notation.ToSquare("a8");
+        public const ulong BlackKingsideRookSquare = 0x8000000000000000UL;//1UL << Notation.ToSquare("h8");
+        public const ulong BlackCastling = BlackQueensideRookSquare | BlackKingsideRookSquare;
+        public const ulong WhiteQueensideRookSquare = 0x0000000000000001UL;//1UL << Notation.ToSquare("a1");
+        public const ulong WhiteKingsideRookSquare = 0x0000000000000080UL;//1UL << Notation.ToSquare("h1");
+        public const ulong WhiteCastling = WhiteQueensideRookSquare | WhiteKingsideRookSquare;
 
         public BoardState(string fen)
         {
@@ -49,28 +36,28 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanWhiteCastleLong()
         {
-            return (CastleFlags & CastlingRights.WhiteQueenside) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
+            return (CastleFlags & WhiteQueensideRookSquare) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanWhiteCastleShort()
         {
-            return (CastleFlags & CastlingRights.WhiteKingside) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
+            return (CastleFlags & WhiteKingsideRookSquare) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanBlackCastleLong()
         {
-            return (CastleFlags & CastlingRights.BlackQueenside) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
+            return (CastleFlags & BlackQueensideRookSquare) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
         }
 
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanBlackCastleShort()
         {
-            return (CastleFlags & CastlingRights.BlackKingside) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
+            return (CastleFlags & BlackKingsideRookSquare) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -176,7 +163,7 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void PlayBlack(ref Move move)
         {
-            EnPassantSquare = -1;
+            EnPassant = 0;
             SideToMove = Color.White;
 
             ulong bbTo = 1UL << move.ToSquare;
@@ -191,11 +178,7 @@ namespace Perft
                 Rooks &= ~bbTo;
                 Queens &= ~bbTo;
                 Kings &= ~bbTo;
-
-                if (move.ToSquare == WhiteQueensideRookSquare)
-                    CastleFlags &= ~CastlingRights.WhiteQueenside;
-                else if (move.FromSquare == WhiteKingsideRookSquare)
-                    CastleFlags &= ~CastlingRights.WhiteKingside;
+                CastleFlags &= ~bbTo;
             }
 
             Black ^= bbFrom | bbTo;
@@ -204,9 +187,7 @@ namespace Perft
             {
                 case Piece.Pawn:
                     Pawns ^= bbFrom | bbTo;
-                    //update enPassant
-                    if (move.ToSquare == move.FromSquare - 16)
-                        EnPassantSquare = move.FromSquare - 8;
+                    EnPassant = (bbTo << 8) & (bbFrom >> 8);
                     break;
                 case Piece.QueenPromotion:
                     Pawns &= ~bbFrom;
@@ -236,27 +217,24 @@ namespace Perft
                     break;
                 case Piece.Rook:
                     Rooks ^= bbFrom | bbTo;
-                    if (move.FromSquare == BlackQueensideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackQueenside;
-                    else if (move.FromSquare == BlackKingsideRookSquare)
-                        CastleFlags &= ~CastlingRights.BlackKingside;
+                    CastleFlags &= ~bbFrom;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.Black;
+                    CastleFlags &= ~BlackCastling;
                     break;
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.Black;
+                    CastleFlags &= ~BlackCastling;
                     Rooks ^= 0xA000000000000000UL;
                     Black ^= 0xA000000000000000UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.Black;
+                    CastleFlags &= ~BlackCastling;
                     Rooks ^= 0x0900000000000000UL;
                     Black ^= 0x0900000000000000UL;
                     break;
@@ -266,7 +244,7 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void PlayWhite(ref Move move)
         {
-            EnPassantSquare = -1;
+            EnPassant = 0;
             SideToMove = Color.Black;
 
             ulong bbTo = 1UL << move.ToSquare;
@@ -281,11 +259,7 @@ namespace Perft
                 Rooks &= ~bbTo;
                 Queens &= ~bbTo;
                 Kings &= ~bbTo;
-
-                if (move.ToSquare == BlackQueensideRookSquare)
-                    CastleFlags &= ~CastlingRights.BlackQueenside;
-                else if (move.ToSquare == BlackKingsideRookSquare)
-                    CastleFlags &= ~CastlingRights.BlackKingside;
+                CastleFlags &= ~bbTo;
             }
 
             White ^= bbFrom | bbTo;
@@ -293,8 +267,7 @@ namespace Perft
             {
                 case Piece.Pawn:
                     Pawns ^= bbFrom | bbTo;
-                    if (move.ToSquare == move.FromSquare + 16)
-                        EnPassantSquare = move.FromSquare + 8;
+                    EnPassant = (bbTo >> 8) & (bbFrom << 8);
                     break;
                 case Piece.QueenPromotion:
                     Pawns &= ~bbFrom;
@@ -324,27 +297,24 @@ namespace Perft
                     break;
                 case Piece.Rook:
                     Rooks ^= bbFrom | bbTo;
-                    if (move.FromSquare == WhiteQueensideRookSquare)
-                        CastleFlags &= ~CastlingRights.WhiteQueenside;
-                    else if (move.FromSquare == WhiteKingsideRookSquare)
-                        CastleFlags &= ~CastlingRights.WhiteKingside;
+                    CastleFlags &= ~bbFrom;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.White;
+                    CastleFlags &= ~WhiteCastling;
                     break;
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.White;
+                    CastleFlags &= ~WhiteCastling;
                     Rooks ^= 0x00000000000000A0UL;
                     White ^= 0x00000000000000A0UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~CastlingRights.White;
+                    CastleFlags &= ~WhiteCastling;
                     Rooks ^= 0x0000000000000009UL;
                     White ^= 0x0000000000000009UL;
                     break;
@@ -416,18 +386,6 @@ namespace Perft
             ulong left = (pieces & 0xFEFEFEFEFEFEFEFEUL) >> 9;
             ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) >> 7;
             return ((left | right) & 1UL << square) > 0;
-        }
-
-        public void SetCastlingRights(CastlingRights flag, bool state)
-        {
-            //_zobristHash ^= Zobrist.Castling(_castlingRights);
-
-            if (state)
-                CastleFlags |= flag;
-            else
-                CastleFlags &= ~flag;
-
-            //_zobristHash ^= Zobrist.Castling(_castlingRights);
         }
     }
 }

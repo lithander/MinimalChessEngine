@@ -1,6 +1,7 @@
 2bqkbnr/Pppppppp/8/8/8/1n1P4/1PPQPPPP/R3KBNR w KQk - 0 1 ; 5; 23792072
 rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1 ; 6; 119060324
 r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1 ; 5; 193690690
+rnbqkbnr/1pp1pppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3 ; 5; 20105906;
 4k3/8/8/8/8/8/8/4K2R w K - 0 1 ; 6; 764643;
 4k3/8/8/8/8/8/8/R3K3 w Q - 0 1 ; 6; 846648;
 4k2r/8/8/8/8/8/8/4K3 w k - 0 1 ; 6; 899442;
@@ -125,4 +126,3 @@ n1n5/PPPk4/8/8/8/8/4Kppp/5N1N w - - 0 1 ; 6; 71179139;
 n1n5/1Pk5/8/8/8/8/5Kp1/5N1N b - - 0 1 ; 6; 37665329;
 8/PPPk4/8/8/8/8/4Kppp/8 b - - 0 1 ; 6; 28859283;
 n1n5/PPPk4/8/8/8/8/4Kppp/5N1N b - - 0 1 ; 6; 71179139;
-rnbqkbnr/1pp1pppp/p7/3pP3/8/8/PPPP1PPP/RNBQKBNR w KQkq d6 0 3 ; 6; 546183234;

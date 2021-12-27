@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v10");
+            Console.WriteLine("Leorik Perft v11");
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
             ComparePerft(file);
@@ -182,7 +182,6 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static void CollectWhiteCastlingMoves(ref BoardState board)
         {
-            //TODO: consider enum with Square.B2
             if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) /*&& !board.IsAttackedByBlack(2)*/)
                 _moves[_nextMove++] = Move.WhiteCastlingLong;
 
@@ -238,12 +237,12 @@ namespace Perft
             for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 BlackPawnPromotions(targets, +7);
 
-            //enPassantLeft
-            captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << board.EnPassantSquare);
+            //is en-passent possible?
+            captureLeft = ((blackPawns & 0x00000000FE000000UL) >> 9) & board.EnPassant;
             if (captureLeft != 0)
                 PawnMove(Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
 
-            captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << board.EnPassantSquare);
+            captureRight = ((blackPawns & 0x000000007F000000UL) >> 7) & board.EnPassant;
             if (captureRight != 0)
                 PawnMove(Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
         }
@@ -286,12 +285,12 @@ namespace Perft
             for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
                 WhitePawnPromotions(targets, -9);
 
-            //enPassantLeft
-            captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << board.EnPassantSquare);
+            //is en-passent possible?
+            captureLeft = ((whitePawns & 0x000000FE00000000UL) << 7) & board.EnPassant;
             if (captureLeft != 0)
                 PawnMove(Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
 
-            captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << board.EnPassantSquare);
+            captureRight = ((whitePawns & 0x000007F00000000UL) << 9) & board.EnPassant;
             if (captureRight != 0)
                 PawnMove(Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
         }
