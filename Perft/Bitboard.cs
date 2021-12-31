@@ -62,7 +62,7 @@ namespace Perft
         const ulong VERTICAL = 0x0101010101010101UL;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetBishopTargets(in ulong occupation, in int square)
+        public static ulong GetBishopTargets(ulong occupation, int square)
         {
             ulong bbPiece = 1UL << square;
             ulong bbBlocker = occupation & ~bbPiece;
@@ -80,7 +80,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong GetRookTargets(in ulong occupation, in int square)
+        public static ulong GetRookTargets(ulong occupation, int square)
         {
             ulong bbPiece = 1UL << square;
             ulong bbBlocker = occupation & ~bbPiece;
@@ -95,12 +95,19 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong GenLines(in ulong bbLineA, in ulong bbLineB, in ulong bbBlocker, in ulong bbBelow) =>
+        public static ulong GetQueenTargets(ulong occupation, int square)
+        {
+            return GetBishopTargets(occupation, square) | GetRookTargets(occupation, square);
+        }
+
+
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ulong GenLines(ulong bbLineA, ulong bbLineB, ulong bbBlocker, ulong bbBelow) =>
             GenLine(bbLineA, bbBlocker & bbLineA, bbBelow) |
             GenLine(bbLineB, bbBlocker & bbLineB, bbBelow);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ulong GenLine(in ulong bbLine, in ulong bbBlocker, in ulong bbBelow)
+        private static ulong GenLine(ulong bbLine, ulong bbBlocker, ulong bbBelow)
         {
             //MaskLow sets all low bits up to and including the lowest blocker above orgin, the rest are zeroed out.
             //MaskHigh sets all low bits up to and including the highest blocker below origin, the rest are zerored out.
@@ -110,14 +117,14 @@ namespace Perft
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //identify the highest set bit and shift a mask so the bits below are set and the rest are zeroed
-        private static ulong MaskHigh(in ulong bb) => 0x7FFFFFFFFFFFFFFFUL >> BitOperations.LeadingZeroCount(bb | 1);
+        private static ulong MaskHigh(ulong bb) => 0x7FFFFFFFFFFFFFFFUL >> BitOperations.LeadingZeroCount(bb | 1);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //identify the lowest set bit and set all bits below while zeroing the rest
-        private static ulong MaskLow(in ulong bb) => bb ^ (bb - 1);
+        private static ulong MaskLow(ulong bb) => bb ^ (bb - 1);
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         //sign of 'ranks' decides between left shift or right shift. Then convert signed ranks to a positiver number of bits to shift by. Each rank has 8 bits e.g. 1 << 3 == 8
-        private static ulong VerticalShift(in ulong bb, in int ranks) => ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
+        private static ulong VerticalShift(ulong bb, int ranks) => ranks > 0 ? bb >> (ranks << 3) : bb << -(ranks << 3);
     }
 }

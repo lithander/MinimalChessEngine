@@ -2,7 +2,7 @@
 
 namespace Perft
 {
-    public struct Move
+    public readonly struct Move
     {
         public readonly Piece Flags;
         public readonly byte FromSquare;

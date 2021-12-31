@@ -94,15 +94,7 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal void Copy(BoardState other)
         {
-            White = other.White;
-            Black = other.Black;
-            Pawns = other.Pawns;
-            Knights = other.Knights;
-            Bishops = other.Bishops;
-            Rooks = other.Rooks;
-            Queens = other.Queens;
-            Kings = other.Kings;
-            CastleFlags = other.CastleFlags;
+            CopyUnmasked(other);
             EnPassant = other.EnPassant;
             SideToMove = other.SideToMove;
         }
