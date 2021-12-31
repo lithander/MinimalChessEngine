@@ -46,7 +46,7 @@ namespace Perft
 
         internal static BoardState ToBoardState(string fen)
         {
-            BoardState result = default;
+            BoardState result = new BoardState();
             //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
             //https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
             string[] fields = fen.Split();
@@ -92,7 +92,7 @@ namespace Perft
                 result.CastleFlags |= BoardState.BlackQueensideRookSquare;
 
             //Set en-passant square
-            //result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
+            result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
             return result;
         }
 

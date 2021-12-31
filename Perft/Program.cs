@@ -9,9 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v12");
-            Benchmark();
-            Benchmark();
+            Console.WriteLine("Leorik Perft v13");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
@@ -34,7 +32,7 @@ namespace Perft
                 string fen = data[0];
                 int depth = int.Parse(data[1]);
                 long refResult = long.Parse(data[2]);
-                Positions[0] = new BoardState(fen);
+                Positions[0].Copy(Notation.ToBoardState(fen));
 
                 long t0 = Stopwatch.GetTimestamp();
                 long result = Perft(0, depth);
@@ -63,6 +61,8 @@ namespace Perft
         static Program()
         {
             Positions = new BoardState[MAX_PLY];
+            for (int i = 0; i < MAX_PLY; i++)
+                Positions[i] = new BoardState();
             Moves = new Move[MAX_PLY][];
             for (int i = 0; i < MAX_PLY; i++)
                 Moves[i] = new Move[MAX_MOVES];
@@ -106,8 +106,8 @@ namespace Perft
                 //adding 2 fields 230M (-21M) Ops
 
                 //251M Ops
-                ref BoardState next = ref Positions[depth + 1];
-                next.Copy(ref Positions[depth]);
+                BoardState next = Positions[depth + 1];
+                next.Copy(Positions[depth]);
 
                 if (remaining > 1)
                     sum += BenchCopy(depth + 1, remaining - 1);
@@ -119,31 +119,23 @@ namespace Perft
 
         private static long Perft(int depth, int remaining)
         {
+            BoardState current = Positions[depth];
+            BoardState next = Positions[depth + 1];
+            Move[] moves = Moves[depth];
+            int numMoves = GenerateMoves(current, moves);
             long sum = 0;
-            int numMoves = GenerateMoves(depth);
             for (int i = 0; i < numMoves; i++)
             {
-                if (TryMake(depth, ref Moves[depth][i]))
-                {
-                    if (remaining > 1)
-                        sum += Perft(depth + 1, remaining - 1);
-                    else
-                        sum++;
-                }
+                next.Play(current, ref moves[i]);
+                if (next.IsChecked(current.SideToMove))
+                    continue;
+
+                if (remaining > 1)
+                    sum += Perft(depth + 1, remaining - 1);
+                else
+                    sum++;
             }
             return sum;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool TryMake(int depth, ref Move move)
-        {
-            ref BoardState current = ref Positions[depth];
-            ref BoardState next = ref Positions[depth + 1];
-            next.Copy(ref current);
-
-            next.Play(ref move);
-            bool legal = !next.IsChecked(current.SideToMove);
-            return legal;
         }
 
         /***********************/
@@ -154,17 +146,11 @@ namespace Perft
         static int _nextMove;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int GenerateMoves(int position)
+        private static int GenerateMoves(BoardState board, Move[] moves)
         {
-            _moves = Moves[position];
+            _moves = moves;
             _nextMove = 0;
-            GenerateMoves(ref Positions[position]);
-            return _nextMove;
-        }
 
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void GenerateMoves(ref BoardState board)
-        {
             ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
             ulong occupied = board.Black | board.White;
             Piece color = (Piece)(board.SideToMove + 2);
@@ -219,18 +205,20 @@ namespace Perft
             //Pawns & Castling
             if (board.SideToMove == Color.White)
             {
-                CollectWhitePawnMoves(ref board);
-                CollectWhiteCastlingMoves(ref board);
+                CollectWhitePawnMoves(board);
+                CollectWhiteCastlingMoves(board);
             }
             else
             {
-                CollectBlackPawnMoves(ref board);
-                CollectBlackCastlingMoves(ref board);
+                CollectBlackPawnMoves(board);
+                CollectBlackCastlingMoves(board);
             }
+
+            return _nextMove;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CollectWhiteCastlingMoves(ref BoardState board)
+        private static void CollectWhiteCastlingMoves(BoardState board)
         {
             if (board.CanWhiteCastleLong() && !board.IsAttackedByBlack(4) && !board.IsAttackedByBlack(3) /*&& !board.IsAttackedByBlack(2)*/)
                 _moves[_nextMove++] = Move.WhiteCastlingLong;
@@ -240,7 +228,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CollectBlackCastlingMoves(ref BoardState board)
+        private static void CollectBlackCastlingMoves(BoardState board)
         {
             if (board.CanBlackCastleLong() && !board.IsAttackedByWhite(60) && !board.IsAttackedByWhite(59) /*&& !board.IsAttackedByWhite(58)*/)
                 _moves[_nextMove++] = Move.BlackCastlingLong;
@@ -250,7 +238,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CollectBlackPawnMoves(ref BoardState board)
+        private static void CollectBlackPawnMoves(BoardState board)
         {
             ulong targets;
             ulong occupied = board.Black | board.White;
@@ -298,7 +286,7 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void CollectWhitePawnMoves(ref BoardState board)
+        private static void CollectWhitePawnMoves(BoardState board)
         {
             ulong targets;
             ulong whitePawns = board.Pawns & board.White;
