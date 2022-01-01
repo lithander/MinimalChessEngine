@@ -74,6 +74,14 @@ namespace BitboardExplorer
                 {
                     ListTargets(Attacks.Knight);
                 }
+                else if (command == "bishop_targets")
+                {
+                    ListTargets(Attacks.Bishop);
+                }
+                else if (command == "rook_targets")
+                {
+                    ListTargets(Attacks.Rook);
+                }
                 else if (command.Count(c => c == '/') == 7) //Fen-string detection
                 {
                     Board board = new Board(input);
@@ -109,6 +117,21 @@ namespace BitboardExplorer
                 ulong bb = 0;
                 foreach (var target in pattern[square])
                     bb |= 1UL << target;
+                bbStrings.Add(ToHex(bb));
+            }
+
+            BlockPrint(bbStrings, 4);
+        }
+
+        private static void ListTargets(byte[][][] pattern)
+        {
+            List<string> bbStrings = new List<string>();
+            for (int square = 0; square < 64; square++)
+            {
+                ulong bb = 0;
+                foreach (var axis in pattern[square])
+                    foreach (var target in axis)
+                        bb |= 1UL << target;
                 bbStrings.Add(ToHex(bb));
             }
 

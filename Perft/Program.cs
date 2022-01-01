@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v13");
+            Console.WriteLine("Leorik Perft v15");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");

@@ -1,6 +1,5 @@
-﻿using System;
-using System.Diagnostics;
-using System.Runtime.CompilerServices;
+﻿using System.Runtime.CompilerServices;
+using static Perft.Bitboard;
 
 namespace Perft
 {
@@ -20,7 +19,6 @@ namespace Perft
 
         public Color SideToMove;
 
-        //TODO: use consts
         public const ulong BlackQueensideRookSquare = 0x0100000000000000UL;//1UL << Notation.ToSquare("a8");
         public const ulong BlackKingsideRookSquare = 0x8000000000000000UL;//1UL << Notation.ToSquare("h8");
         public const ulong BlackCastling = BlackQueensideRookSquare | BlackKingsideRookSquare;
@@ -162,14 +160,14 @@ namespace Perft
         public bool TryPlayBlack(BoardState from, ref Move move)
         {
             PlayBlack(from, ref move);
-            return !IsAttackedByWhite(Bitboard.LSB(Kings & Black));
+            return !IsAttackedByWhite(LSB(Kings & Black));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool TryPlayWhite(BoardState from, ref Move move)
         {
             PlayWhite(from, ref move);
-            return !IsAttackedByBlack(Bitboard.LSB(Kings & White));
+            return !IsAttackedByBlack(LSB(Kings & White));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -360,28 +358,28 @@ namespace Perft
         public bool IsChecked(Color color)
         {
             if(color == Color.White)
-                return IsAttackedByBlack(Bitboard.LSB(Kings & White));
+                return IsAttackedByBlack(LSB(Kings & White));
             else
-                return IsAttackedByWhite(Bitboard.LSB(Kings & Black));
+                return IsAttackedByWhite(LSB(Kings & Black));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsAttackedByWhite(int square)
         {
             ulong pieces = White & Knights;
-            if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
+            if (pieces > 0 && (pieces & KnightTargets[square]) > 0)
                 return true;
 
             pieces = White & Kings;
-            if (pieces > 0 && (pieces & Bitboard.KingTargets[square]) > 0)
+            if (pieces > 0 && (pieces & KingTargets[square]) > 0)
                 return true;
 
             pieces = White & (Queens | Bishops);
-            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & BishopTargets[square]) > 0 && (pieces & GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = White & (Queens | Rooks);
-            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & RookTargets[square]) > 0 && (pieces & GetRookTargets(Black | White, square)) > 0)
                 return true;
 
             //Warning: pawn attacks do not consider en-passent!
@@ -395,19 +393,19 @@ namespace Perft
         public bool IsAttackedByBlack(int square)
         {
             ulong pieces = Black & Knights;
-            if (pieces > 0 && (pieces & Bitboard.KnightTargets[square]) > 0)
+            if (pieces > 0 && (pieces & KnightTargets[square]) > 0)
                 return true;
 
             pieces = Black & Kings;
-            if (pieces > 0 && (pieces & Bitboard.KingTargets[square]) > 0)
+            if (pieces > 0 && (pieces & KingTargets[square]) > 0)
                 return true;
 
             pieces = Black & (Queens | Bishops);
-            if (pieces > 0 && (pieces & Bitboard.GetBishopTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & BishopTargets[square]) > 0 && (pieces & GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = Black & (Queens | Rooks);
-            if (pieces > 0 && (pieces & Bitboard.GetRookTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & RookTargets[square]) > 0 && (pieces & GetRookTargets(Black | White, square)) > 0)
                 return true;
 
             //Warning: pawn attacks do not consider en-passent!
