@@ -10,9 +10,11 @@ namespace Perft
         public ulong Black;
         public ulong Pawns;
         public ulong Knights;
-        public ulong Bishops;
-        public ulong Rooks;
-        public ulong Queens;
+        //public ulong Bishops;
+        //public ulong Rooks;
+        //public ulong Queens;
+        public ulong Diagonals;
+        public ulong Orthogonals;
         public ulong Kings;
         public ulong Flags;
 
@@ -82,13 +84,14 @@ namespace Perft
                     Knights |= bbPiece;
                     break;
                 case Piece.Bishop:
-                    Bishops |= bbPiece;
+                    Diagonals |= bbPiece;
                     break;
                 case Piece.Rook:
-                    Rooks |= bbPiece;
+                    Orthogonals |= bbPiece;
                     break;
                 case Piece.Queen:
-                    Queens |= bbPiece;
+                    Diagonals |= bbPiece;
+                    Orthogonals |= bbPiece;
                     break;
                 case Piece.King:
                     Kings |= bbPiece;
@@ -103,61 +106,10 @@ namespace Perft
             Black = from.Black;
             Pawns = from.Pawns;
             Knights = from.Knights;
-            Bishops = from.Bishops;
-            Rooks = from.Rooks;
-            Queens = from.Queens;
+            Diagonals = from.Diagonals;
+            Orthogonals = from.Orthogonals;
             Kings = from.Kings;
             Flags = from.Flags;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void ClearBit(int square, Piece piece)
-        {
-            ulong bbPiece = ~(1UL << square);
-            switch (piece & Piece.ColorMask)
-            {
-                case Piece.Black:
-                    Black &= bbPiece;
-                    break;
-                case Piece.White:
-                    White &= bbPiece;
-                    break;
-            }
-            switch (piece & Piece.TypeMask)
-            {
-                case Piece.Pawn:
-                    Pawns &= bbPiece;
-                    break;
-                case Piece.Knight:
-                    Knights &= bbPiece;
-                    break;
-                case Piece.Bishop:
-                    Bishops &= bbPiece;
-                    break;
-                case Piece.Rook:
-                    Rooks &= bbPiece;
-                    break;
-                case Piece.Queen:
-                    Queens &= bbPiece;
-                    break;
-                case Piece.King:
-                    Kings &= bbPiece;
-                    break;
-            }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-		private void ClearBits(int square)
-        {
-            ulong bbPiece = ~(1UL << square);
-            Black &= bbPiece;
-            White &= bbPiece;
-            Pawns &= bbPiece;
-            Knights &= bbPiece;
-            Bishops &= bbPiece;
-            Rooks &= bbPiece;
-            Queens &= bbPiece;
-            Kings &= bbPiece;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -208,15 +160,16 @@ namespace Perft
                     break;
                 case Piece.QueenPromotion:
                     Pawns &= ~bbFrom;
-                    Queens |= bbTo;
+                    Orthogonals |= bbTo;
+                    Diagonals |= bbTo;
                     break;
                 case Piece.RookPromotion:
                     Pawns &= ~bbFrom;
-                    Rooks |= bbTo;
+                    Orthogonals |= bbTo;
                     break;
                 case Piece.BishopPromotion:
                     Pawns &= ~bbFrom;
-                    Bishops |= bbTo;
+                    Diagonals |= bbTo;
                     break;
                 case Piece.KnightPromotion:
                     Pawns &= ~bbFrom;
@@ -230,14 +183,15 @@ namespace Perft
                     Knights ^= bbFrom | bbTo;
                     break;
                 case Piece.Bishop:
-                    Bishops ^= bbFrom | bbTo;
+                    Diagonals ^= bbFrom | bbTo;
                     break;
                 case Piece.Rook:
-                    Rooks ^= bbFrom | bbTo;
+                    Orthogonals ^= bbFrom | bbTo;
                     Flags &= ~bbFrom;
                     break;
                 case Piece.Queen:
-                    Queens ^= bbFrom | bbTo;
+                    Orthogonals ^= bbFrom | bbTo;
+                    Diagonals ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
@@ -246,13 +200,13 @@ namespace Perft
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
                     Flags &= ~BlackCastlingBits;
-                    Rooks ^= 0xA000000000000000UL;
+                    Orthogonals ^= 0xA000000000000000UL;
                     Black ^= 0xA000000000000000UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
                     Flags &= ~BlackCastlingBits;
-                    Rooks ^= 0x0900000000000000UL;
+                    Orthogonals ^= 0x0900000000000000UL;
                     Black ^= 0x0900000000000000UL;
                     break;
             }
@@ -277,15 +231,16 @@ namespace Perft
                     break;
                 case Piece.QueenPromotion:
                     Pawns &= ~bbFrom;
-                    Queens |= bbTo;
+                    Orthogonals |= bbTo;
+                    Diagonals |= bbTo;
                     break;
                 case Piece.RookPromotion:
                     Pawns &= ~bbFrom;
-                    Rooks |= bbTo;
+                    Orthogonals |= bbTo;
                     break;
                 case Piece.BishopPromotion:
                     Pawns &= ~bbFrom;
-                    Bishops |= bbTo;
+                    Diagonals |= bbTo;
                     break;
                 case Piece.KnightPromotion:
                     Pawns &= ~bbFrom;
@@ -299,14 +254,15 @@ namespace Perft
                     Knights ^= bbFrom | bbTo;
                     break;
                 case Piece.Bishop:
-                    Bishops ^= bbFrom | bbTo;
+                    Diagonals ^= bbFrom | bbTo;
                     break;
                 case Piece.Rook:
-                    Rooks ^= bbFrom | bbTo;
+                    Orthogonals ^= bbFrom | bbTo;
                     Flags &= ~bbFrom;
                     break;
                 case Piece.Queen:
-                    Queens ^= bbFrom | bbTo;
+                    Orthogonals ^= bbFrom | bbTo;
+                    Diagonals ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
@@ -315,13 +271,13 @@ namespace Perft
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
                     Flags &= ~WhiteCastlingBits;
-                    Rooks ^= 0x00000000000000A0UL;
+                    Orthogonals ^= 0x00000000000000A0UL;
                     White ^= 0x00000000000000A0UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
                     Flags &= ~WhiteCastlingBits;
-                    Rooks ^= 0x0000000000000009UL;
+                    Orthogonals ^= 0x0000000000000009UL;
                     White ^= 0x0000000000000009UL;
                     break;
             }
@@ -344,9 +300,8 @@ namespace Perft
             Black = from.Black;
             Pawns = from.Pawns;
             Knights = from.Knights;
-            Bishops = from.Bishops;
-            Rooks = from.Rooks;
-            Queens = from.Queens;
+            Diagonals = from.Diagonals;
+            Orthogonals = from.Orthogonals;
             Kings = from.Kings;
             Flags = from.Flags & CastlingBits;
         }
@@ -358,9 +313,8 @@ namespace Perft
             Black = from.Black & mask;
             Pawns = from.Pawns & mask;
             Knights = from.Knights & mask;
-            Bishops = from.Bishops & mask;
-            Rooks = from.Rooks & mask;
-            Queens = from.Queens & mask;
+            Diagonals = from.Diagonals & mask;
+            Orthogonals = from.Orthogonals & mask;
             Kings = from.Kings & mask;
             Flags = from.Flags & CastlingBits & mask;
         }
@@ -394,11 +348,11 @@ namespace Perft
             if (pieces > 0 && (pieces & KingTargets[square]) > 0)
                 return true;
 
-            pieces = White & (Queens | Bishops);
+            pieces = White & Diagonals;
             if (pieces > 0 && (pieces & DiagonalTargets[square]) > 0 && (pieces & GetDiagonalTargets(Black | White, square)) > 0)
                 return true;
 
-            pieces = White & (Queens | Rooks);
+            pieces = White & Orthogonals;
             if (pieces > 0 && (pieces & OrthogonalTargets[square]) > 0 && (pieces & GetOrthogonalTargets(Black | White, square)) > 0)
                 return true;
 
@@ -420,11 +374,11 @@ namespace Perft
             if (pieces > 0 && (pieces & KingTargets[square]) > 0)
                 return true;
 
-            pieces = Black & (Queens | Bishops);
+            pieces = Black & Diagonals;
             if (pieces > 0 && (pieces & DiagonalTargets[square]) > 0 && (pieces & GetDiagonalTargets(Black | White, square)) > 0)
                 return true;
 
-            pieces = Black & (Queens | Rooks);
+            pieces = Black & Orthogonals;
             if (pieces > 0 && (pieces & OrthogonalTargets[square]) > 0 && (pieces & GetOrthogonalTargets(Black | White, square)) > 0)
                 return true;
 

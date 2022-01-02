@@ -192,7 +192,7 @@ namespace Perft
                 }
 
                 //Bishops
-                for (ulong bishops = board.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
+                for (ulong bishops = board.Diagonals & ~board.Orthogonals & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
                 {
                     square = Bitboard.LSB(bishops);
                     targets = Bitboard.GetDiagonalTargets(occupied, square) & ~sideToMove;
@@ -201,7 +201,7 @@ namespace Perft
                 }
 
                 //Rooks
-                for (ulong rooks = board.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
+                for (ulong rooks = board.Orthogonals & ~board.Diagonals & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
                 {
                     square = Bitboard.LSB(rooks);
                     targets = Bitboard.GetOrthogonalTargets(occupied, square) & ~sideToMove;
@@ -210,7 +210,7 @@ namespace Perft
                 }
 
                 //Queens
-                for (ulong queens = board.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
+                for (ulong queens = board.Diagonals & board.Orthogonals & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
                 {
                     square = Bitboard.LSB(queens);
                     targets = Bitboard.GetQueenTargets(occupied, square) & ~sideToMove;
