@@ -75,27 +75,24 @@ namespace Perft
                 rank--;
             }
 
-            //Set enPassant flags
-            if(fields[3] != "-")
-                result.Flags = 1UL << ToSquare(fields[3]);
+            //Set side to move
+            result.SideToMove = fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase) ? Color.White : Color.Black;
 
-            //Set sideToMove
-            if (fields[1].Equals("w", StringComparison.CurrentCultureIgnoreCase))
-                result.Flags |= BoardState.WhiteToMoveBit;
-            
             //Set castling rights
-            if (fields[2].IndexOf("K", StringComparison.Ordinal) > -1)
-                result.Flags |= BoardState.WhiteKingsideRookBit;
+            if(fields[2].IndexOf("K", StringComparison.Ordinal) > -1)
+                result.CastleFlags |= BoardState.WhiteKingsideRookSquare;
 
             if (fields[2].IndexOf("Q", StringComparison.Ordinal) > -1)
-                result.Flags |= BoardState.WhiteQueensideRookBit;
+                result.CastleFlags |= BoardState.WhiteQueensideRookSquare;
 
             if (fields[2].IndexOf("k", StringComparison.Ordinal) > -1)
-                result.Flags |= BoardState.BlackKingsideRookBit;
+                result.CastleFlags |= BoardState.BlackKingsideRookSquare;
 
             if (fields[2].IndexOf("q", StringComparison.Ordinal) > -1)
-                result.Flags |= BoardState.BlackQueensideRookBit;
+                result.CastleFlags |= BoardState.BlackQueensideRookSquare;
 
+            //Set en-passant square
+            result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
             return result;
         }
 

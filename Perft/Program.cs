@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v17");
+            Console.WriteLine("Leorik Perft v16");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
@@ -130,7 +130,7 @@ namespace Perft
             for (; i < moves.Next; i++)
             {
                 next.Play(current, ref Moves[i]);
-                if (next.IsOpponentChecked())
+                if (next.IsChecked(current.SideToMove))
                     continue;
 
                 if (remaining > 1)
@@ -171,9 +171,9 @@ namespace Perft
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Collect(BoardState board)
             {
-                ulong sideToMove = board.GetSideToMove();
+                ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
                 ulong occupied = board.Black | board.White;
-                Piece color = board.GetSideToMoveColor();
+                Piece color = (Piece)(board.SideToMove + 2);
 
                 //Kings
                 int square = Bitboard.LSB(board.Kings & sideToMove);
@@ -192,7 +192,7 @@ namespace Perft
                 }
 
                 //Bishops
-                for (ulong bishops = board.Diagonals & ~board.Orthogonals & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
+                for (ulong bishops = board.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
                 {
                     square = Bitboard.LSB(bishops);
                     targets = Bitboard.GetDiagonalTargets(occupied, square) & ~sideToMove;
@@ -201,7 +201,7 @@ namespace Perft
                 }
 
                 //Rooks
-                for (ulong rooks = board.Orthogonals & ~board.Diagonals & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
+                for (ulong rooks = board.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
                 {
                     square = Bitboard.LSB(rooks);
                     targets = Bitboard.GetOrthogonalTargets(occupied, square) & ~sideToMove;
@@ -210,7 +210,7 @@ namespace Perft
                 }
 
                 //Queens
-                for (ulong queens = board.Diagonals & board.Orthogonals & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
+                for (ulong queens = board.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
                 {
                     square = Bitboard.LSB(queens);
                     targets = Bitboard.GetQueenTargets(occupied, square) & ~sideToMove;
@@ -219,7 +219,7 @@ namespace Perft
                 }
 
                 //Pawns & Castling
-                if (board.IsWhiteToMove())
+                if (board.SideToMove == Color.White)
                 {
                     CollectWhitePawnMoves(board);
                     CollectWhiteCastlingMoves(board);
@@ -290,11 +290,11 @@ namespace Perft
                     BlackPawnPromotions(targets, +7);
 
                 //is en-passent possible?
-                captureLeft = ((blackPawns & 0x00000000FE000000UL) >> 9) & board.Flags;
+                captureLeft = ((blackPawns & 0x00000000FE000000UL) >> 9) & board.EnPassant;
                 if (captureLeft != 0)
                     PawnMove(Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
 
-                captureRight = ((blackPawns & 0x000000007F000000UL) >> 7) & board.Flags;
+                captureRight = ((blackPawns & 0x000000007F000000UL) >> 7) & board.EnPassant;
                 if (captureRight != 0)
                     PawnMove(Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
             }
@@ -338,11 +338,11 @@ namespace Perft
                     WhitePawnPromotions(targets, -9);
 
                 //is en-passent possible?
-                captureLeft = ((whitePawns & 0x000000FE00000000UL) << 7) & board.Flags;
+                captureLeft = ((whitePawns & 0x000000FE00000000UL) << 7) & board.EnPassant;
                 if (captureLeft != 0)
                     PawnMove(Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
 
-                captureRight = ((whitePawns & 0x000007F00000000UL) << 9) & board.Flags;
+                captureRight = ((whitePawns & 0x000007F00000000UL) << 9) & board.EnPassant;
                 if (captureRight != 0)
                     PawnMove(Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
             }
