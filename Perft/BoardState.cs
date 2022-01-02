@@ -14,8 +14,6 @@ namespace Perft
         public ulong Rooks;
         public ulong Queens;
         public ulong Kings;
-        public ulong CastleFlags;
-
         public ulong Flags;
 
         public const ulong BlackQueensideRookBit = 0x0100000000000000UL;//1UL << Notation.ToSquare("a8");
@@ -27,7 +25,7 @@ namespace Perft
         public const ulong BlackCastlingBits = BlackQueensideRookBit | BlackKingsideRookBit;
         public const ulong WhiteCastlingBits = WhiteQueensideRookBit | WhiteKingsideRookBit;
 
-        public const ulong CastlingBits = BlackCastlingBits | WhiteToMoveBit;
+        public const ulong CastlingBits = BlackCastlingBits | WhiteCastlingBits;
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsWhiteToMove() => (Flags & WhiteToMoveBit) > 0;
@@ -41,25 +39,25 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanWhiteCastleLong()
         {
-            return (CastleFlags & WhiteQueensideRookBit) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
+            return (Flags & WhiteQueensideRookBit) != 0 && ((Black | White) & 0x000000000000000EUL) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanWhiteCastleShort()
         {
-            return (CastleFlags & WhiteKingsideRookBit) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
+            return (Flags & WhiteKingsideRookBit) != 0 && ((Black | White) & 0x0000000000000060UL) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanBlackCastleLong()
         {
-            return (CastleFlags & BlackQueensideRookBit) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
+            return (Flags & BlackQueensideRookBit) != 0 && ((Black | White) & 0x0E00000000000000UL) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanBlackCastleShort()
         {
-            return (CastleFlags & BlackKingsideRookBit) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
+            return (Flags & BlackKingsideRookBit) != 0 && ((Black | White) & 0x6000000000000000UL) == 0;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -99,10 +97,17 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal void Copy(BoardState other)
+        internal void Copy(BoardState from)
         {
-            CopyUnmasked(other);
-            Flags = other.Flags;
+            White = from.White;
+            Black = from.Black;
+            Pawns = from.Pawns;
+            Knights = from.Knights;
+            Bishops = from.Bishops;
+            Rooks = from.Rooks;
+            Queens = from.Queens;
+            Kings = from.Kings;
+            Flags = from.Flags;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -193,7 +198,6 @@ namespace Perft
             ulong bbTo = 1UL << move.ToSquare;
             ulong bbFrom = 1UL << move.FromSquare;
             CopyBitboards(from, from.White & bbTo);
-            Flags = WhiteToMoveBit;
             Black ^= bbFrom | bbTo;
 
             switch (move.Flags & ~Piece.ColorMask)
@@ -230,28 +234,30 @@ namespace Perft
                     break;
                 case Piece.Rook:
                     Rooks ^= bbFrom | bbTo;
-                    CastleFlags &= ~bbFrom;
+                    Flags &= ~bbFrom;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~BlackCastlingBits;
+                    Flags &= ~BlackCastlingBits;
                     break;
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~BlackCastlingBits;
+                    Flags &= ~BlackCastlingBits;
                     Rooks ^= 0xA000000000000000UL;
                     Black ^= 0xA000000000000000UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~BlackCastlingBits;
+                    Flags &= ~BlackCastlingBits;
                     Rooks ^= 0x0900000000000000UL;
                     Black ^= 0x0900000000000000UL;
                     break;
             }
+
+            Flags |= WhiteToMoveBit;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -261,14 +267,13 @@ namespace Perft
             ulong bbFrom = 1UL << move.FromSquare;
 
             CopyBitboards(from, from.Black & bbTo);
-            Flags = 0;
             White ^= bbFrom | bbTo;
 
             switch (move.Flags & ~Piece.ColorMask)
             {
                 case Piece.Pawn:
                     Pawns ^= bbFrom | bbTo;
-                    Flags = (bbTo >> 8) & (bbFrom << 8);
+                    Flags |= (bbTo >> 8) & (bbFrom << 8);
                     break;
                 case Piece.QueenPromotion:
                     Pawns &= ~bbFrom;
@@ -298,24 +303,24 @@ namespace Perft
                     break;
                 case Piece.Rook:
                     Rooks ^= bbFrom | bbTo;
-                    CastleFlags &= ~bbFrom;
+                    Flags &= ~bbFrom;
                     break;
                 case Piece.Queen:
                     Queens ^= bbFrom | bbTo;
                     break;
                 case Piece.King:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~WhiteCastlingBits;
+                    Flags &= ~WhiteCastlingBits;
                     break;
                 case Piece.CastleShort:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~WhiteCastlingBits;
+                    Flags &= ~WhiteCastlingBits;
                     Rooks ^= 0x00000000000000A0UL;
                     White ^= 0x00000000000000A0UL;
                     break;
                 case Piece.CastleLong:
                     Kings ^= bbFrom | bbTo;
-                    CastleFlags &= ~WhiteCastlingBits;
+                    Flags &= ~WhiteCastlingBits;
                     Rooks ^= 0x0000000000000009UL;
                     White ^= 0x0000000000000009UL;
                     break;
@@ -343,7 +348,7 @@ namespace Perft
             Rooks = from.Rooks;
             Queens = from.Queens;
             Kings = from.Kings;
-            CastleFlags = from.CastleFlags;
+            Flags = from.Flags & CastlingBits;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -357,7 +362,7 @@ namespace Perft
             Rooks = from.Rooks & mask;
             Queens = from.Queens & mask;
             Kings = from.Kings & mask;
-            CastleFlags = from.CastleFlags & mask;
+            Flags = from.Flags & CastlingBits & mask;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
