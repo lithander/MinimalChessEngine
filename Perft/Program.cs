@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v16");
+            Console.WriteLine("Leorik Perft v18");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
@@ -49,6 +49,7 @@ namespace Perft
                 else
                     Console.WriteLine($"OK! {(int)ms}ms, {(int)(result / ms)}K NPS");
             }
+            file.Close();
             Console.WriteLine();
             Console.WriteLine($"Total: {totalNodes} Nodes, {(int)(1000 * totalDuration)}ms, {(int)(totalNodes / totalDuration / 1000)}K NPS");
         }
@@ -129,14 +130,13 @@ namespace Perft
             long sum = 0;
             for (; i < moves.Next; i++)
             {
-                next.Play(current, ref Moves[i]);
-                if (next.IsChecked(current.SideToMove))
-                    continue;
-
-                if (remaining > 1)
-                    sum += Perft(depth + 1, remaining - 1, moves);
-                else
-                    sum++;
+                if (next.TryPlay(current, ref Moves[i]))
+                {
+                    if (remaining > 1)
+                        sum += Perft(depth + 1, remaining - 1, moves);
+                    else
+                        sum++;
+                }
             }
             return sum;
         }

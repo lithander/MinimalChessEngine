@@ -80,16 +80,16 @@ namespace Perft
 
             //Set castling rights
             if(fields[2].IndexOf("K", StringComparison.Ordinal) > -1)
-                result.CastleFlags |= BoardState.WhiteKingsideRookSquare;
+                result.CastleFlags |= BoardState.WhiteKingsideRookBit;
 
             if (fields[2].IndexOf("Q", StringComparison.Ordinal) > -1)
-                result.CastleFlags |= BoardState.WhiteQueensideRookSquare;
+                result.CastleFlags |= BoardState.WhiteQueensideRookBit;
 
             if (fields[2].IndexOf("k", StringComparison.Ordinal) > -1)
-                result.CastleFlags |= BoardState.BlackKingsideRookSquare;
+                result.CastleFlags |= BoardState.BlackKingsideRookBit;
 
             if (fields[2].IndexOf("q", StringComparison.Ordinal) > -1)
-                result.CastleFlags |= BoardState.BlackQueensideRookSquare;
+                result.CastleFlags |= BoardState.BlackQueensideRookBit;
 
             //Set en-passant square
             result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
