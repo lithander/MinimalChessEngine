@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v16");
+            Console.WriteLine("Leorik Perft v17");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
@@ -130,7 +130,7 @@ namespace Perft
             for (; i < moves.Next; i++)
             {
                 next.Play(current, ref Moves[i]);
-                if (next.IsChecked(current.SideToMove))
+                if (next.IsOpponentChecked())
                     continue;
 
                 if (remaining > 1)
@@ -171,9 +171,9 @@ namespace Perft
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Collect(BoardState board)
             {
-                ulong sideToMove = board.SideToMove == Color.Black ? board.Black : board.White;
+                ulong sideToMove = board.GetSideToMove();
                 ulong occupied = board.Black | board.White;
-                Piece color = (Piece)(board.SideToMove + 2);
+                Piece color = board.GetSideToMoveColor();
 
                 //Kings
                 int square = Bitboard.LSB(board.Kings & sideToMove);
@@ -219,7 +219,7 @@ namespace Perft
                 }
 
                 //Pawns & Castling
-                if (board.SideToMove == Color.White)
+                if (board.IsWhiteToMove())
                 {
                     CollectWhitePawnMoves(board);
                     CollectWhiteCastlingMoves(board);
@@ -290,11 +290,11 @@ namespace Perft
                     BlackPawnPromotions(targets, +7);
 
                 //is en-passent possible?
-                captureLeft = ((blackPawns & 0x00000000FE000000UL) >> 9) & board.EnPassant;
+                captureLeft = ((blackPawns & 0x00000000FE000000UL) >> 9) & board.Flags;
                 if (captureLeft != 0)
                     PawnMove(Piece.BlackPawn | Piece.EnPassant, captureLeft, +9);
 
-                captureRight = ((blackPawns & 0x000000007F000000UL) >> 7) & board.EnPassant;
+                captureRight = ((blackPawns & 0x000000007F000000UL) >> 7) & board.Flags;
                 if (captureRight != 0)
                     PawnMove(Piece.BlackPawn | Piece.EnPassant, captureRight, +7);
             }
@@ -338,11 +338,11 @@ namespace Perft
                     WhitePawnPromotions(targets, -9);
 
                 //is en-passent possible?
-                captureLeft = ((whitePawns & 0x000000FE00000000UL) << 7) & board.EnPassant;
+                captureLeft = ((whitePawns & 0x000000FE00000000UL) << 7) & board.Flags;
                 if (captureLeft != 0)
                     PawnMove(Piece.WhitePawn | Piece.EnPassant, captureLeft, -7);
 
-                captureRight = ((whitePawns & 0x000007F00000000UL) << 9) & board.EnPassant;
+                captureRight = ((whitePawns & 0x000007F00000000UL) << 9) & board.Flags;
                 if (captureRight != 0)
                     PawnMove(Piece.WhitePawn | Piece.EnPassant, captureRight, -9);
             }
