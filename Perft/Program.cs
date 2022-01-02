@@ -9,7 +9,7 @@ namespace Perft
     {
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v15");
+            Console.WriteLine("Leorik Perft v16");
             Benchmark();
             Console.WriteLine();
             var file = File.OpenText("qbb.txt");
@@ -168,13 +168,6 @@ namespace Perft
                 _moves[Next++] = new Move(flags, from, to);
             }
 
-            //[MethodImpl(MethodImplOptions.AggressiveInlining)]
-            //private void AddMoves(Piece piece, byte from, ulong targets)
-            //{
-            //    for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-            //        Add(piece, from, Bitboard.LSB(targets));
-            //}
-
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             public void Collect(BoardState board)
             {
@@ -202,7 +195,7 @@ namespace Perft
                 for (ulong bishops = board.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
                 {
                     square = Bitboard.LSB(bishops);
-                    targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
+                    targets = Bitboard.GetDiagonalTargets(occupied, square) & ~sideToMove;
                     for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                         Add(Piece.Bishop | color, square, Bitboard.LSB(targets));
                 }
@@ -211,7 +204,7 @@ namespace Perft
                 for (ulong rooks = board.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
                 {
                     square = Bitboard.LSB(rooks);
-                    targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
+                    targets = Bitboard.GetOrthogonalTargets(occupied, square) & ~sideToMove;
                     for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                         Add(Piece.Rook | color, square, Bitboard.LSB(targets));
                 }

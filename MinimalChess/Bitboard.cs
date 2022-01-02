@@ -58,6 +58,32 @@ namespace MinimalChess
         const ulong HORIZONTAL = 0x00000000000000FFUL;
         const ulong VERTICAL = 0x0101010101010101UL;
 
+        public static ulong GetDiagonal(int square)
+        {
+            //compute rank and file of square
+            int rank = square >> 3;
+            int file = square & 7;
+            return VerticalShift(DIAGONAL, file - rank);
+        }
+
+        public static ulong GetAntidiagonal(int square)
+        {
+            //compute rank and file of square
+            int rank = square >> 3;
+            int file = square & 7;
+            return VerticalShift(ANTIDIAGONAL, 7 - file - rank);
+        }
+
+        public static ulong GetVertical(int square)
+        {
+            return VERTICAL << (square & 7);
+        }
+
+        public static ulong GetHorizontal(int square)
+        {
+            return HORIZONTAL << (square & 56);
+        }
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static ulong GetBishopTargets(in ulong occupation, in int square)
         {

@@ -82,6 +82,10 @@ namespace BitboardExplorer
                 {
                     ListTargets(Attacks.Rook);
                 }
+                else if (command == "lines")
+                {
+                    ListLines();
+                }
                 else if (command.Count(c => c == '/') == 7) //Fen-string detection
                 {
                     Board board = new Board(input);
@@ -107,6 +111,29 @@ namespace BitboardExplorer
                     }
                 }
             }
+        }
+
+        private static void ListLines()
+        {
+            List<string> diag = new List<string>();
+            List<string> anti = new List<string>();
+            List<string> vert = new List<string>();
+            List<string> horz = new List<string>();
+            for (int square = 0; square < 64; square++)
+            {
+                diag.Add(ToHex(Bitboard.GetDiagonal(square)));
+                anti.Add(ToHex(Bitboard.GetAntidiagonal(square)));
+                vert.Add(ToHex(Bitboard.GetVertical(square)));
+                horz.Add(ToHex(Bitboard.GetHorizontal(square)));
+            }
+            Console.WriteLine("Diagonal");
+            BlockPrint(diag, 4);
+            Console.WriteLine("Antidiagonal");
+            BlockPrint(anti, 4);
+            Console.WriteLine("Horizontal");
+            BlockPrint(horz, 4);
+            Console.WriteLine("Vertical");
+            BlockPrint(vert, 4);
         }
 
         private static void ListTargets(byte[][] pattern)
