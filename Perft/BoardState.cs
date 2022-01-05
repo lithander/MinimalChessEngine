@@ -357,5 +357,43 @@ namespace Perft
             ulong right = (pieces & 0x7F7F7F7F7F7F7F7FUL) >> 7;
             return ((left | right) & 1UL << square) > 0;
         }
+
+        public ulong ComputeZobristHash()
+        {
+            ulong zobristHash = 0;
+
+            for (ulong bits = White; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(0, LSB(bits));
+
+            for (ulong bits = Black; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(1, LSB(bits));
+
+            for (ulong bits = Pawns; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(2, LSB(bits));
+
+            for (ulong bits = Knights; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(3, LSB(bits));
+
+            for (ulong bits = Bishops; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(4, LSB(bits));
+
+            for (ulong bits = Rooks; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(5, LSB(bits));
+
+            for (ulong bits = Queens; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(6, LSB(bits));
+
+            for (ulong bits = Kings; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.PieceSquare(7, LSB(bits));
+
+            //Side to move
+            zobristHash ^= Zobrist.SideToMove(SideToMove);
+            //En passent
+            zobristHash ^= Zobrist.Castling(CastleFlags);
+            //Castling
+            zobristHash ^= Zobrist.EnPassant(LSB(EnPassant));
+
+            return zobristHash;
+        }
     }
 }
