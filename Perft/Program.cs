@@ -21,7 +21,7 @@ namespace Perft
 
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v20");
+            Console.WriteLine("Leorik Perft v21");
             Console.WriteLine();
             Benchmark();
             Console.WriteLine();
@@ -46,10 +46,11 @@ namespace Perft
                 int depth = int.Parse(data[1]);
                 long refResult = long.Parse(data[2]);
                 Positions[0].Copy(Notation.ToBoardState(fen));
+                //Print(Positions[0]);
                 PerftTable.Clear();
 
                 long t0 = Stopwatch.GetTimestamp();
-                long result = Perft(depth);
+                long result = Perft2(depth);
                 long t1 = Stopwatch.GetTimestamp();
 
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
@@ -66,6 +67,25 @@ namespace Perft
             file.Close();
             Console.WriteLine();
             Console.WriteLine($"Total: {totalNodes} Nodes, {(int)(1000 * totalDuration)}ms, {(int)(totalNodes / totalDuration / 1000)}M NPS");
+        }
+
+        private static void Print(BoardState board)
+        {
+            Console.WriteLine("   A B C D E F G H");
+            Console.WriteLine(" .----------------.");
+            for (int rank = 7; rank >= 0; rank--)
+            {
+                Console.Write($"{rank + 1}|"); //ranks aren't zero-indexed
+                for (int file = 0; file < 8; file++)
+                {
+                    Piece piece = board.GetPiece(rank * 8 + file);
+                    Console.Write(Notation.ToChar(piece));
+                    Console.Write(' ');
+                }
+                Console.ResetColor();
+                Console.WriteLine($"|{rank + 1}"); //ranks aren't zero-indexed
+            }
+            Console.WriteLine(" '----------------'");
         }
 
         private static void Benchmark()
@@ -122,13 +142,40 @@ namespace Perft
         {
             return Perft(0, depth, new MoveGen(Moves, 0));
         }
-
+        
         private static long Perft(int depth, int remaining, MoveGen moves)
         {
             BoardState current = Positions[depth];
             BoardState next = Positions[depth + 1];
+               
+            int i = moves.Next;
+            moves.Collect(current);
+            long sum = 0;
+            for (; i < moves.Next; i++)
+            {
+                if (next.TryPlay(current, ref Moves[i]))
+                {
+                    if (remaining > 1)
+                        sum += Perft(depth + 1, remaining - 1, moves);
+                    else
+                        sum++;
+                }
+            }
 
-            ulong hash = current.ComputeZobristHash();
+            return sum;
+        }
+
+        private static long Perft2(int depth)
+        {
+            ulong hash = Positions[0].ComputeZobristHash();
+            return Perft2(0, depth, hash, new MoveGen(Moves, 0));
+        }
+
+        private static long Perft2(int depth, int remaining, ulong hash, MoveGen moves)
+        {
+            BoardState current = Positions[depth];
+            BoardState next = Positions[depth + 1];
+
             //probe hash-tree
             if (PerftTable.Retrieve(hash, depth, out long childCount))
                 return childCount;
@@ -141,7 +188,10 @@ namespace Perft
                 if (next.TryPlay(current, ref Moves[i]))
                 {
                     if (remaining > 1)
-                        sum += Perft(depth + 1, remaining - 1, moves);
+                    {
+                        ulong nextHash = BoardState.UpdateHash(hash, ref Moves[i], current, next);
+                        sum += Perft2(depth + 1, remaining - 1, nextHash, moves);
+                    }
                     else
                         sum++;
                 }
