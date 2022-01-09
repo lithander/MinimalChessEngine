@@ -54,5 +54,6 @@ namespace Perft
         //Mask
         ColorMask = 3,
         TypeMask = 28,      //11100
+        PieceMask = 31,
     }
 }

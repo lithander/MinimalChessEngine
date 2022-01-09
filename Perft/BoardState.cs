@@ -1,4 +1,5 @@
-﻿using System.Runtime.CompilerServices;
+﻿using System;
+using System.Runtime.CompilerServices;
 using static Perft.Bitboard;
 
 namespace Perft
@@ -405,18 +406,15 @@ namespace Perft
             return zobristHash;
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ulong UpdateHash(ulong zobristHash, ref Move move, BoardState prev, BoardState next)
         {
             int from = move.FromSquare;
             int to = move.ToSquare;
-            //Clear from square
-            zobristHash ^= Zobrist.PieceSquare(prev.GetPiece(from), from);
 
-            //TODO: if(move is Capture)
-            zobristHash ^= Zobrist.PieceSquare(prev.GetPiece(to), to);
-            zobristHash ^= Zobrist.PieceSquare(next.GetPiece(to), to);
-            //else
-            //zobristHash ^= Zobrist.PieceSquare(**from-Piece**, move.ToSquare);
+            zobristHash ^= Zobrist.PieceSquare(move.MovingPiece(), from);
+            zobristHash ^= Zobrist.PieceSquare(move.CapturedPiece(), to);
+            zobristHash ^= Zobrist.PieceSquare(move.NewPiece(), to);
 
             switch (move.Flags)
             {
@@ -465,45 +463,5 @@ namespace Perft
 
             return zobristHash;
         }
-
-        //public ulong ComputeZobristHash()
-        //{
-        //    ulong zobristHash = 0;
-        //
-        //    for (ulong bits = White; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][0];
-        //
-        //    for (ulong bits = Black; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][1];
-        //
-        //    for (ulong bits = Pawns; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][2];
-        //
-        //    for (ulong bits = Knights; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][3];
-        //
-        //    for (ulong bits = Bishops; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][4];
-        //
-        //    for (ulong bits = Rooks; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][5];
-        //
-        //    for (ulong bits = Queens; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][6];
-        //
-        //    for (ulong bits = Kings; bits != 0; bits = ClearLSB(bits))
-        //        zobristHash ^= Zobrist.BoardTable[LSB(bits)][7];
-        //
-        //    //Side to move
-        //    if (SideToMove == Color.Black)
-        //        zobristHash ^= Zobrist.SideToMove;
-        //    //En passent
-        //    zobristHash ^= Zobrist.Castling(CastleFlags);
-        //    //Castling
-        //    zobristHash ^= Zobrist.EnPassant(LSB(EnPassant));
-        //
-        //    return zobristHash;
-        //}
-
     }
 }

@@ -5,10 +5,12 @@ namespace Perft
     public struct MoveGen
     {
         private readonly Move[] _moves;
+        private BoardState _state;
         public int Next;
 
         public MoveGen(Move[] moves, int nextIndex)
         {
+            _state = null;
             _moves = moves;
             Next = nextIndex;
         }
@@ -22,18 +24,18 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Add(Piece flags, int from, int to)
         {
-            _moves[Next++] = new Move(flags, from, to);
+            _moves[Next++] = new Move(flags, from, to, _state.GetPiece(to));
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void Collect(BoardState board)
         {
+            _state = board;
             if (board.SideToMove == Color.White)
                 CollectWhite(board);
             else
                 CollectBlack(board);
         }
-
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void CollectBlack(BoardState board)

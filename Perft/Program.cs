@@ -21,7 +21,7 @@ namespace Perft
 
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v21");
+            Console.WriteLine("Leorik Perft v22");
             Console.WriteLine();
             Benchmark();
             Console.WriteLine();
@@ -168,10 +168,10 @@ namespace Perft
         private static long Perft2(int depth)
         {
             ulong hash = Positions[0].ComputeZobristHash();
-            return Perft2(0, depth, hash, new MoveGen(Moves, 0));
+            return Perft2(0, depth, hash, new MoveGen2(Moves, 0));
         }
 
-        private static long Perft2(int depth, int remaining, ulong hash, MoveGen moves)
+        private static long Perft2(int depth, int remaining, ulong hash, MoveGen2 moves)
         {
             BoardState current = Positions[depth];
             BoardState next = Positions[depth + 1];
