@@ -387,21 +387,19 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public ulong ComputeZobristHash()
         {
-            ulong zobristHash = 0;
+            //Side to move
+            ulong zobristHash = (SideToMove == Color.Black) ? Zobrist.SideToMove : 0;
 
+            //Pieces
             for (ulong bits = White | Black; bits != 0; bits = ClearLSB(bits))
             {
                 int square = LSB(bits);
                 zobristHash ^= Zobrist.PieceSquare(GetPiece(square), square);
             }
 
-            //Side to move
-            if(SideToMove == Color.Black)
-                zobristHash ^= Zobrist.SideToMove;
-            //En passent
-            zobristHash ^= Zobrist.Castling(CastleFlags);
-            //Castling
-            zobristHash ^= Zobrist.EnPassant(LSB(EnPassant));
+            //En passent & Castling
+            for (ulong bits = CastleFlags | EnPassant; bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.Castling(LSB(bits));
 
             return zobristHash;
         }
@@ -409,20 +407,18 @@ namespace Perft
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         internal static ulong UpdateHash(ulong zobristHash, ref Move move, BoardState prev, BoardState next)
         {
-            int from = move.FromSquare;
-            int to = move.ToSquare;
-
-            zobristHash ^= Zobrist.PieceSquare(move.MovingPiece(), from);
-            zobristHash ^= Zobrist.PieceSquare(move.CapturedPiece(), to);
-            zobristHash ^= Zobrist.PieceSquare(move.NewPiece(), to);
+            zobristHash ^= Zobrist.SideToMove;
+            zobristHash ^= Zobrist.PieceSquare(move.MovingPiece(), move.FromSquare);
+            zobristHash ^= Zobrist.PieceSquare(move.CapturedPiece(), move.ToSquare);
+            zobristHash ^= Zobrist.PieceSquare(move.NewPiece(), move.ToSquare);
 
             switch (move.Flags)
             {
                 case Piece.EnPassant | Piece.BlackPawn:
-                    zobristHash ^= Zobrist.PieceSquare(Piece.WhitePawn, to + 8);
+                    zobristHash ^= Zobrist.PieceSquare(Piece.WhitePawn, move.ToSquare + 8);
                     break;
                 case Piece.EnPassant | Piece.WhitePawn:
-                    zobristHash ^= Zobrist.PieceSquare(Piece.BlackPawn, to - 8);
+                    zobristHash ^= Zobrist.PieceSquare(Piece.BlackPawn, move.ToSquare - 8);
                     break;
                 case Piece.CastleShort | Piece.Black:
                     zobristHash ^= Zobrist.PieceSquare(Piece.BlackRook, 63);
@@ -442,23 +438,11 @@ namespace Perft
                     break;
             }
 
-            //Always flip the side to move
-            zobristHash ^= Zobrist.SideToMove;
-            //En passent
-            if(prev.CastleFlags != next.CastleFlags)
-            {
-                zobristHash ^= Zobrist.Castling(prev.CastleFlags);
-                zobristHash ^= Zobrist.Castling(next.CastleFlags);
-            }
-            //Castling
-            if (prev.EnPassant != next.EnPassant)
-            {
-                zobristHash ^= Zobrist.EnPassant(LSB(prev.EnPassant));
-                zobristHash ^= Zobrist.EnPassant(LSB(next.EnPassant));
-            }
+            //En passent & Castling
+            for (ulong bits = (next.CastleFlags ^ prev.CastleFlags) | (next.EnPassant ^ prev.EnPassant); bits != 0; bits = ClearLSB(bits))
+                zobristHash ^= Zobrist.Castling(LSB(bits));
 
-            //ulong freshHash = next.ComputeZobristHash();
-            //if (freshHash != zobristHash)
+            //if (next.ComputeZobristHash() != zobristHash)
             //    Console.WriteLine("Bad incremental ZobristHash");
 
             return zobristHash;

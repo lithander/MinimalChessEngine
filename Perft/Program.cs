@@ -21,7 +21,7 @@ namespace Perft
 
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v22");
+            Console.WriteLine("Leorik Perft v23");
             Console.WriteLine();
             Benchmark();
             Console.WriteLine();
@@ -177,8 +177,8 @@ namespace Perft
             BoardState next = Positions[depth + 1];
 
             //probe hash-tree
-            if (PerftTable.Retrieve(hash, depth, out long childCount))
-                return childCount;
+            //if (PerftTable.Retrieve(hash, depth, out long childCount))
+            //    return childCount;
 
             int i = moves.Next;
             moves.Collect(current);
@@ -187,9 +187,9 @@ namespace Perft
             {
                 if (next.TryPlay(current, ref Moves[i]))
                 {
+                    ulong nextHash = BoardState.UpdateHash(hash, ref Moves[i], current, next);
                     if (remaining > 1)
                     {
-                        ulong nextHash = BoardState.UpdateHash(hash, ref Moves[i], current, next);
                         sum += Perft2(depth + 1, remaining - 1, nextHash, moves);
                     }
                     else
@@ -197,7 +197,7 @@ namespace Perft
                 }
             }
 
-            PerftTable.Store(hash, depth, sum);
+            //PerftTable.Store(hash, depth, sum);
             return sum;
         }
 

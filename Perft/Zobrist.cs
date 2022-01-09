@@ -10,8 +10,7 @@ namespace Perft
     public static class Zobrist
     {
         public static ulong[][] BoardTable = new ulong[64][];
-        static ulong[] EnPassantTable = new ulong[64];
-        static ulong[] CastlingTable = new ulong[16]; //all permutations of castling rights, CastlingRights.All == 15
+        static ulong[] FlagsTable = new ulong[64];
         public static ulong SideToMove;
 
         static Zobrist()
@@ -23,14 +22,11 @@ namespace Perft
                 BoardTable[square] = new ulong[14];
                 for (int piece = 2; piece < 14; piece++)
                     BoardTable[square][piece] = RandomUInt64(rnd);
-                //En passent
-                EnPassantTable[square] = RandomUInt64(rnd);
+                //Castling & EnPassant
+                FlagsTable[square] = RandomUInt64(rnd);
             }
             //Side to Move
             SideToMove = RandomUInt64(rnd);
-            //Castling
-            for (int i = 0; i < 16; i++)
-                CastlingTable[i] = RandomUInt64(rnd);
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -46,24 +42,9 @@ namespace Perft
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong Castling(ulong castlingRights)
+        public static ulong Castling(int square)
         {
-            //map the castling rights mask to a 4-bit integer 0x0000 to 0x1111 = 15
-            int entry = Bit(castlingRights, 0, 0) | 
-                        Bit(castlingRights, 7, 1) | 
-                        Bit(castlingRights, 56, 2) | 
-                        Bit(castlingRights, 63, 3);
-            //Console.WriteLine($"bit1={bit1} | bit2={bit2} |bit3={bit3} | bit4={bit4} Total={entry}");
-            return CastlingTable[entry];
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static int Bit(ulong bb, int square, int shift) => (int)((bb >> square) & 1) << shift;
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static ulong EnPassant(int square)
-        {
-            return (square < 64) ? EnPassantTable[square] : 0;
+            return FlagsTable[square];
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
