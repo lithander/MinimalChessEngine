@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace Perft
+namespace Leorik
 {
     public enum Color
     {

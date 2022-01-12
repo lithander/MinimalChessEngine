@@ -1,6 +1,6 @@
 ﻿using System.Runtime.CompilerServices;
 
-namespace Perft
+namespace Leorik
 {
     public struct MoveGen
     {

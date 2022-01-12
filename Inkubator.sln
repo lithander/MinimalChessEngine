@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 16
-VisualStudioVersion = 16.0.29911.84
+# Visual Studio Version 17
+VisualStudioVersion = 17.0.32014.148
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalChessEngine", "MinimalChessEngine\MinimalChessEngine.csproj", "{A98699C1-518F-41EA-9B8C-839C6F583020}"
 EndProject
@@ -14,7 +14,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "BitboardExplorer", "Bitboar
 		{170FAFB1-B29E-4ED3-BF04-D6F7753B86CD} = {170FAFB1-B29E-4ED3-BF04-D6F7753B86CD}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Perft", "Perft\Perft.csproj", "{0E77763C-0963-4789-A036-29CA384139AA}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Leorik", "Perft\Leorik.csproj", "{0E77763C-0963-4789-A036-29CA384139AA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

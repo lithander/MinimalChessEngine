@@ -1,8 +1,8 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
-using static Perft.Bitboard;
+using static Leorik.Bitboard;
 
-namespace Perft
+namespace Leorik
 {
     public class BoardState
     {

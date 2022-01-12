@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.CompilerServices;
 
-namespace Perft
+namespace Leorik
 {
     public readonly struct Move
     {
