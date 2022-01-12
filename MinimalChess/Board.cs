@@ -1,6 +1,6 @@
-﻿using System;
+﻿using Leorik;
+using System;
 using System.Diagnostics;
-using System.Runtime.CompilerServices;
 
 namespace MinimalChess
 {
@@ -15,17 +15,6 @@ namespace MinimalChess
     // 1  00 01 02 03 04 05 06 07  1
     //    A  B  C  D  E  F  G  H        WHITE
 
-    [Flags]
-    public enum CastlingRights
-    {
-        None = 0,
-        WhiteKingside = 1,
-        WhiteQueenside = 2,
-        BlackKingside = 4,
-        BlackQueenside = 8,
-        All = 15
-    }
-
     public class Board
     {
         static readonly int BlackKingSquare = Notation.ToSquare("e8");
@@ -37,6 +26,17 @@ namespace MinimalChess
 
         public const string STARTING_POS_FEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
 
+        [Flags]
+        public enum CastlingRights
+        {
+            None = 0,
+            WhiteKingside = 1,
+            WhiteQueenside = 2,
+            BlackKingside = 4,
+            BlackQueenside = 8,
+            All = 15
+        }
+
         /*** STATE DATA ***/
         private Piece[] _state = new Piece[64];
         private CastlingRights _castlingRights = CastlingRights.All;
@@ -45,9 +45,6 @@ namespace MinimalChess
         private ulong _zobristHash = 0;
         private Evaluation.Eval _eval;
         /*** STATE DATA ***/
-
-        private BoardState _bbState;
-        public BoardState Bitboards => _bbState;
 
         public int Score => _eval.Score;
 
@@ -64,8 +61,7 @@ namespace MinimalChess
             }
         }
 
-        public CastlingRights CastlingRights => _castlingRights;
-        public int EnPassentSquare => _enPassantSquare;
+        public BoardState BoardState { get; set; }
 
         public Board() { }
 
@@ -94,7 +90,6 @@ namespace MinimalChess
             _castlingRights = board._castlingRights;
             _zobristHash = board._zobristHash;
             _eval = board._eval;
-            _bbState = board._bbState;
         }
 
         public Piece this[int square]
@@ -162,8 +157,6 @@ namespace MinimalChess
 
             //Initialze Hash
             InitZobristHash();
-
-            _bbState = BoardState.CopyFrom(this);
         }
 
 
@@ -181,14 +174,6 @@ namespace MinimalChess
 
         public void Play(Move move)
         {
-            //move = AddFlags(move);
-            _bbState.Play(move);
-            PlayClassic(move);
-            //_bbState.AssertEquality(BoardState.CopyFrom(this));
-        }
-
-        private void PlayClassic(Move move)
-        {
             Piece movingPiece = this[move.FromSquare];
             if (move.Promotion != Piece.None)
                 movingPiece = move.Promotion.OfColor(_sideToMove);
@@ -198,14 +183,14 @@ namespace MinimalChess
             //...and clear the square it was previously located
             this[move.FromSquare] = Piece.None;
 
-            if ((move.Flags & Piece.EnPassant) != 0 && IsEnPassant(movingPiece, move, out int captureIndex))
+            if (IsEnPassant(movingPiece, move, out int captureIndex))
             {
                 //capture the pawn
                 this[captureIndex] = Piece.None;
             }
 
             //handle castling special case
-            if ((move.Flags & Piece.Castle) != 0 && IsCastling(movingPiece, move, out Move rookMove))
+            if (IsCastling(movingPiece, move, out Move rookMove))
             {
                 //move the rook to the target square and clear from square
                 this[rookMove.ToSquare] = this[rookMove.FromSquare];
@@ -300,234 +285,6 @@ namespace MinimalChess
             return false;
         }
 
-
-        //*******************************
-        //** MOVE GENERATION BITBOARD ***
-        //*******************************
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private void NewMove(Action<Move> moveHandler, byte from, ulong moveTargets)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            moveHandler(new Move(from, to)); //TODO: don't forget that this was a bishop! Assign the flags here were they are readily available!
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void NewPawnMove(Action<Move> moveHandler, ulong moveTargets, int offset)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            byte from = (byte)(to + offset);
-            moveHandler(new Move(from, to));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void NewEnPassantCapture(Action<Move> moveHandler, ulong moveTargets, int offset)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            byte from = (byte)(to + offset);
-            moveHandler(new Move(from, to, Piece.None, Piece.EnPassant));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void WhitePawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            byte from = (byte)(to + offset);
-            moveHandler(new Move(from, to, Piece.WhiteQueen));
-            moveHandler(new Move(from, to, Piece.WhiteRook));
-            moveHandler(new Move(from, to, Piece.WhiteBishop));
-            moveHandler(new Move(from, to, Piece.WhiteKnight));
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static void BlackPawnPromotions(Action<Move> moveHandler, ulong moveTargets, int offset)
-        {
-            byte to = (byte)Bitboard.LSB(moveTargets);
-            byte from = (byte)(to + offset);
-            moveHandler(new Move(from, to, Piece.BlackQueen));
-            moveHandler(new Move(from, to, Piece.BlackRook));
-            moveHandler(new Move(from, to, Piece.BlackBishop));
-            moveHandler(new Move(from, to, Piece.BlackKnight));
-        }
-
-        private void CollectMovesBitboard(Action<Move> moveHandler)
-        {
-            ulong sideToMove = _sideToMove == Color.Black ? _bbState.Black : _bbState.White;
-            ulong occupied = _bbState.Black | _bbState.White;
-
-            //Kings
-            byte square = (byte)Bitboard.LSB(_bbState.Kings & sideToMove);
-            //can't move on squares occupied by side to move
-            ulong targets = Bitboard.KingTargets[square] & ~sideToMove;
-            for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewMove(moveHandler, square, targets);
-
-            //Knights
-            for (ulong knights = _bbState.Knights & sideToMove; knights != 0; knights = Bitboard.ClearLSB(knights))
-            {
-                square = (byte)Bitboard.LSB(knights);
-                //can't move on squares occupied by side to move
-                targets = Bitboard.KnightTargets[square] & ~sideToMove;
-                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(moveHandler, square, targets);
-            }
-
-            //Bishops
-            for (ulong bishops = _bbState.Bishops & sideToMove; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
-            {
-                square = (byte)Bitboard.LSB(bishops);
-                //can't move on squares occupied by side to move
-                targets = Bitboard.GetBishopTargets(occupied, square) & ~sideToMove;
-                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(moveHandler, square, targets);
-            }
-
-            //Rooks
-            for (ulong rooks = _bbState.Rooks & sideToMove; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
-            {
-                square = (byte)Bitboard.LSB(rooks);
-                //can't move on squares occupied by side to move
-                targets = Bitboard.GetRookTargets(occupied, square) & ~sideToMove;
-                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(moveHandler, square, targets);
-            }
-
-            //Queens
-            for (ulong queens = _bbState.Queens & sideToMove; queens != 0; queens = Bitboard.ClearLSB(queens))
-            {
-                square = (byte)Bitboard.LSB(queens);
-                //can't move on squares occupied by side to move
-                targets = (Bitboard.GetBishopTargets(occupied, square) | Bitboard.GetRookTargets(occupied, square)) & ~sideToMove;
-                for (; targets != 0; targets = Bitboard.ClearLSB(targets))
-                    NewMove(moveHandler, square, targets);
-            }
-
-            //Pawns & Castling
-            if (_sideToMove == Color.White)
-            {
-                CollectWhitePawnMoves(moveHandler);
-                CollectWhiteCastlingMoves(moveHandler);
-            }
-            else
-            {
-                CollectBlackPawnMoves(moveHandler);
-                CollectBlackCastlingMoves(moveHandler);
-            }
-        }
-
-        private void CollectWhiteCastlingMoves(Action<Move> moveHandler)
-        {
-            //TODO: consider enum with Square.B2
-            if(_bbState.CanWhiteCastleLong() && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(3) && !_bbState.IsAttackedByBlack(2))
-                moveHandler(Move.WhiteCastlingLong);
-
-            if (_bbState.CanWhiteCastleShort() && !_bbState.IsAttackedByBlack(4) && !_bbState.IsAttackedByBlack(5) && !_bbState.IsAttackedByBlack(6))
-                moveHandler(Move.WhiteCastlingShort);
-        }
-
-        private void CollectBlackCastlingMoves(Action<Move> moveHandler)
-        {
-            if (_bbState.CanBlackCastleLong() && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(59) && !_bbState.IsAttackedByWhite(58))
-                moveHandler(Move.BlackCastlingLong);
-
-            if (_bbState.CanBlackCastleShort() && !_bbState.IsAttackedByWhite(60) && !_bbState.IsAttackedByWhite(61) && !_bbState.IsAttackedByWhite(62))
-                moveHandler(Move.BlackCastlingShort);
-        }
-
-        private void CollectBlackPawnMoves(Action<Move> moveHandler)
-        {
-            ulong targets;
-            ulong occupied = _bbState.Black | _bbState.White;
-            ulong blackPawns = _bbState.Pawns & _bbState.Black;
-            ulong oneStep = (blackPawns >> 8) & ~occupied;
-            //move one square down
-            for (targets = oneStep & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, +8);
-
-            //move to first rank and promote
-            for (targets = oneStep & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                BlackPawnPromotions(moveHandler, targets, +8);
-
-            //move two squares down
-            ulong twoStep = (oneStep >> 8) & ~occupied;
-            for (targets = twoStep & 0x000000FF00000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, +16);
-
-            //capture left
-            ulong captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & _bbState.White;
-            for (targets = captureLeft & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, +9);
-
-            //capture left to first rank and promote
-            for (targets = captureLeft & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                BlackPawnPromotions(moveHandler, targets, +9);
-
-            //capture right
-            ulong captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & _bbState.White;
-            for (targets = captureRight & 0xFFFFFFFFFFFFFF00UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, +7);
-
-            //capture right to first rank and promote
-            for (targets = captureRight & 0x00000000000000FFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                BlackPawnPromotions(moveHandler, targets, +7);
-
-            //enPassantLeft
-            captureLeft = ((blackPawns & 0xFEFEFEFEFEFEFEFEUL) >> 9) & (1UL << _bbState.EnPassantSquare);
-            if (captureLeft != 0)
-                NewEnPassantCapture(moveHandler, captureLeft, +9);
-
-            captureRight = ((blackPawns & 0x7F7F7F7F7F7F7F7FUL) >> 7) & (1UL << _bbState.EnPassantSquare);
-            if (captureRight != 0)
-                NewEnPassantCapture(moveHandler, captureRight, +7);
-        }
-
-        private void CollectWhitePawnMoves(Action<Move> moveHandler)
-        {
-            ulong targets;
-            ulong whitePawns = _bbState.Pawns & _bbState.White;
-            ulong occupied = _bbState.Black | _bbState.White;
-            ulong oneStep = (whitePawns << 8) & ~occupied;
-            //move one square up
-            for (targets = oneStep & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, -8);
-
-            //move to last rank and promote
-            for (targets = oneStep & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                WhitePawnPromotions(moveHandler, targets, -8);
-
-            //move two squares up
-            ulong twoStep = (oneStep << 8) & ~occupied;
-            for (targets = twoStep & 0x00000000FF000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, -16);
-
-            //capture left
-            ulong captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & _bbState.Black;
-            for (targets = captureLeft & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, -7);
-
-            //capture left to last rank and promote
-            for (targets = captureLeft & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                WhitePawnPromotions(moveHandler, targets, -7);
-
-            //capture right
-            ulong captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & _bbState.Black;
-            for (targets = captureRight & 0x00FFFFFFFFFFFFFFUL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                NewPawnMove(moveHandler, targets, -9);
-
-            //capture right to last rank and promote
-            for (targets = captureRight & 0xFF00000000000000UL; targets != 0; targets = Bitboard.ClearLSB(targets))
-                WhitePawnPromotions(moveHandler, targets, -9);
-
-            //enPassantLeft
-            captureLeft = ((whitePawns & 0xFEFEFEFEFEFEFEFEUL) << 7) & (1UL << _bbState.EnPassantSquare);
-            if (captureLeft != 0)
-                NewEnPassantCapture(moveHandler, captureLeft, -7);
-
-            captureRight = ((whitePawns & 0x7F7F7F7F7F7F7F7FUL) << 9) & (1UL << _bbState.EnPassantSquare);
-            if (captureRight != 0)
-                NewEnPassantCapture(moveHandler, captureRight, -9);
-        }
-
         //**********************
         //** MOVE GENERATION ***
         //**********************
@@ -541,9 +298,8 @@ namespace MinimalChess
 
         public void CollectMoves(Action<Move> moveHandler)
         {
-            CollectMovesBitboard(moveHandler);
-            //for (int square = 0; square < 64; square++)
-            //    CollectMoves(square, moveHandler);
+            for (int square = 0; square < 64; square++)
+                CollectMoves(square, moveHandler);
         }
 
         public void CollectQuiets(Action<Move> moveHandler)
@@ -653,21 +409,8 @@ namespace MinimalChess
         //*****************
         //** CHECK TEST ***
         //*****************
-        
+
         public bool IsChecked(Color color)
-        {
-            return _bbState.IsChecked(color);
-        }
-
-        public bool IsSquareAttackedBy(int square, Color color)
-        {
-            if (color == Color.Black)
-                return _bbState.IsAttackedByBlack(square);
-            else
-                return _bbState.IsAttackedByWhite(square);
-        }        
-
-        public bool IsCheckedClassic(Color color)
         {
             Piece king = color == Color.Black ? Piece.BlackKing : Piece.WhiteKing;
             for (int square = 0; square < 64; square++)
@@ -677,7 +420,7 @@ namespace MinimalChess
             throw new Exception($"No {color} King found!");
         }
 
-        public bool IsSquareAttackedByClassic(int square, Color color)
+        public bool IsSquareAttackedBy(int square, Color color)
         {
             //1. Pawns? (if attacker is white, pawns move up and the square is attacked from below. squares below == Attacks.BlackPawn)
             var pawnAttacks = color == Color.White ? Attacks.BlackPawn : Attacks.WhitePawn;

@@ -40,7 +40,7 @@ namespace MinimalChess
             return ((int)piece >> 1) - 2;
         }
 
-        public static ulong Castling(CastlingRights castlingRights)
+        public static ulong Castling(Board.CastlingRights castlingRights)
         {
             return CastlingTable[(int)castlingRights];
         }

@@ -4,14 +4,12 @@ namespace MinimalChess
 {
     public struct Move
     {
-        public readonly Piece Flags;
         public readonly byte FromSquare;
         public readonly byte ToSquare;
         public readonly Piece Promotion;
 
         public Move(int fromIndex, int toIndex)
         {
-            Flags = Piece.None;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
             Promotion = Piece.None;
@@ -19,29 +17,13 @@ namespace MinimalChess
 
         public Move(int fromIndex, int toIndex, Piece promotion)
         {
-            Flags = Piece.Promotion;
             FromSquare = (byte)fromIndex;
             ToSquare = (byte)toIndex;
             Promotion = promotion;
         }
 
-        public Move(int fromIndex, int toIndex, Piece promotion, Piece flags)
+        public Move(string uciMoveNotation)
         {
-            Flags = flags;
-            FromSquare = (byte)fromIndex;
-            ToSquare = (byte)toIndex;
-            Promotion = promotion;
-        }
-
-        public Move(Move move, Piece flags)
-        {
-            this = move;
-            Flags = flags;
-        }
-
-        public Move(string uciMoveNotation, Piece flags = Piece.None)
-        {
-            Flags = flags;
             if (uciMoveNotation.Length < 4)
                 throw new ArgumentException($"Long algebraic notation expected. '{uciMoveNotation}' is too short!");
             if (uciMoveNotation.Length > 5)
@@ -93,14 +75,14 @@ namespace MinimalChess
             return result;
         }
 
-        public static Move BlackCastlingShort = new Move("e8g8", Piece.Castle);
-        public static Move BlackCastlingLong = new Move("e8c8", Piece.Castle);
-        public static Move WhiteCastlingShort = new Move("e1g1", Piece.Castle);
-        public static Move WhiteCastlingLong = new Move("e1c1", Piece.Castle);
+        public static Move BlackCastlingShort = new Move("e8g8");
+        public static Move BlackCastlingLong = new Move("e8c8");
+        public static Move WhiteCastlingShort = new Move("e1g1");
+        public static Move WhiteCastlingLong = new Move("e1c1");
 
-        public static Move BlackCastlingShortRook = new Move("h8f8", Piece.Castle);
-        public static Move BlackCastlingLongRook = new Move("a8d8", Piece.Castle);
-        public static Move WhiteCastlingShortRook = new Move("h1f1", Piece.Castle);
-        public static Move WhiteCastlingLongRook = new Move("a1d1", Piece.Castle);
+        public static Move BlackCastlingShortRook = new Move("h8f8");
+        public static Move BlackCastlingLongRook = new Move("a8d8");
+        public static Move WhiteCastlingShortRook = new Move("h1f1");
+        public static Move WhiteCastlingLongRook = new Move("a1d1");
     }
 }

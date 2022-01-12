@@ -55,14 +55,14 @@ namespace BitboardExplorer
                 else if(command == "bis" && tokens.Length== 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
-                        square = Notation.ToSquare(tokens[1]);
+                        square = Leorik.Notation.ToSquare(tokens[1]);
                     FindBishopTargetsAnnotated(bitboard, square);
                     PrintBitboard(Bitboard.GetBishopTargets(bitboard, square), "Bitboard.GenBishop");
                 }
                 else if(command == "rook" && tokens.Length == 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
-                        square = Notation.ToSquare(tokens[1]);
+                        square = Leorik.Notation.ToSquare(tokens[1]);
                     FindRookTargetsAnnotated(bitboard, square);
                     PrintBitboard(Bitboard.GetRookTargets(bitboard, square), "Bitboard.GenRook");
                 }
@@ -89,7 +89,7 @@ namespace BitboardExplorer
                 else if (command.Count(c => c == '/') == 7) //Fen-string detection
                 {
                     Board board = new Board(input);
-                    BoardState bitboards = BoardState.CopyFrom(board);
+                    Leorik.BoardState bitboards = board.BoardState;
                     bitboard = bitboards.White | bitboards.Black;
                     PrintBoardState(bitboards);
                 }
@@ -324,7 +324,7 @@ namespace BitboardExplorer
             PrintBitboard(bitboard);
         }
 
-        private static void PrintBoardState(BoardState bitboards)
+        private static void PrintBoardState(Leorik.BoardState bitboards)
         {
             PrintBitboard(bitboards.Black, $"Black: {ToHex(bitboards.Black)}");
             PrintBitboard(bitboards.White, $"White: {ToHex(bitboards.White)}");
