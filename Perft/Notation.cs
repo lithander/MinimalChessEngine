@@ -1,10 +1,13 @@
 ﻿using System;
+using System.Text;
 
 namespace Leorik
 {
     public static class Notation
     {
-        public static char ToChar(Piece piece)
+        //TODO: consider offering extension methods
+
+        public static char GetChar(Piece piece)
         {
             return piece switch
             {
@@ -24,7 +27,7 @@ namespace Leorik
             };
         }
 
-        public static Piece ToPiece(char ascii)
+        public static Piece GetPiece(char ascii)
         {
             return ascii switch
             {
@@ -44,7 +47,7 @@ namespace Leorik
             };
         }
 
-        internal static BoardState ToBoardState(string fen)
+        public static BoardState GetBoardState(string fen)
         {
             BoardState result = new BoardState();
             //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
@@ -68,7 +71,7 @@ namespace Leorik
                     }
                     else
                     {
-                        result.SetBit(rank * 8 + file, Notation.ToPiece(piece));
+                        result.SetBit(rank * 8 + file, Notation.GetPiece(piece));
                         file++;
                     }
                 }
@@ -92,11 +95,80 @@ namespace Leorik
                 result.CastleFlags |= BoardState.BlackQueensideRookBit;
 
             //Set en-passant square
-            result.EnPassant = fields[3] == "-" ? 0 : 1UL << ToSquare(fields[3]);
+            result.EnPassant = fields[3] == "-" ? 0 : 1UL << GetSquare(fields[3]);
             return result;
         }
 
-        public static string ToSquareName(byte squareIndex)
+        public static string GetFEN(BoardState board)
+        {
+            //Startpos in FEN looks like this: "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+            //https://en.wikipedia.org/wiki/Forsyth%E2%80%93Edwards_Notation
+
+            StringBuilder fen = new StringBuilder();
+            //Piece placement is starting with rank 8 and ending with rank 1
+            for (int rank = 7; rank >= 0; rank--)
+            {
+                //Scan piece placement from the A file to H file.
+                int empty = 0;
+                for (int file = 0; file <= 7; file++)
+                {
+                    int square = rank * 8 + file;
+                    Piece piece = board.GetPiece(square);
+                    //Consequtive empty fields are represented as an integer number [1..8]
+                    if (piece == Piece.None)
+                        empty++;
+                    else
+                    {
+                        if (empty > 0)
+                        {
+                            fen.Append(empty);
+                            empty = 0;
+                        }
+                        //Pieces are represtend as a single letter
+                        fen.Append(GetChar(piece));
+                    }
+                }
+                if (empty > 0)
+                    fen.Append(empty);
+
+                //Each rank is separated by the terminal symbol '/'(slash).
+                if (rank > 0)
+                    fen.Append('/');
+            }
+
+            //Side to move is either 'w' or 'b'
+            if (board.SideToMove == Color.White)
+                fen.Append(" w ");
+            else
+                fen.Append(" b ");
+
+            //Castling rights
+            if(board.CastleFlags == 0)
+                fen.Append('-');
+            if((board.CastleFlags & BoardState.WhiteKingsideRookBit) > 0)
+                fen.Append('K');
+            if ((board.CastleFlags & BoardState.WhiteQueensideRookBit) > 0)
+                fen.Append('Q');
+            if ((board.CastleFlags & BoardState.BlackKingsideRookBit) > 0)
+                fen.Append('k');
+            if ((board.CastleFlags & BoardState.BlackQueensideRookBit) > 0)
+                fen.Append('q');
+            fen.Append(' ');
+
+            if(board.EnPassant == 0)
+                fen.Append('-');
+            else
+            {
+                int square = Bitboard.LSB(board.EnPassant);
+                fen.Append(GetSquareName(square));
+            }
+            //Halfmove Clock & Fullmove Counter
+            fen.Append(" 0 1");
+
+            return fen.ToString();
+        }
+
+        public static string GetSquareName(int squareIndex)
         {
             //This is the reverse of the ToSquareIndex()
             int rank = squareIndex / 8;
@@ -107,7 +179,7 @@ namespace Leorik
             return squareNotation;
         }
 
-        public static byte ToSquare(string squareNotation)
+        public static int GetSquare(string squareNotation)
         {
             //Each square has a unique identification of file letter followed by rank number.
             //https://en.wikipedia.org/wiki/Algebraic_notation_(chess)
@@ -120,7 +192,7 @@ namespace Leorik
             int index = rank * 8 + file;
 
             if (index >= 0 && index <= 63)
-                return (byte)index;
+                return index;
 
             throw new ArgumentException($"The given square notation {squareNotation} does not map to a valid index between 0 and 63");
         }

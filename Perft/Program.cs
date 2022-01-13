@@ -45,7 +45,7 @@ namespace Leorik
                 string fen = data[0];
                 int depth = int.Parse(data[1]);
                 long refResult = long.Parse(data[2]);
-                Positions[0].Copy(Notation.ToBoardState(fen));
+                Positions[0].Copy(Notation.GetBoardState(fen));
                 //Print(Positions[0]);
                 PerftTable.Clear();
 
@@ -79,7 +79,7 @@ namespace Leorik
                 for (int file = 0; file < 8; file++)
                 {
                     Piece piece = board.GetPiece(rank * 8 + file);
-                    Console.Write(Notation.ToChar(piece));
+                    Console.Write(Notation.GetChar(piece));
                     Console.Write(' ');
                 }
                 Console.ResetColor();

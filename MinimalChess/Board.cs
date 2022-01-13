@@ -61,7 +61,35 @@ namespace MinimalChess
             }
         }
 
-        public BoardState BoardState { get; set; }
+        public BoardState BoardState 
+        {
+            get
+            {
+                BoardState result = new BoardState();
+                for (int i = 0; i < 64; i++)
+                    result.SetBit(i, (Leorik.Piece)_state[i]);
+
+                //Set side to move
+                result.SideToMove = (Leorik.Color)SideToMove;
+                                
+                //Set castling rights
+                if (HasCastlingRight(CastlingRights.WhiteKingside))
+                    result.CastleFlags |= BoardState.WhiteKingsideRookBit;
+
+                if (HasCastlingRight(CastlingRights.WhiteQueenside))
+                    result.CastleFlags |= BoardState.WhiteQueensideRookBit;
+
+                if (HasCastlingRight(CastlingRights.BlackKingside))
+                    result.CastleFlags |= BoardState.BlackKingsideRookBit;
+
+                if (HasCastlingRight(CastlingRights.BlackQueenside))
+                    result.CastleFlags |= BoardState.BlackQueensideRookBit;
+
+                //Set en-passant square
+                result.EnPassant = _enPassantSquare < 0 ? 0 : 1UL << _enPassantSquare;
+                return result;
+            }
+        }
 
         public Board() { }
 

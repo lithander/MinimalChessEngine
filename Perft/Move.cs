@@ -32,12 +32,12 @@ namespace Leorik
             //Examples: e2e4, e7e5, e1g1(white short castling), e7e8q(for promotion)
             string fromSquare = uciMoveNotation.Substring(0, 2);
             string toSquare = uciMoveNotation.Substring(2, 2);
-            FromSquare = Notation.ToSquare(fromSquare);
-            ToSquare = Notation.ToSquare(toSquare);
+            FromSquare = (byte)Notation.GetSquare(fromSquare);
+            ToSquare = (byte)Notation.GetSquare(toSquare);
             //the presence of a 5th character should mean promotion
             if (uciMoveNotation.Length == 5)
             {
-                Piece promo = Notation.ToPiece(uciMoveNotation[4]) & ~Piece.ColorMask;
+                Piece promo = Notation.GetPiece(uciMoveNotation[4]) & ~Piece.ColorMask;
                 Flags |= (Piece)((int)promo << 3) | Piece.Pawn;
             }
         }

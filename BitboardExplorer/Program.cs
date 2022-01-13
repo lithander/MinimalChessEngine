@@ -55,14 +55,14 @@ namespace BitboardExplorer
                 else if(command == "bis" && tokens.Length== 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
-                        square = Leorik.Notation.ToSquare(tokens[1]);
+                        square = Leorik.Notation.GetSquare(tokens[1]);
                     FindBishopTargetsAnnotated(bitboard, square);
                     PrintBitboard(Bitboard.GetBishopTargets(bitboard, square), "Bitboard.GenBishop");
                 }
                 else if(command == "rook" && tokens.Length == 2)
                 {
                     if (!int.TryParse(tokens[1], out int square))
-                        square = Leorik.Notation.ToSquare(tokens[1]);
+                        square = Leorik.Notation.GetSquare(tokens[1]);
                     FindRookTargetsAnnotated(bitboard, square);
                     PrintBitboard(Bitboard.GetRookTargets(bitboard, square), "Bitboard.GenRook");
                 }

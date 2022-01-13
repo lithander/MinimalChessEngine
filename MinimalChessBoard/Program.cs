@@ -64,7 +64,7 @@ namespace MinimalChessBoard
                         }
                         else
                         {
-                            if(int.TryParse(tokens[1], out int depth))
+                            if (int.TryParse(tokens[1], out int depth))
                                 RunPerft(board, depth);
                             else
                                 ComparePerft(tokens[1]);
@@ -97,6 +97,11 @@ namespace MinimalChessBoard
                     else if (command == "m")
                     {
                         PrintMobility(board);
+                    }
+                    else if (command == "test")
+                    {
+                        //tests fen conversion
+                        Test(tokens[1]);
                     }
                     else
                     {
@@ -275,11 +280,11 @@ namespace MinimalChessBoard
 
                 Board board = new Board(fen);
                 //PerftTable.Clear();
-                
+
                 long t0 = Stopwatch.GetTimestamp();
                 long result = Perft(board, depth);
                 long t1 = Stopwatch.GetTimestamp();
-                
+
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
                 double ms = (1000 * dt);
 
@@ -365,7 +370,7 @@ namespace MinimalChessBoard
                 Console.WriteLine($"{totalNodes,14} nodes, { (int)(totalTime / freq)} seconds, {foundBest} solved.");
             }
             Console.WriteLine();
-            Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes/1000}K nodes visited. Took {totalTime/freq:0.###} seconds!");
+            Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes / 1000}K nodes visited. Took {totalTime / freq:0.###} seconds!");
             Console.WriteLine($"Best move found in {foundBest} / {count} positions!");
         }
 
@@ -388,6 +393,45 @@ namespace MinimalChessBoard
                 //Console.WriteLine($"{bmString} => {bestMove}");
                 bestMoves.Add(bestMove);
             }
+        }
+
+        private static void Test(string filePath)
+        {
+            int errors = 0;
+            var file = File.OpenText(filePath);
+            while (!file.EndOfStream)
+            {
+                //The parser expects a fen-string followed by a depth and a perft results at that depth
+                //Example: 4k3 / 8 / 8 / 8 / 8 / 8 / 8 / 4K2R w K - 0 1; D1 15; D2 66; 6; 764643
+                string entry = file.ReadLine();
+                string[] data = entry.Split(';');
+                string fen = data[0].TrimEnd();
+                Console.WriteLine(fen);
+                Board board = new Board(fen);
+                Leorik.BoardState a = board.BoardState;
+                Leorik.BoardState b = Leorik.Notation.GetBoardState(fen);
+                ulong hashA = a.ComputeZobristHash();
+                ulong hashB = b.ComputeZobristHash();
+                if (hashA == hashB)
+                    Console.WriteLine("Board -> BoardState: Ok!");
+                else
+                {
+                    Console.WriteLine($"Wrong Hash! {hashA} vs {hashB}");
+                    errors++;
+                    continue;
+                }
+
+                string fen2 = Leorik.Notation.GetFEN(b);
+                if (fen == fen2)
+                    Console.WriteLine("GetFEN(BoardState): Ok!");
+                else
+                {
+                    Console.WriteLine($"Wrong FEN! {fen} vs {fen2}");
+                    errors++;
+                    continue;
+                }
+            }
+            Console.WriteLine($"{errors} Errors!");
         }
     }
 }
