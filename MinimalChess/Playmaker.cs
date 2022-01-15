@@ -6,14 +6,14 @@ namespace MinimalChess
     {
         internal static IEnumerable<(Move Move, Board Board)> Play(Board position, int depth, KillerMoves killers, History history)
         {
-            //1. Captures Mvv-Lva, PV excluded
+            //1. Is there a known best move for this position? (PV Node)
             if (Transpositions.GetBestMove(position, out Move bestMove))
             {
                 var nextPosition = new Board(position, bestMove);
                 yield return (bestMove, nextPosition);
             }
 
-            //2. Captures Mvv-Lva, PV excluded
+            //2. Try all captures ordered by Mvv-Lva
             foreach (var capture in MoveList.SortedCaptures(position))
             {
                 var nextPosition = new Board(position, capture);
@@ -21,7 +21,7 @@ namespace MinimalChess
                     yield return (capture, nextPosition);
             }
 
-            //3. Killers if available
+            //3. Play quiet moves that have caused a beta cutoff elsewhere if available
             foreach (Move killer in killers.Get(depth))
             {
                 if (position[killer.ToSquare] != Piece.None || !position.IsPlayable(killer))
@@ -32,7 +32,7 @@ namespace MinimalChess
                     yield return (killer, nextPosition);
             }
 
-            //4. Play quiet moves that aren't known killers
+            //4. Play the remaining quiet moves ordered by history
             foreach (var move in MoveList.SortedQuiets(position, history))
             {
                 if (killers.Contains(depth, move))
