@@ -62,7 +62,7 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.Black; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                targets = Bitboard.GetDiagonalTargets(occupied, square) & ~board.Black;
+                targets = Bitboard.GetBishopTargets(occupied, square) & ~board.Black;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                     Add(Piece.BlackBishop, square, Bitboard.LSB(targets));
             }
@@ -71,7 +71,7 @@ namespace Leorik
             for (ulong rooks = board.Rooks & board.Black; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                targets = Bitboard.GetOrthogonalTargets(occupied, square) & ~board.Black;
+                targets = Bitboard.GetRookTargets(occupied, square) & ~board.Black;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                     Add(Piece.BlackRook, square, Bitboard.LSB(targets));
             }
@@ -162,7 +162,7 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.White; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                targets = Bitboard.GetDiagonalTargets(occupied, square) & ~board.White;
+                targets = Bitboard.GetBishopTargets(occupied, square) & ~board.White;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                     Add(Piece.WhiteBishop, square, Bitboard.LSB(targets));
             }
@@ -171,7 +171,7 @@ namespace Leorik
             for (ulong rooks = board.Rooks & board.White; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                targets = Bitboard.GetOrthogonalTargets(occupied, square) & ~board.White;
+                targets = Bitboard.GetRookTargets(occupied, square) & ~board.White;
                 for (; targets != 0; targets = Bitboard.ClearLSB(targets))
                     Add(Piece.WhiteRook, square, Bitboard.LSB(targets));
             }

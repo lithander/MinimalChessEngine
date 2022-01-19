@@ -318,11 +318,11 @@ namespace Leorik
                 return true;
 
             pieces = White & (Queens | Bishops);
-            if (pieces > 0 && (pieces & DiagonalTargets[square]) > 0 && (pieces & GetDiagonalTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & DiagonalMask[square]) > 0 && (pieces & GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = White & (Queens | Rooks);
-            if (pieces > 0 && (pieces & OrthogonalTargets[square]) > 0 && (pieces & GetOrthogonalTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & OrthogonalMask[square]) > 0 && (pieces & GetRookTargets(Black | White, square)) > 0)
                 return true;
 
             //Warning: pawn attacks do not consider en-passent!
@@ -344,11 +344,11 @@ namespace Leorik
                 return true;
 
             pieces = Black & (Queens | Bishops);
-            if (pieces > 0 && (pieces & DiagonalTargets[square]) > 0 && (pieces & GetDiagonalTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & DiagonalMask[square]) > 0 && (pieces & GetBishopTargets(Black | White, square)) > 0)
                 return true;
 
             pieces = Black & (Queens | Rooks);
-            if (pieces > 0 && (pieces & OrthogonalTargets[square]) > 0 && (pieces & GetOrthogonalTargets(Black | White, square)) > 0)
+            if (pieces > 0 && (pieces & OrthogonalMask[square]) > 0 && (pieces & GetRookTargets(Black | White, square)) > 0)
                 return true;
 
             //Warning: pawn attacks do not consider en-passent!
@@ -446,6 +446,6 @@ namespace Leorik
             //    Console.WriteLine("Bad incremental ZobristHash");
 
             return zobristHash;
-        }
+        }        
     }
 }

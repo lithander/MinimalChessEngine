@@ -124,14 +124,14 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.Black; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                AddAllCaptures(Piece.BlackBishop, square, Bitboard.GetDiagonalTargets(occupied, square) & board.White, board);
+                AddAllCaptures(Piece.BlackBishop, square, Bitboard.GetBishopTargets(occupied, square) & board.White, board);
             }
 
             //Rooks
             for (ulong rooks = board.Rooks & board.Black; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                AddAllCaptures(Piece.BlackRook, square, Bitboard.GetOrthogonalTargets(occupied, square) & board.White, board);
+                AddAllCaptures(Piece.BlackRook, square, Bitboard.GetRookTargets(occupied, square) & board.White, board);
             }
 
             //Queens
@@ -194,14 +194,14 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.Black; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                AddAll(Piece.BlackBishop, square, Bitboard.GetDiagonalTargets(occupied, square) & ~occupied);
+                AddAll(Piece.BlackBishop, square, Bitboard.GetBishopTargets(occupied, square) & ~occupied);
             }
 
             //Rooks
             for (ulong rooks = board.Rooks & board.Black; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                AddAll(Piece.BlackRook, square, Bitboard.GetOrthogonalTargets(occupied, square) & ~occupied);
+                AddAll(Piece.BlackRook, square, Bitboard.GetRookTargets(occupied, square) & ~occupied);
             }
 
             //Queens
@@ -257,14 +257,14 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.White; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                AddAllCaptures(Piece.WhiteBishop, square, Bitboard.GetDiagonalTargets(occupied, square) & board.Black, board);
+                AddAllCaptures(Piece.WhiteBishop, square, Bitboard.GetBishopTargets(occupied, square) & board.Black, board);
             }
 
             //Rooks
             for (ulong rooks = board.Rooks & board.White; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                AddAllCaptures(Piece.WhiteRook, square, Bitboard.GetOrthogonalTargets(occupied, square) & board.Black, board);
+                AddAllCaptures(Piece.WhiteRook, square, Bitboard.GetRookTargets(occupied, square) & board.Black, board);
             }
 
             //Queens
@@ -327,14 +327,14 @@ namespace Leorik
             for (ulong bishops = board.Bishops & board.White; bishops != 0; bishops = Bitboard.ClearLSB(bishops))
             {
                 square = Bitboard.LSB(bishops);
-                AddAll(Piece.WhiteBishop, square, Bitboard.GetDiagonalTargets(occupied, square) & ~occupied);
+                AddAll(Piece.WhiteBishop, square, Bitboard.GetBishopTargets(occupied, square) & ~occupied);
             }
 
             //Rooks
             for (ulong rooks = board.Rooks & board.White; rooks != 0; rooks = Bitboard.ClearLSB(rooks))
             {
                 square = Bitboard.LSB(rooks);
-                AddAll(Piece.WhiteRook, square, Bitboard.GetOrthogonalTargets(occupied, square) & ~occupied);
+                AddAll(Piece.WhiteRook, square, Bitboard.GetRookTargets(occupied, square) & ~occupied);
             }
 
             //Queens
