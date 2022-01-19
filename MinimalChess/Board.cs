@@ -130,6 +130,11 @@ namespace MinimalChess
                 _state[square] = value;
                 _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
                 Debug.Assert(Score == new Evaluation.Eval(this).Score);
+                //Debug.Assert(Score == new Evaluation.EvalLeorik(this).Score);
+                BoardState bs = BoardState;
+                int leoScore = new Leorik.Evaluation.Eval(ref bs).Score;
+                if (Score != leoScore)
+                    Console.WriteLine("Error: " + (Score - leoScore).ToString());
             }
         }
 

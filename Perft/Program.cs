@@ -21,7 +21,7 @@ namespace Leorik
 
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v24");
+            Console.WriteLine("Leorik Perft v26");
             Console.WriteLine();
             Benchmark();
             Console.WriteLine();
@@ -50,7 +50,7 @@ namespace Leorik
                 PerftTable.Clear();
 
                 long t0 = Stopwatch.GetTimestamp();
-                long result = Perft(depth);
+                long result = Perft3(depth);
                 long t1 = Stopwatch.GetTimestamp();
 
                 double dt = (t1 - t0) / (double)Stopwatch.Frequency;
@@ -66,7 +66,7 @@ namespace Leorik
             }
             file.Close();
             Console.WriteLine();
-            Console.WriteLine($"Total: {totalNodes} Nodes, {(int)(1000 * totalDuration)}ms, {(int)(totalNodes / totalDuration / 1000)}M NPS");
+            Console.WriteLine($"Total: {totalNodes} Nodes, {(int)(1000 * totalDuration)}ms, {(int)(totalNodes / totalDuration / 1000)}K NPS");
         }
 
         private static void Print(BoardState board)
@@ -198,6 +198,49 @@ namespace Leorik
             }
             
             PerftTable.Store(hash, depth, sum);
+            return sum;
+        }
+
+        private static long Perft3(int depth)
+        {
+            Evaluation.Eval eval = new Evaluation.Eval(ref Positions[0]);
+            return Perft3(0, depth, ref eval, new MoveGen2(Moves, 0));
+        }
+
+        private static long Perft3(int depth, int remaining, ref Evaluation.Eval eval, MoveGen2 moves)
+        {
+            BoardState current = Positions[depth];
+            BoardState next = Positions[depth + 1];
+
+            //probe hash-tree
+            //if (PerftTable.Retrieve(hash, depth, out long childCount))
+            //    return childCount;
+
+            int i = moves.Next;
+            moves.Collect(current);
+            long sum = 0;
+            for (; i < moves.Next; i++)
+            {
+                if (next.TryPlay(current, ref Moves[i]))
+                {
+                    //eval.Evaluate(ref current);
+                    Evaluation.Eval nextEval = eval;
+                    nextEval.Update(ref Moves[i]);
+
+                    //Evaluation.Eval refEval = new Evaluation.Eval(ref next);
+                    //if (refEval.Score != nextEval.Score)
+                    //    Console.WriteLine($"Error: {nextEval.Score - refEval.Score}");
+
+                    if (remaining > 1)
+                    {
+                        sum += Perft3(depth + 1, remaining - 1, ref nextEval, moves);
+                    }
+                    else
+                        sum++;
+                }
+            }
+
+            //PerftTable.Store(hash, depth, sum);
             return sum;
         }
 

@@ -40,7 +40,7 @@ namespace MinimalChessBoard
                 string command = tokens[0];
 
                 long t0 = Stopwatch.GetTimestamp();
-                try
+                //try
                 {
                     if (command == "reset")
                     {
@@ -85,9 +85,8 @@ namespace MinimalChessBoard
                     }
                     else if (command == "?" && tokens.Length > 2)
                     {
-                        int depth = int.Parse(tokens[1]);
-                        int num = (tokens.Length > 3) ? int.Parse(tokens[3]) : int.MaxValue;
-                        CompareBestMove(depth, tokens[2], num);
+                        int timeBudgetMs = int.Parse(tokens[2]);
+                        CompareBestMove(tokens[1], timeBudgetMs);
                     }
                     else if (command == "?")
                     {
@@ -113,10 +112,10 @@ namespace MinimalChessBoard
                     if (dt > 0.01)
                         Console.WriteLine($"  Operation took {dt:0.####}s");
                 }
-                catch (Exception error)
-                {
-                    Console.WriteLine("ERROR: " + error.Message);
-                }
+                //catch (Exception error)
+                //{
+                //    Console.WriteLine("ERROR: " + error.Message);
+                //}
             }
         }
 
@@ -342,7 +341,7 @@ namespace MinimalChessBoard
         }
 
 
-        private static void CompareBestMove(int depth, string filePath, int maxCount)
+        private static void CompareBestMove(string filePath, int timeBudgetMs)
         {
             var file = File.OpenText(filePath);
             double freq = Stopwatch.Frequency;
@@ -351,26 +350,36 @@ namespace MinimalChessBoard
             int count = 0;
             int foundBest = 0;
             List<Move> bestMoves = new List<Move>();
-            while (!file.EndOfStream && count < maxCount)
+            while (!file.EndOfStream)
             {
                 ParseEpd(file.ReadLine(), out Board board, ref bestMoves);
                 Transpositions.Clear();
+                IterativeSearch search = new IterativeSearch(board);
+                Move pvMove = default;
                 long t0 = Stopwatch.GetTimestamp();
-                IterativeSearch search = new IterativeSearch(depth, board);
+                long tStop = t0 + (timeBudgetMs * Stopwatch.Frequency) / 1000;
+                //search until running out of time
+                while (true)
+                {
+                    search.SearchDeeper(() => Stopwatch.GetTimestamp() > tStop);
+                    if (search.Aborted)
+                        break;
+                    pvMove = search.PrincipalVariation[0];
+                }
                 long t1 = Stopwatch.GetTimestamp();
                 long dt = t1 - t0;
                 totalTime += dt;
                 totalNodes += search.NodesVisited;
                 count++;
                 string pvString = string.Join(' ', search.PrincipalVariation);
-                bool foundBestMove = bestMoves.Contains(search.PrincipalVariation[0]);
+                bool foundBestMove = bestMoves.Contains(pvMove);
                 if (foundBestMove)
                     foundBest++;
                 Console.WriteLine($"{count,4}. {(foundBestMove ? "[X]" : "[ ]")} {pvString} = {search.Score:+0.00;-0.00}, {search.NodesVisited / 1000}K nodes, { 1000 * dt / freq}ms");
                 Console.WriteLine($"{totalNodes,14} nodes, { (int)(totalTime / freq)} seconds, {foundBest} solved.");
             }
             Console.WriteLine();
-            Console.WriteLine($"Searched {count} positions to depth {depth}. {totalNodes / 1000}K nodes visited. Took {totalTime / freq:0.###} seconds!");
+            Console.WriteLine($"Searched {count} positions for {timeBudgetMs}ms each. {totalNodes / 1000}K nodes visited. Took {totalTime / freq:0.###} seconds!");
             Console.WriteLine($"Best move found in {foundBest} / {count} positions!");
         }
 
