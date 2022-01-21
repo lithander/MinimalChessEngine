@@ -31,24 +31,12 @@ namespace Leorik
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void AddPieces(ref BoardState board)
             {
-                //ulong occupied = board.Black | board.White;
-                //for (ulong bits = occupied; bits != 0; bits = Bitboard.ClearLSB(bits))
-                //{
-                //    int square = Bitboard.LSB(bits);
-                //    Piece piece = board.GetPiece(square);
-                //    AddPiece(piece, square);
-                //}
-                for (ulong bits = board.Black; bits != 0; bits = Bitboard.ClearLSB(bits))
+                ulong occupied = board.Black | board.White;
+                for (ulong bits = occupied; bits != 0; bits = Bitboard.ClearLSB(bits))
                 {
                     int square = Bitboard.LSB(bits);
                     Piece piece = board.GetPiece(square);
-                    AddBlackPiece(piece, square);
-                }
-                for (ulong bits = board.White; bits != 0; bits = Bitboard.ClearLSB(bits))
-                {
-                    int square = Bitboard.LSB(bits);
-                    Piece piece = board.GetPiece(square);
-                    AddWhitePiece(piece, square);
+                    AddPiece(piece, square);
                 }
             }
             
@@ -64,26 +52,26 @@ namespace Leorik
                 switch (move.Flags)
                 {
                     case Piece.EnPassant | Piece.BlackPawn:
-                        RemoveWhitePiece(Piece.WhitePawn, move.ToSquare + 8);
+                        RemovePiece(Piece.WhitePawn, move.ToSquare + 8);
                         break;
                     case Piece.EnPassant | Piece.WhitePawn:
-                        RemoveBlackPiece(Piece.BlackPawn, move.ToSquare - 8);
+                        RemovePiece(Piece.BlackPawn, move.ToSquare - 8);
                         break;
                     case Piece.CastleShort | Piece.Black:
-                        RemoveBlackPiece(Piece.BlackRook, 63);
-                        AddBlackPiece(Piece.BlackRook, 61);
+                        RemovePiece(Piece.BlackRook, 63);
+                        AddPiece(Piece.BlackRook, 61);
                         break;
                     case Piece.CastleLong | Piece.Black:
-                        RemoveBlackPiece(Piece.BlackRook, 56);
-                        AddBlackPiece(Piece.BlackRook, 59);
+                        RemovePiece(Piece.BlackRook, 56);
+                        AddPiece(Piece.BlackRook, 59);
                         break;
                     case Piece.CastleShort | Piece.White:
-                        RemoveWhitePiece(Piece.WhiteRook, 7);
-                        AddWhitePiece(Piece.WhiteRook, 5);
+                        RemovePiece(Piece.WhiteRook, 7);
+                        AddPiece(Piece.WhiteRook, 5);
                         break;
                     case Piece.CastleLong | Piece.White:
-                        RemoveWhitePiece(Piece.WhiteRook, 0);
-                        AddWhitePiece(Piece.WhiteRook, 3);
+                        RemovePiece(Piece.WhiteRook, 0);
+                        AddPiece(Piece.WhiteRook, 3);
                         break;
                 }
 
@@ -93,59 +81,39 @@ namespace Leorik
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void AddPiece(Piece piece, int squareIndex)
             {
+                int pieceIndex = PieceIndex(piece);
+                _phaseValue += PhaseValues[pieceIndex];
                 if ((piece & Piece.ColorMask) == Piece.White)
-                    AddWhitePiece(piece, squareIndex);
+                    AddScore(pieceIndex, squareIndex^56);
                 else
-                    AddBlackPiece(piece, squareIndex);
+                    SubtractScore(pieceIndex, squareIndex);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
             private void RemovePiece(Piece piece, int squareIndex)
             {
+                int pieceIndex = PieceIndex(piece);
+                _phaseValue -= PhaseValues[pieceIndex];
                 if ((piece & Piece.ColorMask) == Piece.White)
-                    RemoveWhitePiece(piece, squareIndex);
+                    SubtractScore(pieceIndex, squareIndex^56);
                 else
-                    RemoveBlackPiece(piece, squareIndex);
+                    AddScore(pieceIndex, squareIndex);
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void RemoveBlackPiece(Piece piece, int squareIndex)
+            private void AddScore(int pieceIndex, int squareIndex)
             {
-                int pieceIndex = PieceIndex(piece);
-                _phaseValue -= PhaseValues[pieceIndex];
-                int tableIndex = TableIndex(pieceIndex, squareIndex);
+                int tableIndex = (pieceIndex << 6) | squareIndex;
                 _midgameScore += MidgameTables[tableIndex];
                 _endgameScore += EndgameTables[tableIndex];
             }
 
             [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void RemoveWhitePiece(Piece piece, int squareIndex)
+            private void SubtractScore(int pieceIndex, int squareIndex)
             {
-                int pieceIndex = PieceIndex(piece);
-                _phaseValue -= PhaseValues[pieceIndex];
-                int tableIndex = TableIndex(pieceIndex, squareIndex ^ 56);
+                int tableIndex = (pieceIndex << 6) | squareIndex;
                 _midgameScore -= MidgameTables[tableIndex];
                 _endgameScore -= EndgameTables[tableIndex];
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void AddBlackPiece(Piece piece, int squareIndex)
-            {
-                int pieceIndex = PieceIndex(piece);
-                _phaseValue += PhaseValues[pieceIndex];
-                int tableIndex = TableIndex(pieceIndex, squareIndex);
-                _midgameScore -= MidgameTables[tableIndex];
-                _endgameScore -= EndgameTables[tableIndex];
-            }
-
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
-            private void AddWhitePiece(Piece piece, int squareIndex)
-            {
-                int pieceIndex = PieceIndex(piece);
-                _phaseValue += PhaseValues[pieceIndex];
-                int tableIndex = TableIndex(pieceIndex, squareIndex ^ 56);
-                _midgameScore += MidgameTables[tableIndex];
-                _endgameScore += EndgameTables[tableIndex];
             }
         }
 
