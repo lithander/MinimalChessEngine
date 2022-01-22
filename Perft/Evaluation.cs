@@ -13,13 +13,13 @@ namespace Leorik
 
             public short Score { get; private set; }
 
-            public Eval(ref BoardState board) : this()
+            public Eval(BoardState board) : this()
             {
                 AddPieces(ref board);
                 Score = (short)Interpolate(_midgameScore, _endgameScore, _phaseValue);
             }
 
-            public void Evaluate(ref BoardState board)
+            public void Evaluate(BoardState board)
             {
                 _midgameScore = 0;
                 _endgameScore = 0;

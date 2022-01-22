@@ -203,11 +203,11 @@ namespace Leorik
 
         private static long Perft3(int depth)
         {
-            Evaluation.Eval eval = new Evaluation.Eval(ref Positions[0]);
-            return Perft3(0, depth, ref eval, new MoveGen2(Moves, 0));
+            //Evaluation.Eval eval = new Evaluation.Eval(ref Positions[0]);
+            return Perft3(0, depth, new MoveGen2(Moves, 0));
         }
 
-        private static long Perft3(int depth, int remaining, ref Evaluation.Eval eval, MoveGen2 moves)
+        private static long Perft3(int depth, int remaining, MoveGen2 moves)
         {
             BoardState current = Positions[depth];
             BoardState next = Positions[depth + 1];
@@ -223,17 +223,12 @@ namespace Leorik
             {
                 if (next.TryPlay(current, ref Moves[i]))
                 {
-                    //eval.Evaluate(ref current);
-                    Evaluation.Eval nextEval = eval;
-                    nextEval.Update(ref Moves[i]);
-
-                    //Evaluation.Eval refEval = new Evaluation.Eval(ref next);
-                    //if (refEval.Score != nextEval.Score)
-                    //    Console.WriteLine($"Error: {nextEval.Score - refEval.Score}");
-
+                    //Eval refEval = new Eval(next);
+                    //if (refEval.Score != next.Eval.Score)
+                    //    Console.WriteLine($"Error: {next.Eval.Score - refEval.Score}");
                     if (remaining > 1)
                     {
-                        sum += Perft3(depth + 1, remaining - 1, ref nextEval, moves);
+                        sum += Perft3(depth + 1, remaining - 1, moves);
                     }
                     else
                         sum++;

@@ -19,15 +19,16 @@ namespace Leorik
         public ulong EnPassant;
 
         public Color SideToMove;
+        public Evaluation.Eval Eval;
 
         public const ulong BlackQueensideRookBit = 0x0100000000000000UL;//1UL << Notation.ToSquare("a8");
         public const ulong BlackKingsideRookBit = 0x8000000000000000UL;//1UL << Notation.ToSquare("h8");
         public const ulong BlackCastlingBits = BlackQueensideRookBit | BlackKingsideRookBit;
-        
+
         public const ulong WhiteQueensideRookBit = 0x0000000000000001UL;//1UL << Notation.ToSquare("a1");
         public const ulong WhiteKingsideRookBit = 0x0000000000000080UL;//1UL << Notation.ToSquare("h1");
         public const ulong WhiteCastlingBits = WhiteQueensideRookBit | WhiteKingsideRookBit;
-                        
+
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool CanWhiteCastleLong()
         {
@@ -97,6 +98,7 @@ namespace Leorik
             CopyUnmasked(other);
             EnPassant = other.EnPassant;
             SideToMove = other.SideToMove;
+            Eval = other.Eval;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -105,27 +107,23 @@ namespace Leorik
             if (from.SideToMove == Color.White)
             {
                 PlayWhite(from, ref move);
-                return !IsAttackedByBlack(LSB(Kings & White));
+                if (IsAttackedByBlack(LSB(Kings & White)))
+                    return false;
             }
             else
             {
                 PlayBlack(from, ref move);
-                return !IsAttackedByWhite(LSB(Kings & Black));
+                if (IsAttackedByWhite(LSB(Kings & Black)))
+                    return false;
             }
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public void Play(BoardState from, ref Move move)
-        {
-            if(from.SideToMove == Color.White)
-                PlayWhite(from, ref move);
-            else
-                PlayBlack(from, ref move);
+            Eval = from.Eval;
+            Eval.Update(ref move);
+            return true;
         }
 
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public void PlayBlack(BoardState from, ref Move move)
-        {            
+        {
             ulong bbTo = 1UL << move.ToSquare;
             ulong bbFrom = 1UL << move.FromSquare;
             CopyBitboards(from, from.White & bbTo);
@@ -300,7 +298,7 @@ namespace Leorik
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool IsChecked(Color color)
         {
-            if(color == Color.White)
+            if (color == Color.White)
                 return IsAttackedByBlack(LSB(Kings & White));
             else
                 return IsAttackedByWhite(LSB(Kings & Black));
@@ -374,10 +372,10 @@ namespace Leorik
             Queen = 20,     //10100
             King = 24,      //11000
             */
-            return (Piece)(Bit(Black | White, square, 0) | 
-                           Bit(White, square, 1) | 
-                           Bit(Pawns | Bishops | Queens, square, 2)| 
-                           Bit(Knights | Bishops | Kings, square, 3) | 
+            return (Piece)(Bit(Black | White, square, 0) |
+                           Bit(White, square, 1) |
+                           Bit(Pawns | Bishops | Queens, square, 2) |
+                           Bit(Knights | Bishops | Kings, square, 3) |
                            Bit(Kings | Rooks | Queens, square, 4));
         }
 
@@ -446,6 +444,6 @@ namespace Leorik
             //    Console.WriteLine("Bad incremental ZobristHash");
 
             return zobristHash;
-        }        
+        }
     }
 }

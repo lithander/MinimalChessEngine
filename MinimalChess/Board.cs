@@ -87,6 +87,7 @@ namespace MinimalChess
 
                 //Set en-passant square
                 result.EnPassant = _enPassantSquare < 0 ? 0 : 1UL << _enPassantSquare;
+                result.Eval = new Leorik.Evaluation.Eval(result);
                 return result;
             }
         }
@@ -131,10 +132,8 @@ namespace MinimalChess
                 _zobristHash ^= Zobrist.PieceSquare(_state[square], square);
                 Debug.Assert(Score == new Evaluation.Eval(this).Score);
                 //Debug.Assert(Score == new Evaluation.EvalLeorik(this).Score);
-                BoardState bs = BoardState;
-                int leoScore = new Leorik.Evaluation.Eval(ref bs).Score;
-                if (Score != leoScore)
-                    Console.WriteLine("Error: " + (Score - leoScore).ToString());
+                if (Score != BoardState.Eval.Score)
+                    Console.WriteLine("Error: " + (Score - BoardState.Eval.Score).ToString());
             }
         }
 
