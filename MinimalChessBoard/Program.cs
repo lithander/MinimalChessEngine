@@ -419,13 +419,11 @@ namespace MinimalChessBoard
                 Board board = new Board(fen);
                 Leorik.BoardState a = board.BoardState;
                 Leorik.BoardState b = Leorik.Notation.GetBoardState(fen);
-                ulong hashA = a.ComputeZobristHash();
-                ulong hashB = b.ComputeZobristHash();
-                if (hashA == hashB)
+                if (a.ZobristHash == b.ZobristHash)
                     Console.WriteLine("Board -> BoardState: Ok!");
                 else
                 {
-                    Console.WriteLine($"Wrong Hash! {hashA} vs {hashB}");
+                    Console.WriteLine($"Wrong Hash! {a.ZobristHash } vs {b.ZobristHash}");
                     errors++;
                     continue;
                 }

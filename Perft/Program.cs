@@ -21,7 +21,7 @@ namespace Leorik
 
         static void Main()
         {
-            Console.WriteLine("Leorik Perft v26");
+            Console.WriteLine("Leorik Perft v27");
             Console.WriteLine();
             Benchmark();
             Console.WriteLine();
@@ -153,7 +153,7 @@ namespace Leorik
             long sum = 0;
             for (; i < moves.Next; i++)
             {
-                if (next.TryPlay(current, ref Moves[i]))
+                if (next.PlayAndUpdate(current, ref Moves[i]))
                 {
                     if (remaining > 1)
                         sum += Perft(depth + 1, remaining - 1, moves);
@@ -167,17 +167,16 @@ namespace Leorik
 
         private static long Perft2(int depth)
         {
-            ulong hash = Positions[0].ComputeZobristHash();
-            return Perft2(0, depth, hash, new MoveGen2(Moves, 0));
+            return Perft2(0, depth, new MoveGen2(Moves, 0));
         }
 
-        private static long Perft2(int depth, int remaining, ulong hash, MoveGen2 moves)
+        private static long Perft2(int depth, int remaining, MoveGen2 moves)
         {
             BoardState current = Positions[depth];
             BoardState next = Positions[depth + 1];
 
             //probe hash-tree
-            if (PerftTable.Retrieve(hash, depth, out long childCount))
+            if (PerftTable.Retrieve(current.ZobristHash, depth, out long childCount))
                 return childCount;
 
             int i = moves.Next;
@@ -185,19 +184,20 @@ namespace Leorik
             long sum = 0;
             for (; i < moves.Next; i++)
             {
-                if (next.TryPlay(current, ref Moves[i]))
+                ref Move move = ref Moves[i];
+                if (remaining > 1)
                 {
-                    if (remaining > 1)
-                    {
-                        ulong nextHash = BoardState.UpdateHash(hash, ref Moves[i], current, next);
-                        sum += Perft2(depth + 1, remaining - 1, nextHash, moves);
-                    }
-                    else
-                        sum++;
+                    if (next.PlayAndUpdate(current, ref move))
+                        sum += Perft2(depth + 1, remaining - 1, moves);
+                }
+                else if (next.Play(current, ref move))
+                {
+                    next.UpdateEval(current, ref move);
+                    sum++;
                 }
             }
             
-            PerftTable.Store(hash, depth, sum);
+            PerftTable.Store(current.ZobristHash, depth, sum);
             return sum;
         }
 
@@ -221,11 +221,15 @@ namespace Leorik
             long sum = 0;
             for (; i < moves.Next; i++)
             {
-                if (next.TryPlay(current, ref Moves[i]))
+                //ref Move move = ref Moves[i];
+                if (next.PlayAndUpdate(current, ref Moves[i]))
                 {
-                    //Eval refEval = new Eval(next);
-                    //if (refEval.Score != next.Eval.Score)
-                    //    Console.WriteLine($"Error: {next.Eval.Score - refEval.Score}");
+                    //next.UpdateEval(current, ref move);
+                    //next.UpdateHash(current, ref move);
+
+                    Evaluation refEval = new Evaluation(next);
+                    if (refEval.Score != next.Eval.Score)
+                        Console.WriteLine($"Error: {next.Eval.Score - refEval.Score}");
                     if (remaining > 1)
                     {
                         sum += Perft3(depth + 1, remaining - 1, moves);

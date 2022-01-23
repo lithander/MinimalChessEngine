@@ -97,7 +97,8 @@ namespace Leorik
             //Set en-passant square
             result.EnPassant = fields[3] == "-" ? 0 : 1UL << GetSquare(fields[3]);
 
-            result.Eval = new Evaluation.Eval(result);
+            result.UpdateEval();
+            result.UpdateHash();
             return result;
         }
 

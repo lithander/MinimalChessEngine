@@ -87,7 +87,8 @@ namespace MinimalChess
 
                 //Set en-passant square
                 result.EnPassant = _enPassantSquare < 0 ? 0 : 1UL << _enPassantSquare;
-                result.Eval = new Leorik.Evaluation.Eval(result);
+                result.UpdateEval();
+                result.UpdateHash();
                 return result;
             }
         }
