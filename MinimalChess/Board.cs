@@ -409,7 +409,7 @@ namespace MinimalChess
 
         public bool IsChecked(Color color)
         {
-            Piece king = color == Color.Black ? Piece.BlackKing : Piece.WhiteKing;
+            Piece king = Piece.King.OfColor(color);
             for (int square = 0; square < 64; square++)
                 if(_state[square] == king)
                     return IsSquareAttackedBy(square, Pieces.Flip(color));
@@ -583,14 +583,14 @@ namespace MinimalChess
         private void AddWhitePawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.WhitePawn[square])
-                if (_state[target].Color() == Color.Black || target == _enPassantSquare)
+                if (_state[target].IsBlack() || target == _enPassantSquare)
                     AddWhitePawnMove(moveHandler, square, target);
         }
 
         private void AddBlackPawnAttacks(Action<Move> moveHandler, int square)
         {
             foreach (int target in Attacks.BlackPawn[square])
-                if (_state[target].Color() == Color.White || target == _enPassantSquare)
+                if (_state[target].IsWhite() || target == _enPassantSquare)
                     AddBlackPawnMove(moveHandler, square, target);
         }
 

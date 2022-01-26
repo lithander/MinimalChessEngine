@@ -160,10 +160,7 @@ namespace MinimalChessBoard
                     Console.BackgroundColor = ConsoleColor.DarkCyan;
             }
 
-            if (piece.Color() == Color.White)
-                Console.ForegroundColor = ConsoleColor.White;
-            else
-                Console.ForegroundColor = ConsoleColor.Gray;
+            Console.ForegroundColor = piece.IsWhite() ? ConsoleColor.White : ConsoleColor.Gray;
         }
 
         private static void ListMoves(Board board, int depth)
@@ -297,7 +294,7 @@ namespace MinimalChessBoard
             List<Move> bestMoves = new List<Move>();
             while (!file.EndOfStream)
             {
-                ParseEpd(file.ReadLine(), out Board board, ref bestMoves);
+                ParseEpd(file.ReadLine(), out Board board, bestMoves);
                 Transpositions.Clear();
                 IterativeSearch search = new IterativeSearch(board);
                 Move pvMove = default;
@@ -328,8 +325,7 @@ namespace MinimalChessBoard
             Console.WriteLine($"Best move found in {foundBest} / {count} positions!");
         }
 
-
-        private static void ParseEpd(string epd, out Board board, ref List<Move> bestMoves)
+        private static void ParseEpd(string epd, out Board board, List<Move> bestMoves)
         {
             //The parser expects a fen-string with bm delimited by a ';'
             //Example: 2q1r1k1/1ppb4/r2p1Pp1/p4n1p/2P1n3/5NPP/PP3Q1K/2BRRB2 w - - bm f7+; id "ECM.001";

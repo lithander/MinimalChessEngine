@@ -54,14 +54,15 @@ namespace MinimalChess
         //Pawn = 1, Knight = 2, Bishop = 3; Rook = 4, Queen = 5, King = 6
         public static int Order(Piece piece) => (int)piece >> 2;
 
-        public static Piece Type(Piece piece) => piece & Piece.TypeMask;
-
         //subtracting 2 maps Piece.White (3) to Color.White (1) and Piece.Black (1) to Color.Black (-1)
         public static Color Color(this Piece piece) => (Color)((piece & Piece.ColorMask) - 2);
 
+        public static bool IsWhite(this Piece piece) => (piece & Piece.ColorMask) == Piece.White;
+        public static bool IsBlack(this Piece piece) => (piece & Piece.ColorMask) == Piece.Black;
+
         //Use Piece.TypeMask to clear the two bits used for color, then set correct color bits
         //adding 2 maps Color.White (1) to Piece.White (3) and Color.Black (-1) to Piece.Black (1)
-        public static Piece OfColor(this Piece piece, Color color) => Type(piece) | (Piece)(color + 2);
+        public static Piece OfColor(this Piece piece, Color color) => (piece & Piece.TypeMask) | (Piece)(color + 2);
 
         public static Color Flip(Color color) => (Color)(-(int)color);
 

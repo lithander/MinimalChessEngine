@@ -38,17 +38,17 @@ namespace MinimalChessBoard
                 {
                     //pawn capture
                     int toSquare = Notation.ToSquare(notation.Substring(2, 2));
-                    return SelectMove(board, Piece.Pawn, toSquare, promotion, notation[0]);
+                    return SelectMove(board, Piece.Pawn.OfColor(board.SideToMove), toSquare, promotion, notation[0]);
                 }
                 else
                 {
                     //pawn move
                     int toSquare = Notation.ToSquare(notation);
-                    return SelectMove(board, Piece.Pawn, toSquare, promotion);
+                    return SelectMove(board, Piece.Pawn.OfColor(board.SideToMove), toSquare, promotion);
                 }
             }
 
-            Piece piece = Notation.ToPiece(notation[0]);
+            Piece piece = Notation.ToPiece(notation[0]).OfColor(board.SideToMove);
             if (notation[1] == 'x')
             {
                 //capture
@@ -83,9 +83,9 @@ namespace MinimalChessBoard
             {
                 if (move.ToSquare != toSquare)
                     continue;
-                if (Pieces.Type(move.Promotion) != Pieces.Type(promotion))
+                if (move.Promotion != promotion)
                     continue;
-                if (Pieces.Type(board[move.FromSquare]) != Pieces.Type(moving))
+                if (board[move.FromSquare] != moving)
                     continue;
                 if (fileOrRank != null && !Notation.ToSquareName(move.FromSquare).Contains(fileOrRank.Value))
                     continue;
