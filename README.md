@@ -6,6 +6,8 @@ It's focus on a *minimal* implementation of only the most important features and
 
 The didactic nature of the project is reinforced by it's open source license (MIT) and a dedicated series of explanatory [Youtube](https://www.youtube.com/playlist?list=PL6vJSkTaZuBtTokp8-gnTsP39GCaRS3du) videos.
 
+If you are looking for a *strong* C# chess engine have a look at my new engine [Leorik](https://github.com/lithander/Leorik)!
+
 ## Features
 
 * A simple 8x8 Board representation: Just an array to represent the 64 squares and keep track of the pieces.
@@ -36,47 +38,47 @@ Now you should be ready to select MinimalChess as a player!
 ```
 Version:   0.6
 Size:      708 LOC
-Strength:  2460 Elo
+Strength:  2443 Elo
 ```
-[__Version 0.6__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) uses an improved transposition table with two buckets and aging. It also adds late move reductions and deep futility pruning. Quiet moves are now sorted based on a simple history heuristic which has a nice synergy with LMR. In total these changes allow MinimalChess to search much deeper (at the cost of accuracy) so that it gains about 200 Elo over the previous version and is listed at [2464 Elo](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.6%2064-bit#MinimalChess_0_6_64-bit) on the CCRL.
+[__Version 0.6__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.6) uses an improved transposition table with two buckets and aging. It also adds late move reductions and deep futility pruning. Quiet moves are now sorted based on a simple history heuristic which has a nice synergy with LMR. In total these changes allow MinimalChess to search much deeper (at the cost of accuracy) so that it gains about 200 Elo over the previous version and is listed at [2443 Elo](https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.6%2064-bit#MinimalChess_0_6_64-bit) on the CCRL.
 
 ### Version 0.5
 ```
 Version:   0.5
 Size:      707 LOC
-Strength:  2270 Elo
+Strength:  2217 Elo
 ```
 [__Version 0.5__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.5) adds a 13th tuned table for a mobility-based evaluation term, null-move pruning and a simple transposition table. I also changed the target framework to .NET 5.
-With these changes MinimalChess gains about 350 Elo in playing strength over the previous version and is listed at [2268 Elo](https://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.5%2064-bit#MinimalChess_0_5_64-bit) on the CCRL.
+With these changes MinimalChess gains about 350 Elo in playing strength over the previous version and is listed at [2217 Elo](https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?eng=MinimalChess%200.5%2064-bit#MinimalChess_0_5_64-bit) on the CCRL Blitz list.
 
 ### Version 0.4
 ```
 Version:   0.4
 Size:      610 LOC
-Strength:  1890 Elo
+Strength:  1816 Elo
 ```
 [__Version 0.4__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.4) now uses tapered Piece-Square tables to evaluate positions. It took two weeks of tuning and testing until I found values that could rival [PeSTOs](https://rofchade.nl/?p=307) famous PSTs in strength.
 I also added a [killer heuristic](https://www.chessprogramming.org/Killer_Heuristic) and staged move generation so that MinimalChess does not generate moves which will likely never be played. The resulting speed improvements more than compensate for the slightly more expensive evaluation. 
 A new time control logic now allocates the given time budget smarter, especially in modes where there's an increment each move, and the 'nodes' and 'depth' constraints are now supported in all modes.
-MinimalChess 0.4.1 is listed at [1883 Elo](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.4.1%2064-bit#MinimalChess_0_4_1_64-bit) on the CCRL.
+MinimalChess 0.4.1 is listed at [1816 Elo](https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.4.1%2064-bit#MinimalChess_0_4_1_64-bit) on the CCRL Blitz list.
 
 ### Version 0.3
 ```
 Version:   0.3
 Size:      641 LOC
-Strength:  1570 Elo
+Strength:  1439 Elo
 ```
 [__Version 0.3__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.3) adds MVV-LVA move ordering, Quiescence Search and replaces material-only evaluation with Piece-Square Tables.
-With these changes MinimalChess gains about 500 Elo in playing strength over the previous version and achieved [1571 Elo](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
+With these changes MinimalChess gains about 500 Elo in playing strength over the previous version and achieved [1439 Elo](https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?match_length=30&each_game=1&print=Details&each_game=1&eng=MinimalChess%200.3%2064-bit#MinimalChess_0_3_64-bit) on the CCRL.
 This version also introduces a rather unique feature: Sets of PSTs are defined in separate files and can be selected via an UCI option. This allows the user to tweak the values or write their own tables from scratch and by this alter the playstyle of the engine considerably. No programming experience required!
 
 ### Version 0.2
 ```
 Version:   0.2
 Size:      502 LOC
-Strength:  1070 Elo 
+Strength:  909 Elo 
 ```
-[__Version 0.2__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.2) uses Iterative Deepening search with Alpha-Beta pruning. It collects the Principal Variation (PV) and when available plays PV moves first. Other than that there's no move ordering. Positions are evaluated by counting material only. This lack of sophistication causes it to play rather weak at [1059 Elo](http://ccrl.chessdom.com/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.2%2064-bit#MinimalChess_0_2_64-bit) on the CCRL. I tried to the write code to be as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than this version.
+[__Version 0.2__](https://github.com/lithander/MinimalChessEngine/releases/tag/v0.2) uses Iterative Deepening search with Alpha-Beta pruning. It collects the Principal Variation (PV) and when available plays PV moves first. Other than that there's no move ordering. Positions are evaluated by counting material only. This lack of sophistication causes it to play rather weak at [909 Elo](https://www.computerchess.org.uk/ccrl/404/cgi/engine_details.cgi?print=Details&each_game=1&eng=MinimalChess%200.2%2064-bit#MinimalChess_0_2_64-bit) on the CCRL Blitz list. I tried to the write code to be as simple as possible to both understand and explain. It could be smaller or faster but I doubt it could be much simpler than this version.
 
 ## Compiling the engine
 
