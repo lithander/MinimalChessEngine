@@ -63,7 +63,9 @@ namespace MinimalChess
                 return (ttScore, Array.Empty<Move>());
 
             var result = EvalPosition(position, ply, depth, window);
-            Transpositions.Store(position.ZobristHash, depth, ply, window, result.Score, result.PV.Length > 0 ? result.PV[0] : default);
+            if(!Aborted)
+                Transpositions.Store(position.ZobristHash, depth, ply, window, result.Score, result.PV.Length > 0 ? result.PV[0] : default);
+            
             return result;
         }
 
@@ -136,8 +138,6 @@ namespace MinimalChess
                     continue;
                 }
 
-                //the position has a new best move and score!
-                Transpositions.Store(position.ZobristHash, depth, ply, window, eval.Score, move);
                 //set the PV to this move, followed by the PV of the childnode
                 pv = Merge(move, eval.PV);
                 //...and maybe we even get a beta cutoff
